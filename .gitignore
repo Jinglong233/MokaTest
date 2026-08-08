@@ -1,0 +1,22 @@
+# 服务器部署本地环境变量（包含密码）
+.env
+
+# 运行时上传文件
+uploads/
+
+# IDE
+.idea/
+*.iml
+
+# 日志
+*.log
+logs/
+
+# 前端构建产物
+frontEnd/dist/
+frontEnd/node_modules/
+
+# 后端构建产物
+backEnd/**/target/
+backEnd/**/*.jar
+/.claude/

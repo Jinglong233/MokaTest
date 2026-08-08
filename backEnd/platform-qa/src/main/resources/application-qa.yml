@@ -1,0 +1,6 @@
+# QA 模块配置（示例）
+# 在主项目的 application.yml 中加入以下配置即可启用/禁用 QA 模块
+
+module:
+  qa:
+    enabled: true

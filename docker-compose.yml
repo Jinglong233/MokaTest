@@ -1,0 +1,187 @@
+# ============================================
+# MokaTest 平台 - Docker Compose 一键部署
+# 适用：单台 2C4G 云服务器生产/准生产环境
+#
+# 使用方式：
+#   1. 复制 .env.example 为 .env 并修改密码/端口/域名
+#   2. 在项目根目录执行：docker compose up -d --build
+#      （镜像全部从源码本地构建，无需登录任何镜像仓库）
+#   3. 访问：http://<服务器IP>（端口由 .env 的 HOST_HTTP_PORT 控制，默认 80）
+#
+# 如需初始化演示数据，在 .env 中设置 QA_INIT_SQL 指向你的数据脚本：
+#   QA_INIT_SQL=./backEnd/sql/your_demo_data.sql
+# ============================================
+
+services:
+  # ---- MySQL ----
+  mysql:
+    image: mysql:8.0.40
+    container_name: mokatest-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-mokatest123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mokatest}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 初始化数据库（首次启动时自动执行）
+      - ./backEnd/sql/mokatest_full_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ${QA_INIT_SQL:-./backEnd/sql/empty.sql}:/docker-entrypoint-initdb.d/02-data.sql
+    ports:
+      # 如需从服务器外部连接 MySQL，保持映射；生产环境建议删除
+      - "${MYSQL_PORT:-3306}:3306"
+    # 低内存 MySQL 配置
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=64M
+      --key-buffer-size=8M
+      --tmp-table-size=8M
+      --max-connections=50
+      --table-open-cache=128
+      --thread-cache-size=4
+      --performance-schema=OFF
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-mokatest123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.3'
+        reservations:
+          memory: 128M
+    networks:
+      - mokatest-net
+
+  # ---- 后端服务 ----
+  backend:
+    build:
+      context: ./backEnd
+      dockerfile: Dockerfile
+    image: mokatest/backend:latest
+    container_name: mokatest-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      # 覆盖数据库连接（Docker 内部网络通过服务名访问）
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/mokatest?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-root}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-mokatest123}
+      # 启用 QA 模块
+      MODULE_QA_ENABLED: "true"
+      # 时区
+      TZ: ${TZ:-Asia/Shanghai}
+      # 文件存储配置：默认使用 MinIO
+      STORAGE_TYPE: ${STORAGE_TYPE:-minio}
+      STORAGE_MINIO_ENDPOINT: ${STORAGE_MINIO_ENDPOINT:-http://minio:9000}
+      STORAGE_MINIO_BUCKET: ${STORAGE_MINIO_BUCKET:-mokatest}
+      STORAGE_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      STORAGE_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # 默认通过后端代理访问文件，避免前端跨域
+      STORAGE_MINIO_USE_PROXY: "true"
+    ports:
+      - "${BACKEND_PORT:-7529}:7529"
+    # 资源限制：2C4G 服务器专用
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: 5
+    networks:
+      - mokatest-net
+
+  # ---- 前端服务 ----
+  frontend:
+    build:
+      context: ./frontEnd
+      dockerfile: Dockerfile
+    image: mokatest/frontend:latest
+    container_name: mokatest-frontend
+    depends_on:
+      - backend
+      - minio
+    ports:
+      - "${HOST_HTTP_PORT:-80}:80"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: 5
+    networks:
+      - mokatest-net
+
+  # ---- MinIO 对象存储 ----
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: mokatest-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - mokatest-net
+
+  # ---- MinIO 初始化：自动创建 bucket ----
+  minio-init:
+    build:
+      context: .
+      dockerfile: minio-init.Dockerfile
+    container_name: mokatest-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: ${STORAGE_MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${STORAGE_MINIO_BUCKET:-mokatest}
+    restart: "no"
+    networks:
+      - mokatest-net
+
+
+volumes:
+  mysql_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  mokatest-net:
+    driver: bridge

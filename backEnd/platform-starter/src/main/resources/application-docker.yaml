@@ -1,0 +1,98 @@
+# ============================================
+# Docker 演示环境专用配置
+# 特点：低内存、关日志、限连接、省资源
+# ============================================
+
+server:
+  port: 7529
+  servlet:
+    context-path: /api
+  tomcat:
+    encoded-solidus-handling: PASS_THROUGH
+    # 限制 Tomcat 线程池，降低内存占用
+    max-threads: 50
+    min-spare-threads: 5
+    max-connections: 200
+    accept-count: 50
+
+spring:
+  datasource:
+    # 数据库连接由 docker-compose 环境变量注入，此处保留兜底配置
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/mokatest?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:mokatest123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # === Hikari 连接池：严格限制 ===
+    hikari:
+      pool-name: MokaTestHikariPool
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      leak-detection-threshold: 60000
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# MyBatis Plus：关闭 SQL 日志，省 CPU 和磁盘 IO
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+    map-underscore-to-camel-case: true
+    auto-mapping-behavior: full
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Sa-Token：关闭内部日志
+sa-token:
+  token-name: Authorization
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: false
+
+# 日志级别：演示环境只保留必要输出
+logging:
+  level:
+    root: warn
+    com.mokatest: info
+    com.baomidou: warn
+  pattern:
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# QA 模块：服务器部署默认启用
+module:
+  qa:
+    enabled: ${MODULE_QA_ENABLED:true}
+
+# 文件本地存储路径（挂载到宿主机 ./uploads 持久化）
+storage:
+  type: ${STORAGE_TYPE:minio}
+  local:
+    base-path: /app/uploads
+  # MinIO 配置示例（storage.type 设置为 minio 时生效）
+  # minio:
+  #   endpoint: http://minio:9000
+  #   bucket: mokatest
+  #   access-key: minioadmin
+  #   secret-key: minioadmin
+
+# Actuator：仅暴露 health 端点，不展示详情
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

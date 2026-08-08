@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mokatest.platform.demos.mapper.TestStepMapper">
+
+    <resultMap id="BaseResultMap" type="com.mokatest.platform.demos.domain.ui.TestStep">
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="stepType" column="step_type" jdbcType="VARCHAR"/>
+        <result property="stepName" column="step_name" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="parentId" column="parent_id" jdbcType="INTEGER"/>
+        <result property="orderIndex" column="order_index" jdbcType="INTEGER"/>
+        <result property="projectId" column="project_id" jdbcType="VARCHAR"/>
+        <result property="scenarioId" column="scenario_id" jdbcType="VARCHAR"/>
+        <result property="isDisable" column="is_disable" jdbcType="TINYINT"/>
+        <result property="stepDetail" column="step_detail" jdbcType="OTHER"/>
+        <result property="createdAt" column="created_at" jdbcType="TIMESTAMP"/>
+        <result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
+        <result property="createUserId" column="create_user_id" jdbcType="VARCHAR"/>
+        <result property="updateUserId" column="update_user_id" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id
+        ,step_type,step_name,
+        description,parent_id,order_index,
+        project_id,scenario_id,is_disable,
+        step_detail,created_at,updated_at,
+        create_user_id,update_user_id
+    </sql>
+</mapper>

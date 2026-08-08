@@ -1,0 +1,82 @@
+MokaTest
+Copyright (c) 2026 JingLong
+
+本产品在开发过程中使用了以下第三方开源软件/素材，特此致谢并声明：
+
+=====================================================================
+前端 UI 框架与模板
+=====================================================================
+
+- Arco Design Vue (https://github.com/arco-design/arco-design-vue)
+  License: MIT
+
+- Arco Design Pro Vue (https://github.com/arco-design/arco-design-pro-vue)
+  License: MIT
+  说明：本项目部分页面布局与登录/banner 图片素材源自该模板，
+  相关素材版权归原项目所有，按 MIT 协议使用。
+
+- Vue.js (https://github.com/vuejs/core)
+  License: MIT
+
+- Vite (https://github.com/vitejs/vite)
+  License: MIT
+
+- monaco-editor (https://github.com/microsoft/monaco-editor)
+  License: MIT
+
+- ECharts (https://github.com/apache/echarts)
+  License: Apache License 2.0
+
+- iconify / @iconify-json 图标集 (https://iconify.design/)
+  License: MIT / Apache 2.0 / CC BY 4.0（依具体图标集而定）
+
+=====================================================================
+后端框架与库
+=====================================================================
+
+- Spring Boot (https://github.com/spring-projects/spring-boot)
+  License: Apache License 2.0
+
+- MyBatis-Plus (https://github.com/baomidou/mybatis-plus)
+  License: Apache License 2.0
+
+- Sa-Token (https://github.com/dromara/Sa-Token)
+  License: Apache License 2.0
+
+- Playwright (https://github.com/microsoft/playwright)
+  License: Apache License 2.0
+
+- Hutool (https://github.com/dromara/hutool)
+  License: Mulan PSL v2
+
+- FastJSON (https://github.com/alibaba/fastjson2)
+  License: Apache License 2.0
+
+- MySQL Connector/J (https://github.com/mysql/mysql-connector-j)
+  License: GPLv2 with FOSSA Exception（本项目仅作为运行时依赖，
+  通过 JDBC 接口使用，不构成衍生作品）
+
+=====================================================================
+基础设施（容器镜像）
+=====================================================================
+
+- MySQL (https://www.mysql.com/) - GPLv2（独立进程部署，不链接）
+- Nginx (https://nginx.org/) - BSD 2-Clause
+- MinIO (https://github.com/minio/minio) - AGPLv3（独立服务部署，
+  通过 S3 API 交互，本项目代码不受其 copyleft 约束）
+
+=====================================================================
+图片素材
+=====================================================================
+
+- 本项目 Logo 及部分界面配图为 AI 工具生成，未主张版权。
+  使用者可自由替换，作者不对其独创性作任何保证。
+
+=====================================================================
+说明
+=====================================================================
+
+完整依赖清单及各自协议原文请参见各组件的官方仓库。
+MIT / Apache-2.0 / BSD / Mulan PSL 等宽松协议均要求保留版权声明，
+本项目按上述声明履行义务；GPL/AGPL 组件仅以独立进程方式部署或
+作为运行时依赖调用，未修改其源码，本项目代码不因此受到传染。

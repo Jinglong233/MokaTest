@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mokatest.platform.demos.api.mapper.DataTemplateMapper">
+
+    <!-- 显式定义 resultMap，确保 template_schema JSON 字段通过 JacksonTypeHandler 反序列化 -->
+    <resultMap id="BaseResultMap" type="com.mokatest.platform.demos.api.domain.DataTemplate">
+        <id column="id" property="id" />
+        <result column="team_id" property="teamId" />
+        <result column="project_id" property="projectId" />
+        <result column="parent_id" property="parentId" />
+        <result column="node_type" property="nodeType" />
+        <result column="template_name" property="templateName" />
+        <result column="description" property="description" />
+        <result column="template_schema" property="templateSchema"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler" />
+        <result column="is_shared" property="isShared" />
+        <result column="sort" property="sort" />
+        <result column="create_user_id" property="createUserId" />
+        <result column="update_user_id" property="updateUserId" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="deleted_at" property="deletedAt" />
+    </resultMap>
+
+    <!-- CTE 递归查询项目下所有 FOLDER 节点 -->
+    <select id="folderList" resultMap="BaseResultMap">
+        WITH RECURSIVE folder_tree AS (
+            SELECT *
+            FROM data_template
+            WHERE node_type = 'FOLDER'
+              AND parent_id = 0
+              AND project_id = #{projectId}
+              AND is_deleted = 0
+
+            UNION ALL
+
+            SELECT t.*
+            FROM data_template t
+            INNER JOIN folder_tree ft ON t.parent_id = ft.id
+            WHERE t.node_type = 'FOLDER'
+              AND t.project_id = ft.project_id
+              AND t.is_deleted = 0
+        )
+        SELECT * FROM folder_tree
+    </select>
+
+    <!-- CTE 递归查询项目下全部节点（FOLDER + TEMPLATE） -->
+    <select id="treeList" resultMap="BaseResultMap">
+        WITH RECURSIVE template_tree AS (
+            SELECT *
+            FROM data_template
+            WHERE parent_id = 0
+              AND project_id = #{projectId}
+              AND is_deleted = 0
+
+            UNION ALL
+
+            SELECT t.*
+            FROM data_template t
+            INNER JOIN template_tree tt ON t.parent_id = tt.id
+            WHERE t.project_id = tt.project_id
+              AND t.is_deleted = 0
+        )
+        SELECT * FROM template_tree
+    </select>
+
+    <!-- CTE 递归查询指定节点的所有后代 ID（含自身） -->
+    <select id="findAllChildrenIds" resultType="java.lang.Integer">
+        WITH RECURSIVE children AS (
+            SELECT id, parent_id
+            FROM data_template
+            WHERE id = #{id}
+              AND is_deleted = 0
+
+            UNION ALL
+
+            SELECT t.id, t.parent_id
+            FROM data_template t
+            INNER JOIN children c ON t.parent_id = c.id
+            WHERE t.is_deleted = 0
+        )
+        SELECT id FROM children
+    </select>
+
+    <!-- 删除后，将同父节点下 sort 大于指定值的节点 sort 减 1 -->
+    <update id="decrementSortAfter">
+        UPDATE data_template
+        SET sort = sort - 1,
+            update_time = NOW()
+        WHERE parent_id = #{parentId}
+          AND sort > #{sort}
+          AND is_deleted = 0
+    </update>
+
+</mapper>

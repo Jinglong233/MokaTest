@@ -1,0 +1,49 @@
+# ============================================
+# Docker 构建上下文排除文件
+# 减少构建包体积，加快构建速度
+# ============================================
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+*.iml
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# 前端构建产物和依赖
+frontEnd/node_modules
+frontEnd/dist
+frontEnd/.eslintcache
+frontEnd/.stylelintcache
+
+# 后端构建产物和日志
+backEnd/**/target
+backEnd/**/logs
+backEnd/**/*.log
+
+# 文档（不需要打进镜像）
+docs
+*.md
+README.md
+CLAUDE.md
+
+# Docker 自身文件
+docker-compose.yml
+docker-compose.override.yml
+.dockerignore
+Dockerfile
+
+# 系统文件
+.DS_Store
+Thumbs.db
+nul
+
+# 其他
+.claude
+.claude/

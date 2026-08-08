@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mokaTest</groupId>
+        <artifactId>MokaTest</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>platform-starter</artifactId>
+    <name>platform-starter</name>
+    <description>MokaTest 启动模块（聚合 automation + qa）</description>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- 自动化模块 -->
+        <dependency>
+            <groupId>com.mokaTest</groupId>
+            <artifactId>platform-automation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- QA 模块（可插拔） -->
+        <dependency>
+            <groupId>com.mokaTest</groupId>
+            <artifactId>platform-qa</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 显式声明 Web 依赖（解决 provided scope 传递问题） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 健康检查端点（Docker HEALTHCHECK 使用） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- MinIO 对象存储 SDK（由自动化模块使用，但 optional 不传递，启动模块显式引入） -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.7</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.34</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+        <finalName>api</finalName>
+    </build>
+
+</project>

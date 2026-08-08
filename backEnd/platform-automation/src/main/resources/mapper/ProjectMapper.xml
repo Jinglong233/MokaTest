@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mokatest.platform.demos.mapper.ProjectMapper">
+
+    <resultMap id="BaseResultMap" type="com.mokatest.platform.demos.domain.ui.Project">
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="projectName" column="project_name" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="teamId" column="team_id" />
+        <result property="updateUserId" column="update_user_id" jdbcType="VARCHAR"/>
+        <result property="coverage" column="coverage" jdbcType="INTEGER"/>
+        <result property="status" column="status" jdbcType="OTHER"/>
+        <result property="apiTotal" column="api_total" jdbcType="INTEGER"/>
+        <result property="uiTotal" column="ui_total" jdbcType="INTEGER"/>
+        <result property="performanceTotal" column="performance_total" jdbcType="INTEGER"/>
+        <result property="planTotal" column="plan_total" jdbcType="INTEGER"/>
+        <result property="uiPass" column="ui_pass" jdbcType="INTEGER"/>
+        <result property="tagClassify" column="tag_classify" jdbcType="OTHER"/>
+        <result property="createdAt" column="created_at" jdbcType="TIMESTAMP"/>
+        <result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
+        <result property="createUserId" column="create_user_id" jdbcType="VARCHAR"/>
+        <result property="createUserName" column="create_user_name" jdbcType="VARCHAR"/>
+        <result property="isDeleted" column="is_deleted" jdbcType="TINYINT"/>
+        <result property="deletedAt" column="deleted_at" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id
+        ,project_name,description,team_id,
+        update_user_id,coverage,status,
+        api_total,ui_total,performance_total,
+        plan_total,ui_pass,tag_classify,
+        created_at,updated_at,create_user_id,
+        create_user_name,is_deleted,deleted_at
+    </sql>
+</mapper>

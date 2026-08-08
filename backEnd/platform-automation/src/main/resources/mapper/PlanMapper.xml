@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mokatest.platform.demos.mapper.PlanMapper">
+
+    <resultMap id="BaseResultMap" type="com.mokatest.platform.demos.domain.ui.Plan">
+            <id property="id" column="id" />
+            <result property="planRunningSetting" column="plan_running_setting" />
+            <result property="projectId" column="project_id" />
+            <result property="planName" column="plan_name" />
+            <result property="cronExpression" column="cron_expression" />
+            <result property="description" column="description" />
+            <result property="executionType" column="execution_type" />
+            <result property="sceneStatusExtract" column="scene_status_extract" />
+            <result property="params" column="params" />
+            <result property="taskType" column="task_type" />
+            <result property="status" column="status" />
+            <result property="createUserId" column="create_user_id" />
+            <result property="updateUserId" column="update_user_id" />
+            <result property="createdAt" column="created_at" />
+            <result property="updatedAt" column="updated_at" />
+            <result property="isActive" column="is_active" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,plan_running_setting,project_id,plan_name,cron_expression,description,
+        execution_type,scene_status_extract,params,task_type,status,
+        create_user_id,update_user_id,created_at,updated_at,is_active
+    </sql>
+</mapper>
