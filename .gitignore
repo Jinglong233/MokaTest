@@ -19,4 +19,5 @@ frontEnd/node_modules/
 # 后端构建产物
 backEnd/**/target/
 backEnd/**/*.jar
-/.claude/
+/recorder-extension/
+/mokatest-recorder-extension.zip

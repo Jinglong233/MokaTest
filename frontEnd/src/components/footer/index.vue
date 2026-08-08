@@ -24,12 +24,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 20px;
+    height: 40px;
     color: var(--color-text-2);
     text-align: center;
-    padding: 50px;
-    font-size: 15px;
-    margin-bottom: 10px;
+    padding: 0 16px;
+    font-size: 13px;
+    margin-bottom: 0;
 
     .footer-copyright {
       color: var(--color-text-3);
@@ -47,6 +47,7 @@
     :deep(.arco-divider-vertical) {
       margin: 0 6px;
       border-color: var(--color-text-4);
+      height: 12px;
     }
   }
 </style>

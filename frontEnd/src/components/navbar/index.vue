@@ -165,6 +165,20 @@
                 </a-button>
               </a-tooltip>
             </li>-->
+      <li>
+        <a-tooltip content="录制插件">
+          <a-button
+              class="nav-btn"
+              type="outline"
+              :shape="'circle'"
+              @click="recorderModalVisible = true"
+          >
+            <template #icon>
+              <icon-video-camera/>
+            </template>
+          </a-button>
+        </a-tooltip>
+      </li>
       <!--            todo 隐藏用户相关内容-->
       <li>
         <a-dropdown trigger="click">
@@ -196,6 +210,9 @@
 
     <!-- 环境管理弹窗（导航栏全局入口） -->
     <EvnConfig v-model="envConfigVisible" :team-id="teamStore.getTeamId ?? undefined"></EvnConfig>
+
+    <!-- 录制插件获取弹窗 -->
+    <RecorderGuideModal v-model:visible="recorderModalVisible"/>
   </div>
 </template>
 
@@ -214,6 +231,7 @@ import useDataStore from "@/store/modules/nav";
 import {useI18n} from 'vue-i18n';
 import MessageBox from '@/components/message-box/index.vue'
 import EvnConfig from '@/components/env-config/index.vue'
+import RecorderGuideModal from '@/components/recorder-guide/RecorderGuideModal.vue'
 import usePermission from '@/hooks/permission';
 import { getUnreadCount } from '@/api/message';
 
@@ -296,6 +314,9 @@ const permission = usePermission();
 const hasEnvEntryPermission = computed(() =>
     permission.hasPermission('auto:env:view') || permission.hasPermission('auto:globalvar:view'));
 const envConfigVisible = ref(false);
+
+// 录制插件弹窗
+const recorderModalVisible = ref(false);
 
 const fetchUnreadCount = async () => {
   try {

@@ -667,7 +667,13 @@
           </a-row>
           <a-row :gutter="16">
             <a-col :span="12" class="record-import-left">
-              <a-form-item label="录制导入" required>
+              <a-form-item required>
+                <template #label>
+                  录制导入
+                  <a-link style="margin-left: 8px; font-size: 12px;" @click="recorderGuideVisible = true">
+                    没有插件？点这里获取
+                  </a-link>
+                </template>
                 <div class="record-import-uploader">
                   <RecordImportInline
                       ref="recordImportPanelRef"
@@ -693,6 +699,9 @@
         </template>
       </a-form>
     </a-modal>
+
+    <!-- 录制插件获取引导弹窗 -->
+    <RecorderGuideModal v-model:visible="recorderGuideVisible"/>
 
     <!--导出场景弹窗：树形勾选-->
     <a-modal v-model:visible="exportSceneVisible" title="导出场景"
@@ -991,6 +1000,7 @@ import CommonFunction from "@/views/scene/component/CommonFunction.vue";
 import {AddAdjacentStepDTO} from "@/types/dto/other/AddAdjacentStepDTO";
 import ImportSceneStep from "@/views/scene/component/ImportSceneStep.vue";
 import RecordImportInline from "@/views/scene/component/RecordImportInline.vue";
+import RecorderGuideModal from "@/components/recorder-guide/RecorderGuideModal.vue";
 import RecordStepList from "@/views/scene/component/RecordStepList.vue";
 import SceneWorkflowCanvas from "@/views/scene/component/SceneWorkflowCanvas.vue";
 import {useDebugStepLock} from "@/views/scene/component/useDebugStepLock";
@@ -1434,6 +1444,8 @@ const checkedStepNode = ref<number[]>([]);
 
 // 导入步骤对话框可见性标识
 const importStepDialogVisible = ref(false);
+// 录制插件获取引导弹窗
+const recorderGuideVisible = ref(false);
 
 const clearAllSelectSceneInfo = () => {
   // 场景步骤列表清空
