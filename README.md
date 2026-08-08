@@ -119,6 +119,20 @@ MokaTest/
 
 ---
 
+## 联系方式
+
+欢迎交流使用问题、提需求建议或洽谈商业授权，添加微信时请备注「MokaTest」：
+
+<p align="center">
+  <img src="docs/images/wechat.png" alt="微信二维码" width="200" />
+</p>
+
+也可以关注公众号「测试开发日记」，回复「MokaTest录制插件」获取浏览器录制插件。
+<p align="center">
+  <img src="docs/images/official-account-qrcode.png" alt="微信二维码" width="200" />
+</p>
+---
+
 ## License
 
 本项目采用 [Business Source License 1.1](LICENSE)（BSL）：
