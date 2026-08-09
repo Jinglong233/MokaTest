@@ -13,10 +13,12 @@ export const NO_PERMISSION = {
 
 export const REDIRECT_ROUTE_NAME = 'Redirect';
 
-export const DEFAULT_ROUTE_NAME = 'TeamWorkspace';
+// 页签栏固定置顶的默认页签：项目级页面统一落在 DEFAULT_LAYOUT 内，
+// 因此默认页签指向「项目概览」（/team 工作区走的是独立布局，不在页签体系内）
+export const DEFAULT_ROUTE_NAME = 'ProjectInfo';
 
 export const DEFAULT_ROUTE = {
-  title: 'menu.dashboard.workplace',
+  title: 'menu.project',
   name: DEFAULT_ROUTE_NAME,
-  fullPath: '/dashboard/workplace',
+  fullPath: '/project/projectInfo',
 };

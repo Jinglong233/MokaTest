@@ -133,6 +133,11 @@
   <a-result v-else status="warning" title="请先选择项目"/>
 </template>
 
+<script lang="ts">
+  // 组件名需与路由 name 一致，供页签 keep-alive :include 匹配缓存
+  export default { name: 'KnowledgeIndex' };
+</script>
+
 <script setup lang="ts">
 import {onBeforeUnmount, onMounted, ref} from 'vue';
 import {useRouter} from 'vue-router';

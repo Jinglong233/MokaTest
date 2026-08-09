@@ -15,8 +15,12 @@
   </div>
 </template>
 
+<script lang="ts">
+  // 组件名需与路由 name 一致，供页签 keep-alive :include 匹配缓存
+  export default { name: 'InterfaceEnvConfig' };
+</script>
+
 <script setup lang="ts">
-  defineOptions({ name: 'InterfaceEnvConfig' });
   import EnvConfig from '@/components/env-config/index.vue';
   import useTeamStore from '@/store/modules/team';
 

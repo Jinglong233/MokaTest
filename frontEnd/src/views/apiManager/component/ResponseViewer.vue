@@ -1,6 +1,6 @@
 <template>
   <div class="response-viewer">
-    <!-- 工具栏 -->
+    <!-- 工具栏：格式化/下载/大小统一一行（MonacoViewer 内置工具栏已关闭） -->
     <div class="response-toolbar">
       <div class="toolbar-left">
         <a-radio-group
@@ -12,6 +12,18 @@
           <a-radio value="source">源码</a-radio>
           <a-radio value="preview">预览</a-radio>
         </a-radio-group>
+        <a-button
+            v-if="showFormat"
+            type="text"
+            size="mini"
+            :disabled="!canFormat"
+            @click="monacoViewerRef?.formatDocument()"
+        >
+          <template #icon>
+            <icon-brush/>
+          </template>
+          格式化
+        </a-button>
       </div>
       <div class="toolbar-right">
         <a-button
@@ -56,8 +68,10 @@
       <!-- 代码类型：JSON / XML / HTML 源码 / 文本 -->
       <template v-else>
         <MonacoViewer
+            ref="monacoViewerRef"
             :content="content || ''"
             :lang="codeLang"
+            :show-toolbar="false"
         />
       </template>
     </div>
@@ -66,7 +80,7 @@
 
 <script setup lang="ts">
 import {computed, onBeforeUnmount, ref, watch} from 'vue'
-import {IconDownload} from '@arco-design/web-vue/es/icon'
+import {IconDownload, IconBrush} from '@arco-design/web-vue/es/icon'
 import MonacoViewer from './MonacoViewer.vue'
 
 const props = defineProps<{
@@ -76,6 +90,9 @@ const props = defineProps<{
   rawBody?: number[] | string
   showDownload?: boolean
 }>()
+
+// Monaco 实例引用（内置工具栏已关闭，格式化由本组件工具栏触发）
+const monacoViewerRef = ref()
 
 // 视图模式：source（源码） / preview（预览），仅 HTML 有效
 const viewMode = ref<'source' | 'preview'>('source')
@@ -174,6 +191,10 @@ const isHtml = computed(() => responseType.value === 'html')
 const isImage = computed(() => responseType.value === 'image')
 const isCode = computed(() => ['json', 'xml', 'html', 'css', 'javascript', 'text'].includes(responseType.value))
 
+// 格式化按钮：仅代码视图（非图片、非 HTML 预览）展示；可格式化语言与 MonacoViewer 保持一致
+const showFormat = computed(() => !isImage.value && !(isHtml.value && viewMode.value === 'preview'))
+const canFormat = computed(() => ['json', 'html', 'xml', 'css', 'javascript'].includes(codeLang.value))
+
 /**
  * 映射为 MonacoViewer 的 lang prop
  */
@@ -240,9 +261,9 @@ const sanitizedContent = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 12px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 4px 8px;
+  background: var(--color-fill-2);
+  border-bottom: 1px solid var(--color-border-2);
 }
 
 .toolbar-left {

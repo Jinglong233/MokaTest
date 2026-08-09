@@ -189,6 +189,7 @@ const pageContainerHeight = computed(() => {
   let offset = 0;
   if (navbar.value) offset += 48;
   if (workspaceEnabled.value) offset += 40;
+  if (appStore.tabBar) offset += 33; // 页签栏：32px 高度 + 1px 底边框
   if (footer.value) offset += 20;
   return `calc(100vh - ${offset}px)`;
 });

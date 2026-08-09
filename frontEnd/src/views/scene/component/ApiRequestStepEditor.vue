@@ -1,58 +1,49 @@
 <template>
   <div class="api-request-step-editor" :style="{ height: editorHeight }">
-    <!-- 步骤名称 -->
-    <a-form :model="localData" layout="vertical" auto-label-width>
-      <a-form-item
-          label="步骤名称"
-          field="stepName"
-          :rules="[{ required: true, message: '步骤名称不能为空' }]"
-          :validate-trigger="['change', 'input']"
-      >
-        <a-input
-            v-model="localData.stepName"
-            placeholder="请输入步骤名称"
-            allow-clear
-            :disabled="disabled"
-            @input="formDirty = true"
-        />
-      </a-form-item>
+    <!-- 步骤名称 + API来源：紧凑单行（纵向两个 form-item 会占 ~160px，挤压参数区高度） -->
+    <div class="step-header-row">
+      <a-input
+          v-model="localData.stepName"
+          class="step-name-input"
+          placeholder="请输入步骤名称（必填）"
+          allow-clear
+          :max-length="50"
+          :disabled="disabled"
+          @input="formDirty = true"
+      />
+      <div class="source-info">
+        <a-tag v-if="localData.apiRequestId && sourceDeleted" color="gray" size="small">
+          来源: {{ localData.apiName || '未命名' }}（已删除）
+        </a-tag>
+        <a-tag v-else-if="localData.apiRequestId" color="arcoblue" size="small">
+          来源: {{ localData.apiName || '未命名' }}
+        </a-tag>
+        <a-tag v-else-if="localData.apiConfig" color="green" size="small">新建接口</a-tag>
+        <a-tag v-else color="gray" size="small">未配置</a-tag>
+        <!-- 仅绑定了来源的步骤才显示「更换来源」；新建的空白接口没有来源，不显示 -->
+        <a-button v-if="localData.apiRequestId || !localData.apiConfig" :disabled="disabled" type="text" size="small" @click="showSelectDrawer = true">
+          <template #icon>
+            <icon-swap/>
+          </template>
+          更换来源
+        </a-button>
+        <a-button
+            v-if="localData.apiRequestId"
+            :disabled="disabled || sourceDeleted"
+            :loading="syncLoading"
+            type="text"
+            size="small"
+            @click="handleSyncSource"
+        >
+          <template #icon>
+            <icon-refresh/>
+          </template>
+          同步来源
+        </a-button>
+      </div>
+    </div>
 
-      <!-- 来源信息 -->
-      <a-form-item label="API来源">
-        <a-space>
-          <a-tag v-if="localData.apiRequestId && sourceDeleted" color="gray">
-            来源: {{ localData.apiName || '未命名' }}（已删除）
-          </a-tag>
-          <a-tag v-else-if="localData.apiRequestId" color="arcoblue">
-            来源: {{ localData.apiName || '未命名' }}
-          </a-tag>
-          <a-tag v-else-if="localData.apiConfig" color="green">新建接口</a-tag>
-          <a-tag v-else color="gray">未配置</a-tag>
-          <!-- 仅绑定了来源的步骤才显示「更换来源」；新建的空白接口没有来源，不显示 -->
-          <a-button v-if="localData.apiRequestId || !localData.apiConfig" :disabled="disabled" type="text" size="small" @click="showSelectDrawer = true">
-            <template #icon>
-              <icon-swap/>
-            </template>
-            更换来源
-          </a-button>
-          <a-button
-              v-if="localData.apiRequestId"
-              :disabled="disabled || sourceDeleted"
-              :loading="syncLoading"
-              type="text"
-              size="small"
-              @click="handleSyncSource"
-          >
-            <template #icon>
-              <icon-refresh/>
-            </template>
-            同步来源
-          </a-button>
-        </a-space>
-      </a-form-item>
-    </a-form>
-
-    <!-- API配置编辑器 + 单步调试结果：固定上下各半 -->
+    <!-- API配置编辑器 + 单步调试结果：结果区可折叠，空结果时收起把高度让给参数区 -->
     <div class="api-config-editor" v-if="localData.apiConfig">
       <a-divider style="margin: 8px 0"/>
       <div class="editor-pane">
@@ -66,13 +57,21 @@
             @send="handleSend"
         />
       </div>
-      <div class="result-pane-fixed">
-        <a-spin :loading="debugLoading" tip="正在调试..." class="step-debug-spin">
-          <div class="step-debug-result-wrapper">
-            <ApiDebugResult v-if="debugResult" :debug-result="debugResult"/>
-            <a-empty v-else description="点击发送后查看调试结果"/>
-          </div>
-        </a-spin>
+      <div class="result-pane" :class="{ collapsed: resultCollapsed }">
+        <div class="result-header" @click="resultCollapsed = !resultCollapsed">
+          <icon-right class="result-caret" :class="{ expanded: !resultCollapsed }"/>
+          <span class="result-title">调试结果</span>
+          <span v-if="!debugResult && !debugLoading" class="result-hint">（点击「发送」后查看）</span>
+          <span v-else-if="resultCollapsed" class="result-hint">（已生成，点击展开）</span>
+        </div>
+        <div v-show="!resultCollapsed" class="result-body">
+          <a-spin :loading="debugLoading" tip="正在调试..." class="step-debug-spin">
+            <div class="step-debug-result-wrapper">
+              <ApiDebugResult v-if="debugResult" :debug-result="debugResult"/>
+              <a-empty v-else description="点击发送后查看调试结果"/>
+            </div>
+          </a-spin>
+        </div>
       </div>
     </div>
     <a-empty v-else description="请点击上方「更换来源」选择已有用例"/>
@@ -174,6 +173,11 @@ const handleApiConfigChange = (hasChanges?: boolean) => {
 // 单步调试：不保存，直接按当前表单配置发送（场景副本可能没有 id，走 debugByConfig）
 const debugLoading = ref(false);
 const debugResult = ref<any>(null);
+// 调试结果区默认收起（把高度让给参数区），发送/有结果时自动展开
+const resultCollapsed = ref(true);
+watch([debugLoading, debugResult], () => {
+  if (debugLoading.value || debugResult.value) resultCollapsed.value = false;
+});
 const handleSend = async (data: any) => {
   debugLoading.value = true;
   try {
@@ -369,11 +373,25 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.step-debug-result-wrapper {
-  height: 100%;
+/* 步骤名称 + 来源：紧凑单行，窄抽屉下允许换行 */
+.step-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.step-name-input {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+.source-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
   min-width: 0;
   overflow: hidden;
-  padding-top: 8px;
+  white-space: nowrap;
 }
 
 /* 打通尺寸链：a-spin 根元素 .arco-spin 是 inline-block（宽度由内容决定，
@@ -391,19 +409,60 @@ onMounted(() => {
   height: 100%;
 }
 
-/* 固定布局：上表单、下结果各占一半 */
 .editor-pane {
   flex: 1;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
 }
-.result-pane-fixed {
+
+/* 调试结果区：展开时与表单各占一半；收起时只剩一条标题栏，高度全让给参数区 */
+.result-pane {
   flex: 1;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
   border-top: 1px solid var(--color-border-2);
-  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.result-pane.collapsed {
+  flex: 0 0 auto;
+}
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-text-2);
+}
+.result-caret {
+  font-size: 12px;
+  transition: transform 0.15s;
+}
+.result-caret.expanded {
+  transform: rotate(90deg);
+}
+.result-title {
+  font-weight: 500;
+}
+.result-hint {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--color-text-3);
+}
+.result-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.step-debug-result-wrapper {
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 </style>

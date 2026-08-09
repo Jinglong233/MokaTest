@@ -462,6 +462,11 @@
   </div>
 </template>
 
+<script lang="ts">
+  // 组件名需与路由 name 一致，供页签 keep-alive :include 匹配缓存
+  export default { name: 'ReportDetail' };
+</script>
+
 <script setup lang="ts">
 import DataOverview from "@/views/report/report-detail/components/data-overview.vue";
 import {useI18n} from 'vue-i18n';

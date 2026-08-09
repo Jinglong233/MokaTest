@@ -126,6 +126,11 @@
   <NoProjectPlaceholder v-else/>
 </template>
 
+<script lang="ts">
+  // 组件名需与路由 name 一致，供页签 keep-alive :include 匹配缓存
+  export default { name: 'CustomFunction' };
+</script>
+
 <script setup lang="ts">
 import {computed, reactive, ref, watch} from 'vue';
 import {Message, Modal} from '@arco-design/web-vue';

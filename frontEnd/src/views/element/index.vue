@@ -266,6 +266,11 @@
   </div>
 </template>
 
+<script lang="ts">
+  // 组件名需与路由 name 一致，供页签 keep-alive :include 匹配缓存
+  export default { name: 'ElementList' };
+</script>
+
 <script lang="ts" setup>
 import {IconFolder, IconRight} from '@arco-design/web-vue/es/icon';
 import {computed, onMounted, ref, watch} from 'vue';

@@ -153,7 +153,7 @@
             <a-empty v-else description="无数据"/>
           </template>
         </a-tab-pane>
-        <a-tab-pane v-if="!isSqlApi" style="height: 90%" :key="1" title="实时响应">
+        <a-tab-pane v-if="!isSqlApi" :key="1" title="实时响应">
           <ResponseViewer
               :content="props.debugResult?.bodyAsString"
               :content-type="responseContentType"

@@ -1,7 +1,7 @@
 <template>
   <div class="monaco-viewer">
-    <!-- 工具栏 -->
-    <div class="toolbar">
+    <!-- 工具栏（可由父级通过 showToolbar=false 关闭，改由父级工具栏统一承载） -->
+    <div v-if="showToolbar" class="toolbar">
       <a-button
         size="mini"
         :disabled="!['json', 'html', 'xml', 'css', 'javascript'].includes(lang || '')"
@@ -31,9 +31,11 @@
   interface Props {
     content: string;
     lang?: string;
+    /** 是否显示内置工具栏（默认 true；ResponseViewer 等父级合并工具栏时传 false） */
+    showToolbar?: boolean;
   }
 
-  const props = defineProps<Props>();
+  const props = withDefaults(defineProps<Props>(), {showToolbar: true});
 
   let monaco: any = null;
   let editor: any = null;
@@ -164,6 +166,9 @@
       editor = null;
     }
   });
+
+  // 父级合并工具栏时，由父级按钮触发格式化
+  defineExpose({formatDocument});
 </script>
 
 <style scoped>

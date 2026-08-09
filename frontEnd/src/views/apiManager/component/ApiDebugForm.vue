@@ -2,7 +2,8 @@
   <div class="api-debug-form" :class="{ 'case-mode': mode === 'case' }">
     <!-- 基础信息：响应式工具栏 -->
     <div class="form-toolbar">
-      <div class="toolbar-name">
+      <!-- 场景模式下步骤名称已承载命名，接口名显示隐藏，避免重复占一行 -->
+      <div class="toolbar-name" v-if="mode !== 'scene'">
         <a-input
             v-if="nameEditing"
             ref="nameInputRef"
@@ -37,14 +38,44 @@
           <a-button v-if="!isSqlMode" v-permission="'auto:api:create'" type="outline" size="small" @click="saveAsCase">保存为用例</a-button>
         </template>
       </div>
-      <!-- 场景模式：提供单步调试入口（不保存，直接按当前表单配置发送） -->
-      <div class="toolbar-actions" v-else>
+      <!-- 场景模式：服务地址下拉 + 单步调试入口合并为一行（紧凑布局，不保存，直接按当前表单配置发送） -->
+      <div class="toolbar-actions scene-actions" v-else>
+        <template v-if="!isSqlMode">
+          <a-select
+              v-if="currentEnv.serve && currentEnv.serve.length > 0"
+              v-model="localFormData.envInfo.serve.id"
+              @change="onServeChange"
+              allow-clear
+              placeholder="选择服务地址"
+              :disabled="disabled"
+              class="serve-select"
+          >
+            <a-option
+                v-for="serve in currentEnv.serve"
+                :key="serve.id"
+                :value="serve.id"
+                :label="serve.address ? serve.name + '（' + serve.address + '）' : serve.name"
+            >
+              <div class="serve-option">
+                <span class="serve-option-name">{{ serve.name }}</span>
+                <span class="serve-option-address">{{ serve.address }}</span>
+              </div>
+            </a-option>
+          </a-select>
+          <a-select
+              v-else-if="currentEnv.id"
+              disabled
+              placeholder="该环境未配置服务地址"
+              class="serve-select"
+          />
+        </template>
         <a-button v-permission="'auto:api:execute'" type="primary" :status="isDdlStatement ? 'danger' : 'success'" size="small" @click="sendData">发送{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
       </div>
     </div>
 
-    <!-- 环境 + 服务/数据库连接：独立一行（场景模式环境由场景驱动，只显示服务/连接下拉） -->
-    <div class="env-serve-row">
+    <!-- 环境 + 服务/数据库连接：独立一行（场景 HTTP 模式服务下拉已并入工具行，不再重复占行；
+         场景 SQL 模式仍保留此行展示数据库连接下拉） -->
+    <div class="env-serve-row" v-if="mode !== 'scene' || isSqlMode">
       <!-- 环境选择（场景模式不显示） -->
       <template v-if="mode !== 'scene'">
         <a-select
@@ -1965,6 +1996,17 @@ defineExpose({
   gap: 8px;
   flex: 1 1 auto;
   justify-content: flex-end;
+}
+
+/* 场景模式：服务下拉 + 发送按钮单行，服务下拉占剩余宽度 */
+.form-toolbar .scene-actions {
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.form-toolbar .scene-actions .serve-select {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* 请求信息工具栏：响应式 */
