@@ -69,6 +69,7 @@
         :data="logList"
         :loading="loading"
         :pagination="pagination"
+        :scroll="{ x: 1200 }"
         row-key="id"
         stripe
         @page-change="handlePageChange"
@@ -81,7 +82,7 @@
               <span>{{ record.operatorName || '-' }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="操作" data-index="operateType" :width="120">
+          <a-table-column title="操作类型" data-index="operateType" :width="120">
             <template #cell="{ record }">
               <a-space>
                 <a-tag size="small">{{ moduleText(record.module) }}</a-tag>
@@ -116,7 +117,7 @@
               </a-space>
             </template>
           </a-table-column>
-          <a-table-column title="操作" :width="90" fixed="right">
+          <a-table-column title="详情" :width="90" fixed="right" align="center">
             <template #cell="{ record }">
               <a-button type="text" size="small" @click="openDetail(record)">
                 <template #icon><icon-eye /></template>
@@ -146,48 +147,41 @@
       </template>
 
       <div v-if="detailData.id" class="detail-body">
-        <!-- 头部信息 -->
-        <div class="detail-header">
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">操作时间</span>
-            <span class="detail-meta-value">{{ detailData.operateTime }}</span>
-          </div>
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">操作人</span>
-            <span class="detail-meta-value">{{ detailData.operatorName || '-' }}</span>
-          </div>
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">操作</span>
-            <span class="detail-meta-value">
-              <a-space>
-                <a-tag size="small">{{ moduleText(detailData.module) }}</a-tag>
-                <a-tag :color="typeColor(detailData.operateType)" size="small">{{ typeText(detailData.operateType, detailData.targetType) }}</a-tag>
-              </a-space>
-            </span>
-          </div>
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">对象</span>
-            <span class="detail-meta-value">
-              <span v-if="detailData.targetName">{{ detailData.targetName }}</span>
-              <span v-else style="color: #86909c;">-</span>
-              <a-tag v-if="detailData.targetType" size="mini" style="margin-left: 8px;">
-                {{ targetTypeText(detailData.targetType) }}<span v-if="!isMemberType(detailData.targetType)">#{{ detailData.targetId || '-' }}</span>
-              </a-tag>
-            </span>
-          </div>
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">耗时</span>
-            <span class="detail-meta-value">{{ detailData.durationMs ? detailData.durationMs + 'ms' : '-' }}</span>
-          </div>
-          <div class="detail-meta-row">
-            <span class="detail-meta-label">IP</span>
-            <span class="detail-meta-value" style="font-family: monospace;">{{ detailData.ip || '-' }}</span>
-          </div>
-        </div>
+        <!-- 头部信息：a-descriptions 两列布局，响应/UserAgent 一并收编，不再单列段落 -->
+        <a-descriptions :column="2" size="small" bordered>
+          <a-descriptions-item label="操作时间">{{ detailData.operateTime }}</a-descriptions-item>
+          <a-descriptions-item label="操作人">{{ detailData.operatorName || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="操作">
+            <a-space>
+              <a-tag size="small">{{ moduleText(detailData.module) }}</a-tag>
+              <a-tag :color="typeColor(detailData.operateType)" size="small">{{ typeText(detailData.operateType, detailData.targetType) }}</a-tag>
+            </a-space>
+          </a-descriptions-item>
+          <a-descriptions-item label="对象">
+            <span v-if="detailData.targetName">{{ detailData.targetName }}</span>
+            <span v-else style="color: #86909c;">-</span>
+            <a-tag v-if="detailData.targetType" size="mini" style="margin-left: 8px;">
+              {{ targetTypeText(detailData.targetType) }}<span v-if="!isMemberType(detailData.targetType)">#{{ detailData.targetId || '-' }}</span>
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="耗时">{{ detailData.durationMs ? detailData.durationMs + 'ms' : '-' }}</a-descriptions-item>
+          <a-descriptions-item label="IP">
+            <span style="font-family: monospace;">{{ detailData.ip || '-' }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailData.responseCode || detailData.responseMsg" label="响应">
+            <a-space>
+              <a-tag :color="detailData.responseCode === 200 ? 'green' : 'red'" size="small">{{ detailData.responseCode }}</a-tag>
+              <span v-if="detailData.responseMsg">{{ detailData.responseMsg }}</span>
+            </a-space>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailData.userAgent" label="User Agent" :span="2">
+            <span style="font-size: 12px; color: #86909c; word-break: break-all;">{{ detailData.userAgent }}</span>
+          </a-descriptions-item>
+        </a-descriptions>
 
         <a-divider style="margin: 16px 0;" />
 
-        <!-- 创建内容 / 删除前数据 —— 弹窗式表单布局 -->
+        <!-- 创建内容 / 删除前数据 —— a-descriptions 带边框布局，label 列宽/内边距由组件保证 -->
         <div v-if="isFieldList(detailData.description)" class="detail-section">
           <div class="detail-section-title">
             <icon-plus v-if="detailData.operateType === 'CREATE'" />
@@ -195,67 +189,66 @@
             <icon-file v-else />
             <span>{{ detailData.operateType === 'DELETE' ? '删除前数据' : '创建内容' }}</span>
           </div>
-          <div class="log-form-panel">
-            <div v-for="group in groupedFieldList" :key="group.name">
-              <a-divider orientation="left" class="log-divider">
-                <span class="log-group-title">{{ group.name }}</span>
-              </a-divider>
-              <div v-for="item in group.items" :key="item.field" class="log-form-item">
-                <div class="log-form-label">{{ item.label || item.field }}</div>
-                <div class="log-form-value">
-                  <!-- 测试步骤 -->
-                  <div v-if="item.field === 'testSteps'" class="steps-preview">
-                    <div v-for="(step, idx) in parseSteps(item.value)" :key="idx" class="step-card">
-                      <div class="step-card-header">步骤 {{ idx + 1 }}</div>
-                      <div class="step-card-body">
-                        <div class="step-row">
-                          <span class="step-row-label">步骤描述</span>
-                          <div class="step-row-content" v-html="sanitizeHtml(step.step)"></div>
-                        </div>
-                        <div class="step-row">
-                          <span class="step-row-label">预期结果</span>
-                          <div class="step-row-content" v-html="sanitizeHtml(step.expected)"></div>
-                        </div>
+          <template v-for="group in groupedFieldList" :key="group.name">
+            <a-divider orientation="left" class="log-divider">
+              <span class="log-group-title">{{ group.name }}</span>
+            </a-divider>
+            <a-descriptions :column="1" size="small" bordered>
+              <a-descriptions-item v-for="item in group.items" :key="item.field" :label="item.label || item.field">
+                <!-- 测试步骤 -->
+                <div v-if="item.field === 'testSteps'" class="steps-preview">
+                  <div v-for="(step, idx) in parseSteps(item.value)" :key="idx" class="step-card">
+                    <div class="step-card-header">步骤 {{ idx + 1 }}</div>
+                    <div class="step-card-body">
+                      <div class="step-row">
+                        <span class="step-row-label">步骤描述</span>
+                        <div class="step-row-content" v-html="sanitizeHtml(step.step)"></div>
+                      </div>
+                      <div class="step-row">
+                        <span class="step-row-label">预期结果</span>
+                        <div class="step-row-content" v-html="sanitizeHtml(step.expected)"></div>
                       </div>
                     </div>
                   </div>
-                  <!-- 富文本 -->
-                  <div v-else-if="isRichTextField(item.field)" v-html="sanitizeHtml(item.value)" class="rich-text-preview"></div>
-                  <!-- 普通字段 -->
-                  <span v-else-if="item.displayValue">{{ item.displayValue }}</span>
-                  <span v-else-if="item.value !== undefined && item.value !== null && item.value !== ''">{{ formatFieldValue(item.field, item.value) }}</span>
-                  <span v-else class="field-empty">（空）</span>
                 </div>
-              </div>
-            </div>
-          </div>
+                <!-- 富文本 -->
+                <div v-else-if="isRichTextField(item.field)" v-html="sanitizeHtml(item.value)" class="rich-text-preview"></div>
+                <!-- 普通字段 -->
+                <span v-else-if="item.displayValue">{{ item.displayValue }}</span>
+                <span v-else-if="item.value !== undefined && item.value !== null && item.value !== ''">{{ formatFieldValue(item.field, item.value) }}</span>
+                <span v-else class="field-empty">（空）</span>
+              </a-descriptions-item>
+            </a-descriptions>
+          </template>
         </div>
 
-        <!-- 字段变更对比 —— 按字段配对行，左右天然对齐 -->
+        <!-- 字段变更对比 —— a-table 三列（字段/修改前/修改后），对齐和边框由组件保证 -->
         <div v-else-if="hasFieldChanges(detailData.description)" class="detail-section">
           <div class="detail-section-title">
             <icon-swap />
             <span>字段变更</span>
           </div>
-
-          <div class="log-compare-panel">
-            <!-- 表头：修改前 / 修改后 -->
-            <div class="log-compare-head">
-              <div class="log-panel-header log-panel-header-old">修改前</div>
-              <div class="log-panel-header log-panel-header-new">修改后</div>
-            </div>
-            <div class="log-panel-body">
-              <template v-for="group in groupedChanges" :key="group.name">
-                <a-divider orientation="left" class="log-divider">
-                  <span class="log-group-title">{{ group.name }}</span>
-                </a-divider>
-                <div v-for="item in group.items" :key="item.field" class="log-compare-row">
-                  <div class="log-form-label">{{ item.label || item.field }}</div>
-                  <!-- 修改前 -->
-                  <div class="log-form-value">
+          <template v-for="group in groupedChanges" :key="group.name">
+            <a-divider orientation="left" class="log-divider">
+              <span class="log-group-title">{{ group.name }}</span>
+            </a-divider>
+            <a-table
+              :data="group.items"
+              :pagination="false"
+              row-key="field"
+              size="small"
+              :bordered="{ wrapper: true, cell: true }"
+              class="compare-table"
+            >
+              <template #columns>
+                <a-table-column title="字段" :width="140">
+                  <template #cell="{ record }">{{ record.label || record.field }}</template>
+                </a-table-column>
+                <a-table-column title="修改前">
+                  <template #cell="{ record }">
                     <!-- 测试步骤 -->
-                    <div v-if="item.field === 'testSteps'" class="steps-preview">
-                      <div v-for="(step, idx) in parseSteps(item.old)" :key="idx" class="step-card">
+                    <div v-if="record.field === 'testSteps'" class="steps-preview">
+                      <div v-for="(step, idx) in parseSteps(record.old)" :key="idx" class="step-card">
                         <div class="step-card-header">步骤 {{ idx + 1 }}</div>
                         <div class="step-card-body">
                           <div class="step-row">
@@ -270,17 +263,18 @@
                       </div>
                     </div>
                     <!-- 富文本 -->
-                    <div v-else-if="isRichTextField(item.field)" v-html="sanitizeHtml(item.old)" class="rich-text-preview compare-old-text"></div>
+                    <div v-else-if="isRichTextField(record.field)" v-html="sanitizeHtml(record.old)" class="rich-text-preview compare-old-text"></div>
                     <!-- 普通字段 -->
-                    <span v-else-if="item.oldDisplayValue" class="compare-old-text">{{ item.oldDisplayValue }}</span>
-                    <span v-else-if="item.old !== undefined && item.old !== null && item.old !== ''" class="compare-old-text">{{ formatFieldValue(item.field, item.old) }}</span>
+                    <span v-else-if="record.oldDisplayValue" class="compare-old-text">{{ record.oldDisplayValue }}</span>
+                    <span v-else-if="record.old !== undefined && record.old !== null && record.old !== ''" class="compare-old-text">{{ formatFieldValue(record.field, record.old) }}</span>
                     <span v-else class="field-empty">（空）</span>
-                  </div>
-                  <!-- 修改后 -->
-                  <div class="log-form-value">
+                  </template>
+                </a-table-column>
+                <a-table-column title="修改后">
+                  <template #cell="{ record }">
                     <!-- 测试步骤 -->
-                    <div v-if="item.field === 'testSteps'" class="steps-preview">
-                      <div v-for="(step, idx) in parseSteps(item.ne)" :key="idx" class="step-card">
+                    <div v-if="record.field === 'testSteps'" class="steps-preview">
+                      <div v-for="(step, idx) in parseSteps(record.ne)" :key="idx" class="step-card">
                         <div class="step-card-header">步骤 {{ idx + 1 }}</div>
                         <div class="step-card-body">
                           <div class="step-row">
@@ -295,16 +289,16 @@
                       </div>
                     </div>
                     <!-- 富文本 -->
-                    <div v-else-if="isRichTextField(item.field)" v-html="sanitizeHtml(item.ne)" class="rich-text-preview compare-new-text"></div>
+                    <div v-else-if="isRichTextField(record.field)" v-html="sanitizeHtml(record.ne)" class="rich-text-preview compare-new-text"></div>
                     <!-- 普通字段 -->
-                    <span v-else-if="item.neDisplayValue" class="compare-new-text">{{ item.neDisplayValue }}</span>
-                    <span v-else-if="item.ne !== undefined && item.ne !== null && item.ne !== ''" class="compare-new-text">{{ formatFieldValue(item.field, item.ne) }}</span>
+                    <span v-else-if="record.neDisplayValue" class="compare-new-text">{{ record.neDisplayValue }}</span>
+                    <span v-else-if="record.ne !== undefined && record.ne !== null && record.ne !== ''" class="compare-new-text">{{ formatFieldValue(record.field, record.ne) }}</span>
                     <span v-else class="field-empty">（空）</span>
-                  </div>
-                </div>
+                  </template>
+                </a-table-column>
               </template>
-            </div>
-          </div>
+            </a-table>
+          </template>
         </div>
 
         <!-- 纯文本描述 -->
@@ -323,31 +317,6 @@
             <span>请求参数</span>
           </div>
           <pre class="code-block">{{ formatJson(detailData.requestParams) }}</pre>
-        </div>
-
-        <!-- 响应信息 -->
-        <div v-if="detailData.responseCode || detailData.responseMsg" class="detail-section">
-          <div class="detail-section-title">
-            <icon-file />
-            <span>响应信息</span>
-          </div>
-          <div class="detail-text-block">
-            <a-space>
-              <span>Code: <a-tag :color="detailData.responseCode === 200 ? 'green' : 'red'" size="small">{{ detailData.responseCode }}</a-tag></span>
-              <span v-if="detailData.responseMsg">Msg: {{ detailData.responseMsg }}</span>
-            </a-space>
-          </div>
-        </div>
-
-        <!-- UserAgent -->
-        <div v-if="detailData.userAgent" class="detail-section">
-          <div class="detail-section-title">
-            <icon-desktop />
-            <span>User Agent</span>
-          </div>
-          <div class="detail-text-block" style="font-size: 12px; color: #86909c; word-break: break-all;">
-            {{ detailData.userAgent }}
-          </div>
         </div>
       </div>
     </a-drawer>
@@ -411,18 +380,16 @@ const openDetail = async (record: any) => {
   }
 };
 
-const moduleText = (module: string) => {
-  const map: Record<string, string> = {
-    qa: '质量管理',
-    automation: '自动化测试',
-    team: '团队',
-    project: '项目',
-    system: '系统',
-  };
-  return map[module] || module;
-};
+// 模块/操作类型/对象类型的中文文案统一由后端选项接口下发，此处仅做 value→label 查表
+const optionLabelMap = (options: any[]) =>
+  Object.fromEntries((options || []).map((o: any) => [o.value, o.label]));
+const moduleLabelMap = computed(() => optionLabelMap(moduleOptions.value));
+const typeLabelMap = computed(() => optionLabelMap(typeOptions.value));
+const targetTypeLabelMap = computed(() => optionLabelMap(targetTypeOptions.value));
 
-// (操作类型, 对象类型) 组合文案，比单纯类型更具体；未命中回退到通用映射
+const moduleText = (module: string) => moduleLabelMap.value[module] || module;
+
+// (操作类型, 对象类型) 组合文案，比单纯类型更具体；未命中回退到后端下发的类型文案
 const COMBO_TYPE_MAP: Record<string, string> = {
   'BIND:projectMember': '分配角色',
   'UNBIND:projectMember': '移除成员',
@@ -441,44 +408,10 @@ const COMBO_TYPE_MAP: Record<string, string> = {
 const typeText = (type: string, targetType?: string) => {
   const combo = COMBO_TYPE_MAP[`${type}:${targetType}`];
   if (combo) return combo;
-  const map: Record<string, string> = {
-    CREATE: '创建',
-    UPDATE: '更新',
-    DELETE: '删除',
-    EXECUTE: '执行',
-    TRANSITION: '流转',
-    LOGIN: '登录',
-    LOGOUT: '登出',
-    IMPORT: '导入',
-    EXPORT: '导出',
-    BIND: '绑定',
-    UNBIND: '解绑',
-    SORT: '排序',
-    BATCH_DELETE: '批量删除',
-  };
-  return map[type] || type;
+  return typeLabelMap.value[type] || type;
 };
 
-const targetTypeText = (type: string) => {
-  const map: Record<string, string> = {
-    requirement: '需求',
-    bug: 'BUG',
-    testCase: '用例',
-    testCaseSet: '测试集',
-    qaModule: '模块',
-    testPlan: '测试计划',
-    bugComment: 'BUG评论',
-    scene: '场景',
-    plan: '自动化任务',
-    task: '任务',
-    user: '用户',
-    team: '团队',
-    project: '项目',
-    teamMember: '团队成员',
-    projectMember: '项目成员',
-  };
-  return map[type] || type;
-};
+const targetTypeText = (type: string) => targetTypeLabelMap.value[type] || type;
 
 // 成员类对象的 targetId 是用户ID，拼 #id 会误导成成员主键，不展示
 const isMemberType = (targetType?: string) => ['teamMember', 'projectMember'].includes(targetType || '');
@@ -555,15 +488,10 @@ const loadOptions = async () => {
       getOperationLogTypeOptions(),
       getOperationLogTargetTypeOptions(),
     ]);
+    // label 统一由后端下发（中文），前端不再二次翻译
     if (modRes.code === 200) moduleOptions.value = modRes.data || [];
-    if (typeRes.code === 200) typeOptions.value = (typeRes.data || []).map((t: any) => ({
-      label: typeText(t.value),
-      value: t.value,
-    }));
-    if (targetRes.code === 200) targetTypeOptions.value = (targetRes.data || []).map((t: any) => ({
-      label: targetTypeText(t.value),
-      value: t.value,
-    }));
+    if (typeRes.code === 200) typeOptions.value = typeRes.data || [];
+    if (targetRes.code === 200) targetTypeOptions.value = targetRes.data || [];
   } catch (e) {
     console.error(e);
   }
@@ -726,9 +654,10 @@ const parseSteps = (value: any): Array<{ step: string; expected: string }> => {
   return [];
 };
 
-// 技术字段黑名单（弹窗里不展示、自动生成的编码）
+// 技术字段黑名单（弹窗里不展示、自动生成的编码/审计字段）
 const TECHNICAL_FIELDS = new Set([
   'id', 'createTime', 'updateTime', 'createUserId', 'updateUserId',
+  'createdAt', 'updatedAt', 'createUserName',
   'projectId', 'deleted', 'isDeleted', 'deletedAt', 'serialVersionUID',
   'reqCode', 'bugCode', 'caseCode', 'planCode',
 ]);
@@ -775,9 +704,27 @@ const FIELD_GROUPS: Record<string, Record<string, string[]>> = {
     状态管理: [],
     协作信息: [],
   },
+  project: {
+    基本信息: ['projectName', 'description'],
+    扩展信息: ['teamId', 'ownerId', 'tagClassify'],
+    状态管理: ['status'],
+    统计信息: ['coverage', 'apiTotal', 'uiTotal', 'performanceTotal', 'planTotal', 'uiPass'],
+  },
+  team: {
+    基本信息: ['teamName', 'description'],
+    扩展信息: [],
+    状态管理: ['status'],
+    协作信息: [],
+  },
+  user: {
+    基本信息: ['username', 'nickname', 'email', 'phone'],
+    扩展信息: [],
+    状态管理: ['status'],
+    协作信息: [],
+  },
 };
 
-const groupOrder = ['基本信息', '扩展信息', '状态管理', '协作信息', '其他信息'];
+const groupOrder = ['基本信息', '扩展信息', '状态管理', '协作信息', '统计信息', '其他信息'];
 
 // 获取字段所在分组
 const getFieldGroup = (targetType: string, field: string): string => {
@@ -903,7 +850,7 @@ onMounted(() => {
 
 <script lang="ts">
 // 变更摘要组件（行内展示用）
-const TECH_FIELDS = ['id','createTime','updateTime','createUserId','updateUserId','projectId','deleted','isDeleted','deletedAt','serialVersionUID','reqCode','bugCode','caseCode','planCode'];
+const TECH_FIELDS = ['id','createTime','updateTime','createUserId','updateUserId','createdAt','updatedAt','createUserName','projectId','deleted','isDeleted','deletedAt','serialVersionUID','reqCode','bugCode','caseCode','planCode'];
 
 export default {
   components: {
@@ -973,30 +920,6 @@ export default {
   padding: 0 4px;
 }
 
-.detail-header {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.detail-meta-row {
-  display: flex;
-  align-items: center;
-}
-
-.detail-meta-label {
-  width: 70px;
-  color: #86909c;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.detail-meta-value {
-  flex: 1;
-  font-size: 13px;
-  word-break: break-all;
-}
-
 .detail-section {
   margin-bottom: 20px;
 }
@@ -1026,10 +949,10 @@ export default {
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.6;
-  overflow: auto;
-  max-height: 300px;
+  overflow-x: auto;
   margin: 0;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  white-space: pre;
 }
 
 .html-cell {
@@ -1046,80 +969,6 @@ export default {
 
 .html-cell :deep(p:last-child) {
   margin-bottom: 0;
-}
-
-/* 弹窗式表单布局 —— 操作日志详情 */
-
-/* 字段变更对比容器（按字段配对行，左右对齐） */
-.log-compare-panel {
-  border: 1px solid var(--color-neutral-3);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-bg-2);
-}
-
-/* 创建内容/删除前数据 单面板 */
-.log-form-panel {
-  border: 1px solid var(--color-neutral-3);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-bg-2);
-}
-
-/* 表头两栏 */
-.log-compare-head {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 16px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--color-neutral-3);
-}
-
-.log-compare-head .log-panel-header {
-  border-bottom: none;
-  padding: 10px 16px;
-}
-
-/* 字段配对行：label 通栏，下方左旧右新 */
-.log-compare-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 16px;
-  margin-bottom: 20px;
-}
-
-.log-compare-row .log-form-label {
-  grid-column: 1 / -1;
-}
-
-.log-compare-row:last-child {
-  margin-bottom: 0;
-}
-
-/* 面板头部 */
-.log-panel-header {
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  text-align: center;
-  border-bottom: 1px solid var(--color-neutral-3);
-}
-
-.log-panel-header-old {
-  background: #fff2f0;
-  color: #f53f3f;
-}
-
-.log-panel-header-new {
-  background: #e8ffea;
-  color: #00b42a;
-}
-
-/* 面板内容区（模拟 modal-scroll-body） */
-.log-panel-body {
-  padding: 16px 20px;
-  max-height: 600px;
-  overflow-y: auto;
 }
 
 /* 分组标题 divider */
@@ -1139,32 +988,9 @@ export default {
   color: rgb(var(--primary-6));
 }
 
-/* 表单项（模拟 a-form-item layout=vertical） */
-.log-form-item {
-  margin-bottom: 20px;
-}
-
-.log-form-item:last-child {
-  margin-bottom: 0;
-}
-
-/* 表单标签（模拟 a-form-item-label） */
-.log-form-label {
-  font-size: 13px;
-  color: var(--color-text-2);
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-/* 表单值展示区 */
-.log-form-value {
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-all;
-  padding: 8px 12px;
-  background: var(--color-fill-2);
-  border-radius: 4px;
-  min-height: 32px;
+/* 变更对比表格：长内容顶对齐 */
+.compare-table :deep(.arco-table-td) {
+  vertical-align: top;
 }
 
 /* 空值 */

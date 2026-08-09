@@ -70,9 +70,10 @@ public class SysOperationLogController {
     public SaResult typeOptions() {
         checkSuperAdmin();
         // LOGIN/LOGOUT 已迁移至独立的登录日志（sys_login_log），操作日志不再提供
+        // label 直接下发中文，前端不再二次翻译
         List<Map<String, String>> options = Arrays.stream(OperateType.values())
                 .filter(type -> type != OperateType.LOGIN && type != OperateType.LOGOUT)
-                .map(type -> Map.of("label", type.name(), "value", type.name()))
+                .map(type -> Map.of("label", type.getLabel(), "value", type.name()))
                 .collect(Collectors.toList());
         return SaResult.ok().setData(options);
     }

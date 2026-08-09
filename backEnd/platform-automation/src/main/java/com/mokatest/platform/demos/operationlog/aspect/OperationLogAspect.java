@@ -714,6 +714,17 @@ public class OperationLogAspect {
                     }
                     break;
                 }
+                case "teamId": {
+                    Object bean = applicationContext.getBean("teamMapper");
+                    if (bean instanceof BaseMapper) {
+                        Object obj = ((BaseMapper<?>) bean).selectById(id);
+                        if (obj != null) {
+                            String name = getFieldValueAsString(obj, "teamName");
+                            return name + " (ID:" + value + ")";
+                        }
+                    }
+                    break;
+                }
                 case "assigneeId":
                 case "reporterId":
                 case "ownerId":

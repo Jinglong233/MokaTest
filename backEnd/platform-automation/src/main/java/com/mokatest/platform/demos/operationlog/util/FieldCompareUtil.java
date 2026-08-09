@@ -17,6 +17,7 @@ public class FieldCompareUtil {
      */
     private static final Set<String> DEFAULT_IGNORE_FIELDS = new HashSet<>(Arrays.asList(
             "id", "createTime", "updateTime", "createUserId", "updateUserId",
+            "createdAt", "updatedAt", "createUserName",
             "projectId", "deleted", "isDeleted", "deletedAt", "serialVersionUID"
     ));
 
@@ -181,6 +182,21 @@ public class FieldCompareUtil {
         COMMON_LABEL_MAP.put("setIds", "所属测试集");
         COMMON_LABEL_MAP.put("sort", "排序");
         COMMON_LABEL_MAP.put("mockResponse", "Mock响应");
+        // 项目/团队/用户
+        COMMON_LABEL_MAP.put("projectName", "项目名称");
+        COMMON_LABEL_MAP.put("teamId", "所属团队");
+        COMMON_LABEL_MAP.put("teamName", "团队名称");
+        COMMON_LABEL_MAP.put("username", "用户名");
+        COMMON_LABEL_MAP.put("nickname", "昵称");
+        COMMON_LABEL_MAP.put("email", "邮箱");
+        COMMON_LABEL_MAP.put("phone", "手机号");
+        COMMON_LABEL_MAP.put("coverage", "覆盖率");
+        COMMON_LABEL_MAP.put("apiTotal", "API用例数");
+        COMMON_LABEL_MAP.put("uiTotal", "UI场景数");
+        COMMON_LABEL_MAP.put("performanceTotal", "性能用例数");
+        COMMON_LABEL_MAP.put("planTotal", "计划数");
+        COMMON_LABEL_MAP.put("uiPass", "UI通过率");
+        COMMON_LABEL_MAP.put("tagClassify", "标签分类");
     }
 
     /**
