@@ -60,15 +60,7 @@ public class UserController {
      */
     @RequestMapping("logout")
     public SaResult logout() {
-        try {
-            Long userId = StpUtil.getLoginIdAsLong();
-            com.mokatest.platform.demos.domain.ui.User user = userMapper.selectById(userId);
-            sysLoginLogService.record("LOGOUT", userId,
-                    user != null ? user.getUsername() : null,
-                    user != null ? user.getNickname() : null, true, null);
-        } catch (Exception ignored) {
-            // 登出日志失败不影响登出
-        }
+        // 登录日志只关注登录行为（成功/失败审计），登出不记录
         StpUtil.logout();
         return SaResult.ok();
     }

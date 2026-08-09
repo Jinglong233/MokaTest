@@ -5,15 +5,6 @@
       <a-row class="toolbar" justify="space-between" style="margin-bottom: 16px;">
         <a-space wrap>
           <a-select
-            v-model="searchOperation"
-            placeholder="操作类型"
-            allow-clear
-            style="width: 120px"
-          >
-            <a-option value="LOGIN">登录</a-option>
-            <a-option value="LOGOUT">登出</a-option>
-          </a-select>
-          <a-select
             v-model="searchStatus"
             placeholder="状态"
             allow-clear
@@ -56,13 +47,6 @@
       >
         <template #columns>
           <a-table-column title="时间" data-index="operateTime" :width="170" />
-          <a-table-column title="操作" data-index="operation" :width="90">
-            <template #cell="{ record }">
-              <a-tag size="small" :color="record.operation === 'LOGIN' ? 'arcoblue' : 'gray'">
-                {{ record.operation === 'LOGIN' ? '登录' : '登出' }}
-              </a-tag>
-            </template>
-          </a-table-column>
           <a-table-column title="用户" data-index="username" :width="180">
             <template #cell="{ record }">
               <a-space size="mini">
@@ -91,6 +75,14 @@
               <span style="font-family: monospace;">{{ record.ip || '-' }}</span>
             </template>
           </a-table-column>
+          <a-table-column title="归属地" data-index="ipRegion" :width="180">
+            <template #cell="{ record }">
+              <a-tag v-if="record.ipRegion" size="small" :color="record.ipRegion === '内网IP' ? 'gray' : 'arcoblue'">
+                {{ record.ipRegion }}
+              </a-tag>
+              <span v-else style="color: #86909c;">-</span>
+            </template>
+          </a-table-column>
           <a-table-column title="User Agent" data-index="userAgent">
             <template #cell="{ record }">
               <span
@@ -117,7 +109,6 @@ import LoadError from '@/components/load-error/index.vue';
 const { loading, loadError, track } = useLoadState();
 const logList = ref<any[]>([]);
 
-const searchOperation = ref(undefined);
 const searchStatus = ref(undefined);
 const searchKeyword = ref('');
 const searchTimeRange = ref<string[]>([]);
@@ -135,7 +126,6 @@ const loadList = async () => {
   const params: any = {
     pageNum: pagination.current,
     pageSize: pagination.pageSize,
-    operation: searchOperation.value,
     status: searchStatus.value,
     keyword: searchKeyword.value || undefined,
   };
@@ -158,7 +148,6 @@ const handleSearch = () => {
 };
 
 const handleReset = () => {
-  searchOperation.value = undefined;
   searchStatus.value = undefined;
   searchKeyword.value = '';
   searchTimeRange.value = [];

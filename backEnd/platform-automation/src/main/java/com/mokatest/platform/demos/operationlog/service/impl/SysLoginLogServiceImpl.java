@@ -27,6 +27,12 @@ import java.util.Map;
 @Service
 public class SysLoginLogServiceImpl extends ServiceImpl<SysLoginLogMapper, SysLoginLog> implements SysLoginLogService {
 
+    private final IpRegionService ipRegionService;
+
+    public SysLoginLogServiceImpl(IpRegionService ipRegionService) {
+        this.ipRegionService = ipRegionService;
+    }
+
     @Override
     @Async("operationLogExecutor")
     public void asyncSave(SysLoginLog log) {
@@ -56,7 +62,9 @@ public class SysLoginLogServiceImpl extends ServiceImpl<SysLoginLogMapper, SysLo
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
-                entity.setIp(getClientIp(request));
+                String ip = getClientIp(request);
+                entity.setIp(ip);
+                entity.setIpRegion(ipRegionService.resolve(ip));
                 String ua = request.getHeader("User-Agent");
                 if (ua != null && ua.length() > 500) {
                     ua = ua.substring(0, 500);

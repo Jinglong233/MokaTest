@@ -50,6 +50,11 @@ public class SysLoginLog {
 
     private String ip;
 
+    /**
+     * IP 归属地（省/市·运营商，离线解析；内网IP/未知等情况见 IpRegionService）
+     */
+    private String ipRegion;
+
     private String userAgent;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")

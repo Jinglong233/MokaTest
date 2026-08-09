@@ -616,6 +616,7 @@ create table sys_login_log
     status       varchar(20)                        not null comment '状态：SUCCESS/FAIL',
     message      varchar(200)                       null comment '失败原因',
     ip           varchar(50)                        null comment '登录IP',
+    ip_region    varchar(100)                       null comment 'IP归属地（省/市·运营商，离线解析）',
     user_agent   varchar(500)                       null comment '浏览器UA',
     operate_time datetime default CURRENT_TIMESTAMP not null comment '操作时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
