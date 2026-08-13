@@ -21,6 +21,16 @@ public class OperationLogQueryDTO extends BasePageQueryDTO {
 
     private String keyword;
 
+    /**
+     * 状态筛选：SUCCESS（responseCode=200）/ FAIL（responseCode!=200）
+     */
+    private String status;
+
+    /**
+     * IP 筛选（模糊）
+     */
+    private String ip;
+
     private String startTime;
 
     private String endTime;

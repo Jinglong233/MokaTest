@@ -7,12 +7,16 @@ import com.mokatest.platform.demos.operationlog.dto.OperationLogQueryDTO;
 import com.mokatest.platform.demos.operationlog.enums.OperateType;
 import com.mokatest.platform.demos.operationlog.service.SysOperationLogService;
 import com.mokatest.platform.demos.service.ProjectPermissionChecker;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +49,45 @@ public class SysOperationLogController {
     public SaResult detail(@PathVariable Long id) {
         checkSuperAdmin();
         return logService.detail(id);
+    }
+
+    /**
+     * 删除单条操作日志
+     */
+    @PostMapping("/delete/{id}")
+    public SaResult delete(@PathVariable Long id) {
+        checkSuperAdmin();
+        logService.delete(id);
+        return SaResult.ok();
+    }
+
+    /**
+     * 批量删除操作日志
+     */
+    @PostMapping("/batchDelete")
+    public SaResult batchDelete(@RequestBody List<Long> ids) {
+        checkSuperAdmin();
+        logService.batchDelete(ids);
+        return SaResult.ok();
+    }
+
+    /**
+     * 清空操作日志
+     */
+    @PostMapping("/clear")
+    public SaResult clear() {
+        checkSuperAdmin();
+        logService.clear();
+        return SaResult.ok();
+    }
+
+    /**
+     * 按筛选条件导出 Excel
+     */
+    @GetMapping("/export")
+    public void export(OperationLogQueryDTO query, HttpServletResponse response) throws IOException {
+        checkSuperAdmin();
+        logService.export(query, response);
     }
 
     /**

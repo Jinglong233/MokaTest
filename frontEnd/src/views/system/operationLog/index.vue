@@ -42,11 +42,28 @@
           >
             <a-option v-for="opt in userOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</a-option>
           </a-select>
+          <a-select
+            v-model="searchStatus"
+            placeholder="状态"
+            allow-clear
+            style="width: 100px"
+          >
+            <a-option value="SUCCESS">成功</a-option>
+            <a-option value="FAIL">失败</a-option>
+          </a-select>
+          <a-input
+            v-model="searchIp"
+            placeholder="搜索IP"
+            allow-clear
+            style="width: 140px"
+            @press-enter="handleSearch"
+          />
           <a-input
             v-model="searchKeyword"
             placeholder="搜索描述或对象名称"
             allow-clear
-            style="width: 220px"
+            style="width: 200px"
+            @press-enter="handleSearch"
           />
           <a-range-picker
             v-model="searchTimeRange"
@@ -60,16 +77,42 @@
           </a-button>
           <a-button @click="handleReset">重置</a-button>
         </a-space>
+        <a-space wrap>
+          <a-button
+            status="danger"
+            :disabled="selectedIds.length === 0"
+            @click="handleBatchDelete"
+          >
+            <template #icon><icon-delete /></template>
+            批量删除
+          </a-button>
+          <a-popconfirm
+            content="确定清空全部操作日志吗？该操作不可恢复！"
+            type="error"
+            @ok="handleClear"
+          >
+            <a-button status="danger">
+              <template #icon><icon-eraser /></template>
+              清空
+            </a-button>
+          </a-popconfirm>
+          <a-button @click="handleExport">
+            <template #icon><icon-download /></template>
+            导出
+          </a-button>
+        </a-space>
       </a-row>
 
       <!-- 表格 -->
       <LoadError v-if="loadError" @retry="loadList" />
       <a-table
         v-else
+        v-model:selected-keys="selectedIds"
         :data="logList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200 }"
+        :row-selection="{ type: 'checkbox', showCheckedAll: true }"
+        :scroll="{ x: 1250, y: tableHeight }"
         row-key="id"
         stripe
         @page-change="handlePageChange"
@@ -77,28 +120,28 @@
       >
         <template #columns>
           <a-table-column title="操作时间" data-index="operateTime" :width="165" />
-          <a-table-column title="操作人" data-index="operatorName" :width="100">
+          <a-table-column title="操作人" data-index="operatorName" :width="110">
             <template #cell="{ record }">
               <span>{{ record.operatorName || '-' }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="操作类型" data-index="operateType" :width="120">
+          <a-table-column title="操作类型" data-index="operateType" :width="150">
             <template #cell="{ record }">
-              <a-space>
+              <a-space size="mini">
                 <a-tag size="small">{{ moduleText(record.module) }}</a-tag>
                 <a-tag :color="typeColor(record.operateType)" size="small">{{ typeText(record.operateType, record.targetType) }}</a-tag>
               </a-space>
             </template>
           </a-table-column>
-          <a-table-column title="对象" data-index="targetName" :width="180">
+          <a-table-column title="对象" data-index="targetName" :width="220">
             <template #cell="{ record }">
-              <a-space direction="vertical" size="mini" fill>
-                <span v-if="record.targetName" class="text-ellipsis" :title="record.targetName">{{ record.targetName }}</span>
-                <span v-else style="color: #86909c;">-</span>
-                <a-tag v-if="record.targetType" size="mini" style="width: fit-content;">
-                  {{ targetTypeText(record.targetType) }}
-                  <span v-if="record.targetId && !isMemberType(record.targetType)">#{{ record.targetId }}</span>
+              <a-space size="mini">
+                <a-tag v-if="record.targetType" size="small">
+                  {{ targetTypeText(record.targetType) }}<span v-if="record.targetId && !isMemberType(record.targetType)">#{{ record.targetId }}</span>
                 </a-tag>
+                <a-tooltip :content="record.targetName" position="tl" :disabled="!record.targetName">
+                  <span class="text-ellipsis" style="max-width: 110px;">{{ record.targetName || '-' }}</span>
+                </a-tooltip>
               </a-space>
             </template>
           </a-table-column>
@@ -107,38 +150,50 @@
               <ChangeSummary :description="record.description" :operate-type="record.operateType" />
             </template>
           </a-table-column>
-          <a-table-column title="结果" data-index="responseCode" :width="110">
+          <a-table-column title="状态" data-index="responseCode" :width="80" align="center">
             <template #cell="{ record }">
-              <a-space>
-                <a-tag v-if="record.responseCode === 200" color="green" size="small">成功</a-tag>
-                <a-tag v-else-if="record.responseCode" color="red" size="small">失败</a-tag>
-                <span v-else style="color: #86909c;">-</span>
-                <span v-if="record.durationMs" style="color: #86909c; font-size: 12px;">{{ record.durationMs }}ms</span>
-              </a-space>
+              <a-tag v-if="record.responseCode === 200" color="green" size="small">成功</a-tag>
+              <a-tag v-else-if="record.responseCode" color="red" size="small">失败</a-tag>
+              <span v-else style="color: #86909c;">-</span>
             </template>
           </a-table-column>
-          <a-table-column title="详情" :width="90" fixed="right" align="center">
+          <a-table-column title="耗时" data-index="durationMs" :width="90" align="right">
             <template #cell="{ record }">
-              <a-button type="text" size="small" @click="openDetail(record)">
-                <template #icon><icon-eye /></template>
-                详情
-              </a-button>
+              <span v-if="record.durationMs != null" style="color: #86909c; font-size: 12px;">{{ record.durationMs }}ms</span>
+              <span v-else style="color: #86909c;">-</span>
+            </template>
+          </a-table-column>
+          <a-table-column title="操作" :width="130" fixed="right" align="center">
+            <template #cell="{ record }">
+              <a-space size="mini">
+                <a-tooltip content="详情">
+                  <a-button type="text" size="small" @click="openDetail(record)">
+                    <template #icon><icon-eye /></template>
+                  </a-button>
+                </a-tooltip>
+                <a-popconfirm content="确定删除该条日志吗？" @ok="handleDelete(record)">
+                  <a-tooltip content="删除">
+                    <a-button type="text" size="small" status="danger">
+                      <template #icon><icon-delete /></template>
+                    </a-button>
+                  </a-tooltip>
+                </a-popconfirm>
+              </a-space>
             </template>
           </a-table-column>
         </template>
       </a-table>
     </a-card>
 
-    <!-- 详情抽屉 -->
-    <a-drawer
+    <!-- 详情弹窗：宽度随视口自适应，内容区限高内部滚动 -->
+    <a-modal
       v-model:visible="detailVisible"
-      :width="960"
+      :width="detailModalWidth"
       :footer="false"
-      :title="null"
       unmount-on-close
     >
-      <template #header>
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+      <template #title>
+        <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 16px; font-weight: 600;">操作详情</span>
           <a-tag v-if="detailData.responseCode" :color="detailData.responseCode === 200 ? 'green' : 'red'" size="small">
             {{ detailData.responseCode === 200 ? '成功' : '失败' }}
@@ -146,7 +201,7 @@
         </div>
       </template>
 
-      <div v-if="detailData.id" class="detail-body">
+      <div v-if="detailData.id" class="detail-body" :style="{ maxHeight: detailBodyMaxHeight + 'px' }">
         <!-- 头部信息：a-descriptions 两列布局，响应/UserAgent 一并收编，不再单列段落 -->
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="操作时间">{{ detailData.operateTime }}</a-descriptions-item>
@@ -319,18 +374,24 @@
           <pre class="code-block">{{ formatJson(detailData.requestParams) }}</pre>
         </div>
       </div>
-    </a-drawer>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, computed } from 'vue';
+import { Message } from '@arco-design/web-vue';
+import dayjs from 'dayjs';
 import {
   getOperationLogList,
   getOperationLogDetail,
   getOperationLogModuleOptions,
   getOperationLogTypeOptions,
   getOperationLogTargetTypeOptions,
+  deleteOperationLog,
+  batchDeleteOperationLog,
+  clearOperationLog,
+  exportOperationLog,
 } from '@/api/MyApi/operationLog';
 import { getUserListByPage } from '@/api/MyApi/user';
 import { sanitizeHtml } from '@/utils/sanitize';
@@ -340,6 +401,18 @@ import LoadError from '@/components/load-error/index.vue';
 const { loading, loadError, track } = useLoadState();
 const userLoading = ref(false);
 const logList = ref<any[]>([]);
+const selectedIds = ref<number[]>([]);
+
+// 表格体高度随视口自适应（表头固定、表体内滚动）
+const tableHeight = ref(500);
+// 详情弹窗宽度/内容区高度随视口自适应
+const detailModalWidth = ref(960);
+const detailBodyMaxHeight = ref(600);
+const calcAdaptiveLayout = () => {
+  tableHeight.value = Math.max(300, window.innerHeight - 330);
+  detailModalWidth.value = Math.min(1100, Math.max(680, Math.round(window.innerWidth * 0.6)));
+  detailBodyMaxHeight.value = Math.max(320, window.innerHeight - 220);
+};
 const moduleOptions = ref<any[]>([]);
 const typeOptions = ref<any[]>([]);
 const targetTypeOptions = ref<any[]>([]);
@@ -350,8 +423,10 @@ const searchModule = ref(undefined);
 const searchType = ref(undefined);
 const searchTargetType = ref(undefined);
 const searchOperatorId = ref(undefined);
+const searchStatus = ref(undefined);
+const searchIp = ref('');
 const searchKeyword = ref('');
-const searchTimeRange = ref<string[]>([]);
+const searchTimeRange = ref<any[]>([]);
 
 const pagination = reactive({
   total: 0,
@@ -790,26 +865,87 @@ const groupedFieldList = computed(() => {
     });
 });
 
-const loadList = async () => {
+const buildParams = () => {
   const params: any = {
-    pageNum: pagination.current,
-    pageSize: pagination.pageSize,
     module: searchModule.value,
     operateType: searchType.value,
     targetType: searchTargetType.value,
     operatorId: searchOperatorId.value,
+    status: searchStatus.value,
+    ip: searchIp.value || undefined,
     keyword: searchKeyword.value || undefined,
   };
   if (searchTimeRange.value && searchTimeRange.value.length === 2) {
-    params.startTime = searchTimeRange.value[0];
-    params.endTime = searchTimeRange.value[1];
+    // range-picker 可能返回 Date 对象，统一格式化成 MySQL 可识别的字符串
+    params.startTime = dayjs(searchTimeRange.value[0]).format('YYYY-MM-DD HH:mm:ss');
+    params.endTime = dayjs(searchTimeRange.value[1]).format('YYYY-MM-DD HH:mm:ss');
   }
+  return params;
+};
+
+const loadList = async () => {
+  const params: any = {
+    ...buildParams(),
+    pageNum: pagination.current,
+    pageSize: pagination.pageSize,
+  };
   const res: any = await track(getOperationLogList(params));
   if (res?.code === 200) {
     logList.value = res.data.list || [];
     pagination.total = res.data.total || 0;
+    selectedIds.value = [];
   } else {
     loadError.value = true;
+  }
+};
+
+const handleDelete = async (record: any) => {
+  const res: any = await deleteOperationLog(record.id);
+  if (res?.code === 200) {
+    Message.success('删除成功');
+    loadList();
+  } else {
+    Message.error(res?.msg || '删除失败');
+  }
+};
+
+const handleBatchDelete = async () => {
+  if (selectedIds.value.length === 0) return;
+  const res: any = await batchDeleteOperationLog(selectedIds.value);
+  if (res?.code === 200) {
+    Message.success(`已删除 ${selectedIds.value.length} 条日志`);
+    loadList();
+  } else {
+    Message.error(res?.msg || '批量删除失败');
+  }
+};
+
+const handleClear = async () => {
+  const res: any = await clearOperationLog();
+  if (res?.code === 200) {
+    Message.success('已清空操作日志');
+    pagination.current = 1;
+    loadList();
+  } else {
+    Message.error(res?.msg || '清空失败');
+  }
+};
+
+const handleExport = async () => {
+  try {
+    const res: any = await exportOperationLog(buildParams());
+    const blobData = res.data || res;
+    const blob = blobData instanceof Blob ? blobData : new Blob([blobData], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `operation-log-${Date.now()}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    Message.error('导出失败');
   }
 };
 
@@ -823,6 +959,8 @@ const handleReset = () => {
   searchType.value = undefined;
   searchTargetType.value = undefined;
   searchOperatorId.value = undefined;
+  searchStatus.value = undefined;
+  searchIp.value = '';
   searchKeyword.value = '';
   searchTimeRange.value = [];
   userOptions.value = [];
@@ -842,9 +980,15 @@ const handlePageSizeChange = (pageSize: number) => {
 };
 
 onMounted(() => {
+  calcAdaptiveLayout();
+  window.addEventListener('resize', calcAdaptiveLayout);
   loadOptions();
   loadAllUsers();
   loadList();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', calcAdaptiveLayout);
 });
 </script>
 
@@ -915,9 +1059,10 @@ export default {
   white-space: nowrap;
 }
 
-/* 详情抽屉样式 */
+/* 详情弹窗内容区：限高内部滚动 */
 .detail-body {
   padding: 0 4px;
+  overflow-y: auto;
 }
 
 .detail-section {

@@ -19,3 +19,22 @@ export function getOperationLogTypeOptions() {
 export function getOperationLogTargetTypeOptions() {
     return axios.get('/api/operationLog/targetTypeOptions');
 }
+
+export function deleteOperationLog(id: number) {
+    return axios.post(`/api/operationLog/delete/${id}`);
+}
+
+export function batchDeleteOperationLog(ids: number[]) {
+    return axios.post('/api/operationLog/batchDelete', ids);
+}
+
+export function clearOperationLog() {
+    return axios.post('/api/operationLog/clear');
+}
+
+export function exportOperationLog(params: any) {
+    return axios.get('/api/operationLog/export', {
+        params,
+        responseType: 'blob'
+    });
+}
