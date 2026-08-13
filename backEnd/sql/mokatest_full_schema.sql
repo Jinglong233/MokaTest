@@ -734,6 +734,7 @@ create table test_case_execution
     id              int auto_increment
         primary key,
     test_case_id    int                                not null comment '用例ID',
+    test_case_name  varchar(255)                       null comment '用例名称（冗余存储，防用例删除后历史记录丢失名称）',
     plan_id         int                                null comment '所属计划ID',
     result          varchar(20)                        not null comment '执行结果: PASS/FAIL/BLOCK/NA',
     remark          text                               null comment '执行备注',
