@@ -28,6 +28,27 @@ public interface SysLoginLogService {
     /**
      * 分页查询登录日志
      */
-    SaResult list(String operation, String status, String keyword,
+    SaResult list(String operation, String status, String keyword, String ip,
                   String startTime, String endTime, Integer pageNum, Integer pageSize);
+
+    /**
+     * 删除单条登录日志
+     */
+    void delete(Long id);
+
+    /**
+     * 批量删除登录日志
+     */
+    void batchDelete(java.util.List<Long> ids);
+
+    /**
+     * 清空登录日志
+     */
+    void clear();
+
+    /**
+     * 按筛选条件导出 Excel
+     */
+    void export(String operation, String status, String keyword, String ip,
+                String startTime, String endTime, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException;
 }

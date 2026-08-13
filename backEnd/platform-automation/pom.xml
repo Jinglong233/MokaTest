@@ -190,6 +190,13 @@
             <artifactId>hutool-all</artifactId>
         </dependency>
 
+        <!-- POI（Hutool ExcelWriter 运行时依赖，登录日志导出 Excel） -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <!-- JSONPath -->
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>

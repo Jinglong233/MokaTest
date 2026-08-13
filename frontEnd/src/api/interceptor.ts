@@ -100,6 +100,11 @@ axios.interceptors.response.use(
     (response: AxiosResponse<HttpResponse>) => {
         const res = response.data;
 
+        // 二进制下载（blob）：没有业务 code，直接放行
+        if (response.config.responseType === 'blob') {
+            return res;
+        }
+
         // if the custom code is not 20000, it is judged as an error.
         if ([11001, 11011, 11012, 11013, 11014, 11015, 11016].includes(res.code)) {
             handleLogout('登录状态失效');
