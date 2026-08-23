@@ -494,7 +494,11 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
 function createNodeActions(node: any) {
   const uid: string = node?.nodeData?.data?.uid || '';
   const actions = getNodeActions(uid, node);
-  if (!actions.length) return null;
+  if (!actions.length) {
+    // simple-mind-map 要求 create 始终返回有效对象，null 会导致内部解构崩溃
+    const empty = document.createElement('span');
+    return {el: empty, width: 0, height: 0};
+  }
 
   const el = document.createElement('div');
   el.className = 'clm-actions';

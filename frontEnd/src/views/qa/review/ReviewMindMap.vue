@@ -506,7 +506,10 @@ function getNodeActions(uid: string): {key: string; icon: string; title: string;
 function createNodeActions(node: any) {
   const uid = uidOf(node);
   const actions = getNodeActions(uid);
-  if (!actions.length) return null;
+  if (!actions.length) {
+    const empty = document.createElement('span');
+    return {el: empty, width: 0, height: 0};
+  }
 
   const el = document.createElement('div');
   el.className = 'clm-actions';

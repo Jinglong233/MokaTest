@@ -74,7 +74,10 @@ function getNodeActions(node: any): { key: string; icon: string; danger?: boolea
 function createNodeActions(node: any) {
   const uid = uidOf(node);
   const actions = getNodeActions(node);
-  if (!actions.length) return null;
+  if (!actions.length) {
+    const empty = document.createElement('span');
+    return {el: empty, width: 0, height: 0};
+  }
 
   const el = document.createElement('div');
   el.className = 'tpm-actions';
