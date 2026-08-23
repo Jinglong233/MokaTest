@@ -34,13 +34,17 @@ MokaTest 是面向测试团队的一站式自动化测试平台，覆盖从需�
 
 ## UI 展示
 
-| 质量管理                          | API 测试                          |
-|-------------------------------|---------------------------------|
-| ![质量管理](docs/images/QM.png)   | ![API 测试](docs/images/API.png)  |
-| **UI 自动化**                    | **团队协作**                        |
-| ![UI 自动化](docs/images/UI.png) | ![团队协作](docs/images/Team.png)   |
-| **计划任务**                      | **报告**                          |
-| ![UI 自动化](docs/images/Plan.png) | ![报告](docs/images/Report.png) |
+| 需求池                             | 用例列表                           |
+|---------------------------------|--------------------------------|
+| ![需求池](docs/images/QM.png)      | ![用例列表](docs/images/QM-2.png)  |
+| 测试计划                            | 测试计划报告                         |
+| ![测试计划](docs/images/QM-1.png)   | ![测试计划报告](docs/images/QM-3.png) |
+| BUG列表                           | API 测试                         |
+| ![测试计划](docs/images/QM-4.png)   | ![API 测试](docs/images/API.png) |
+| **UI 自动化**                      | **团队协作**                       |
+| ![UI 自动化](docs/images/UI.png)   | ![团队协作](docs/images/Team.png)  |
+| **计划任务**                        | **报告**                         |
+| ![UI 自动化](docs/images/Plan.png) | ![报告](docs/images/Report.png)  |
 
 ## 技术栈
 
