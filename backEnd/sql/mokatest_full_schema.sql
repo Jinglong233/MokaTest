@@ -68,7 +68,6 @@ create table bug
     close_reason    varchar(30)                                                                                              null comment '关闭原因: FIXED/DUPLICATE/NOT_BUG/CANNOT_REPRODUCE/WONT_FIX',
     tags            varchar(255)                                                                                             null comment '标签',
     requirement_id  int                                                                                                      null comment '关联需求',
-    test_case_id    int                                                                                                      null comment '关联用例',
     plan_case_id    int                                                                                                      null comment '关联的测试计划用例ID',
     reporter_id     int                                                                                                      not null comment '鎶ュ憡浜',
     assignee_id     int                                                                                                      null comment '鎸囨淳缁',
@@ -97,14 +96,32 @@ create index idx_module
 create index idx_project_status
     on bug (project_id, status);
 
+create table bug_case
+(
+    id           int auto_increment
+        primary key,
+    bug_id       int                                not null comment 'BUG ID',
+    test_case_id int                                not null comment '用例ID',
+    constraint uk_bug_case
+        unique (bug_id, test_case_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment 'BUG-用例关联（多对多）';
+
+create index idx_bug_case_bug_id
+    on bug_case (bug_id);
+
+create index idx_bug_case_test_case_id
+    on bug_case (test_case_id);
+
 create table bug_comment
 (
     id               int auto_increment
         primary key,
     bug_id           int                                not null comment 'BugID',
+    parent_id        int      default 0                 null comment '父评论ID（0=顶层评论，支持二级回复）',
     content          text                               not null comment '评论内容',
     mention_user_ids varchar(500)                       null comment '@的用户ID（JSON数组）',
     create_user_id   int                                null comment '评论人',
+    create_user_name varchar(100)                       null comment '创建人昵称（冗余存储）',
     create_time      datetime default CURRENT_TIMESTAMP null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
 
@@ -418,6 +435,7 @@ create table qa_module
     project_id  int                                not null comment '所属项目',
     parent_id   int      default 0                 null comment '父模块ID',
     module_name varchar(100)                       not null comment '模块名称',
+    module_type varchar(20)  default 'CASE'        not null comment '模块类型：CASE-用例模块 / REVIEW-评审模块',
     sort        int      default 0                 null comment '排序',
     create_time datetime default CURRENT_TIMESTAMP null,
     update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
@@ -430,6 +448,9 @@ create index idx_project
 
 create index idx_qa_module_is_deleted
     on qa_module (is_deleted);
+
+create index idx_qa_module_type
+    on qa_module (module_type);
 
 create table report
 (
@@ -688,7 +709,9 @@ create table test_case
     last_execute_time datetime                                                                                    null comment '最近执行时间',
     tags              varchar(255)                                                                                null comment '标签',
     expect_duration   int                                                                                         null comment '预期执行时长(分钟)',
-    requirement_id    int                                                                                         null comment '关联需求',
+    sort              int                                                               default 0                 not null comment '排序值',
+    requirement_id    int                                                                                         null comment '关联需求（多关联时为列表首个，兼容字段）',
+    requirement_ids   varchar(500)                                                                                null comment '关联需求ID列表（逗号分隔，多需求关联）',
     folder_id         int                                                               default 0                 null comment '文件夹ID(支持树形)',
     create_user_id    int                                                                                         not null,
     update_user_id    int                                                                                         null,
@@ -711,6 +734,9 @@ create index idx_project_folder
 
 create index idx_test_case_is_deleted
     on test_case (is_deleted);
+
+create index idx_test_case_project_create
+    on test_case (project_id, create_time);
 
 create table test_case_auto_bind
 (
@@ -795,9 +821,12 @@ create table test_plan
 (
     id             int auto_increment
         primary key,
+    plan_code      varchar(50)                           null comment '计划编号 TP-{id}',
     project_id     int                                   not null comment '所属项目',
+    module_id      int                                   null comment '所属模块',
     plan_name      varchar(200)                          not null comment '计划名称',
     description    text                                  null comment '计划描述',
+    tags           varchar(500)                          null comment '标签（逗号分隔）',
     status         varchar(20) default 'DRAFT'           null comment '状态: DRAFT/READY/RUNNING/COMPLETED',
     start_time     datetime                              null comment '计划开始时间',
     end_time       datetime                              null comment '计划结束时间',
@@ -808,6 +837,9 @@ create table test_plan
     deleted_at     datetime                              null comment '删除时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
 
+create unique index uk_test_plan_code
+    on test_plan (plan_code, is_deleted);
+
 create index idx_project
     on test_plan (project_id);
 
@@ -817,6 +849,32 @@ create index idx_status
 create index idx_test_plan_is_deleted
     on test_plan (is_deleted);
 
+create table test_plan_report
+(
+    id             int auto_increment
+        primary key,
+    report_name    varchar(200)                          not null comment '报告名称',
+    report_type    varchar(20) default 'PLAN'            null comment '报告类型（预留）: PLAN',
+    plan_id        int                                   not null comment '所属测试计划',
+    project_id     int                                   not null comment '所属项目',
+    trigger_type   varchar(20) default 'MANUAL'          null comment '触发方式: MANUAL-手动 AUTO-计划完成自动',
+    summary        text                                  null comment '报告总结（富文本，可编辑）',
+    content        longtext                              null comment '报告内容快照（JSON，生成时固化）',
+    pass_rate      int                                   null comment '通过率快照',
+    exec_result    varchar(20)                           null comment '执行结果快照: NONE/ALL_PASS/NOT_PASS',
+    create_user_id int                                   null comment '创建人',
+    create_time    datetime    default CURRENT_TIMESTAMP null,
+    update_time    datetime    default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    is_deleted     tinyint     default 0                 not null comment '是否已删除：0-未删除，1-已删除',
+    deleted_at     datetime                              null comment '删除时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
+
+create index idx_test_plan_report_plan
+    on test_plan_report (plan_id);
+
+create index idx_test_plan_report_project
+    on test_plan_report (project_id);
+
 create table test_plan_case
 (
     id              int auto_increment
@@ -824,8 +882,10 @@ create table test_plan_case
     plan_id         int                                   not null comment '计划ID',
     test_case_id    int                                   not null comment '用例ID',
     sort            int         default 0                 null comment '排序',
+    test_point_id  int                                   null comment '所属测试点ID',
     execute_result  varchar(20) default 'UNEXECUTED'      null comment '执行结果: PASS/FAIL/BLOCK/NA/UNEXECUTED',
     execute_remark  text                                  null comment '执行备注',
+    step_results    json                                  null comment '步骤执行明细: [{actualResult, stepResult}]',
     execute_user_id int                                   null comment '执行人',
     execute_time    datetime                              null comment '执行时间',
     bug_id          int                                   null comment '关联的BUG ID',
@@ -837,6 +897,22 @@ create index idx_case
 
 create index idx_plan
     on test_plan_case (plan_id);
+
+create index idx_test_point
+    on test_plan_case (test_point_id);
+
+create table plan_test_point
+(
+    id          int auto_increment primary key,
+    plan_id     int                                   not null comment '计划ID',
+    name        varchar(100)                          not null comment '测试点名称',
+    sort_order  int         default 0                 null comment '排序',
+    is_deleted  tinyint     default 0                 not null comment '是否删除',
+    create_time datetime    default CURRENT_TIMESTAMP null
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '测试计划-测试点';
+
+create index idx_plan_test_point_plan
+    on plan_test_point (plan_id);
 
 create table test_step
 (
@@ -979,6 +1055,14 @@ INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('用例创建', 'qa:testcase:create', 'BUTTON', 21, 52),
 ('用例编辑', 'qa:testcase:update', 'BUTTON', 21, 53),
 ('用例删除', 'qa:testcase:delete', 'BUTTON', 21, 54);
+
+-- 用例操作日志 / 评审变更（版本快照）
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '用例操作日志查看', 'qa:testcase:operationlog:view', 'BUTTON', id, 55 FROM permission WHERE code = 'qa:testcase';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审变更查看', 'qa:testcase:version:view', 'BUTTON', id, 56 FROM permission WHERE code = 'qa:testcase';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审变更回滚', 'qa:testcase:version:rollback', 'BUTTON', id, 57 FROM permission WHERE code = 'qa:testcase';
 
 INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('测试计划管理', 'qa:testplan', 'MENU', NULL, 60),
@@ -1131,6 +1215,21 @@ INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('自定义函数-更新', 'auto:function:update', 'BUTTON', LAST_INSERT_ID(), 243),
 ('自定义函数-删除', 'auto:function:delete', 'BUTTON', LAST_INSERT_ID(), 244);
 
+-- 用例评审
+INSERT INTO permission (name, code, type, parent_id, sort) VALUES
+('用例评审', 'qa:review', 'MENU', NULL, 55);
+
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审查看', 'qa:review:view', 'BUTTON', id, 56 FROM permission WHERE code = 'qa:review';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审创建', 'qa:review:create', 'BUTTON', id, 57 FROM permission WHERE code = 'qa:review';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审提交', 'qa:review:execute', 'BUTTON', id, 58 FROM permission WHERE code = 'qa:review';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审取消', 'qa:review:cancel', 'BUTTON', id, 59 FROM permission WHERE code = 'qa:review';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审删除', 'qa:review:delete', 'BUTTON', id, 60 FROM permission WHERE code = 'qa:review';
+
 -- 平台级权限（仅超级管理员/平台管理员可用，团队自定义角色不可分配）
 INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('平台管理', 'platform', 'MENU', NULL, 5);
@@ -1156,6 +1255,20 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM role WHERE code = 'project_member' AND
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id FROM role r
 JOIN permission p ON p.code LIKE '%:view' AND p.code <> 'project:member:view'
+WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+
+-- 补挂评审提交权限（被指定为评审人时需提交评审结论，业务层校验 reviewer 身份）
+INSERT INTO role_permission (role_id, permission_id)
+SELECT r.id, p.id FROM role r
+JOIN permission p ON p.code = 'qa:review:execute'
+WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+
+-- 补挂评审创建/取消/删除权限（新建/编辑/取消/删除评审、关联/移除用例入口需要）
+INSERT INTO role_permission (role_id, permission_id)
+SELECT r.id, p.id FROM role r
+JOIN permission p ON p.code IN ('qa:review:create', 'qa:review:cancel', 'qa:review:delete')
 WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
 
@@ -1289,3 +1402,127 @@ create index idx_knowledge_chunk_doc
 
 create index idx_knowledge_chunk_project
     on knowledge_chunk (project_id);
+-- =====================================================================
+-- 专业质量管理流程（2026-08-13）
+-- 存量库升级请执行 backEnd/sql/upgrade_professional_qa.sql
+-- =====================================================================
+
+create table if not exists test_case_operation_log
+(
+    id            int auto_increment primary key,
+    test_case_id  int                                not null comment '用例ID',
+    operation     varchar(30)                        not null comment '操作类型: CREATE/UPDATE/TRANSITION/DELETE/REVIEW_PASS/REVIEW_REJECT/VERSION/REVIEW_VOTE',
+    review_id     int                                null comment '关联评审单ID（仅 REVIEW_VOTE）',
+    field_name    varchar(50)                        null comment '变更字段',
+    old_value     text                               null comment '旧值',
+    new_value     text                               null comment '新值',
+    comment       text                               null comment '操作意见（流转/评审意见）',
+    operator_id   int                                null comment '操作人ID',
+    operator_name varchar(100)                       null comment '操作人昵称（冗余）',
+    operate_time  datetime default CURRENT_TIMESTAMP null comment '操作时间',
+    key idx_case (test_case_id),
+    key idx_time (operate_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '用例操作日志';
+
+create table if not exists test_case_version
+(
+    id             int auto_increment primary key,
+    test_case_id   int                                not null comment '用例ID',
+    version_no     int                                not null comment '版本号，从1递增',
+    snapshot       json                               not null comment '用例完整快照',
+    change_note    varchar(500)                       null comment '版本说明',
+    create_user_id int                                null comment '操作人',
+    create_time    datetime default CURRENT_TIMESTAMP null,
+    unique key uk_case_version (test_case_id, version_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '用例版本快照';
+
+create table if not exists test_case_review
+(
+    id             int auto_increment primary key,
+    review_code    varchar(50)                          not null comment '评审单号 REV-{id}',
+    project_id     int                                  not null comment '所属项目',
+    module_id      int                                  null comment '所属评审模块ID(qa_module.module_type=REVIEW)',
+    title          varchar(200)                         not null comment '评审标题',
+    description    text                                 null comment '评审说明',
+    status         varchar(20)      default 'REVIEWING' not null comment 'REVIEWING/COMPLETED/CANCELLED',
+    pass_rule      varchar(20)      default 'ALL'       not null comment 'ALL全票 / MAJORITY多数',
+    deadline       datetime                             null comment '截止时间',
+    result_summary text                                 null comment '汇总结论',
+    creator_id     int                                  null comment '创建人',
+    create_time    datetime         default CURRENT_TIMESTAMP null,
+    update_time    datetime         default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    is_deleted     tinyint          default 0           not null,
+    deleted_at     datetime                             null,
+    unique key uk_code_deleted (review_code, is_deleted),
+    key idx_project (project_id),
+    key idx_status (status),
+    key idx_project_create (project_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '用例评审单';
+
+create table if not exists test_case_review_case
+(
+    id           int auto_increment primary key,
+    review_id    int                           not null comment '评审单ID',
+    test_case_id int                           not null comment '用例ID',
+    final_result varchar(20) default 'PENDING' not null comment 'PENDING/PASS/REJECT',
+    create_time  datetime    default CURRENT_TIMESTAMP null,
+    unique key uk_review_case (review_id, test_case_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '评审单圈选用例';
+
+create index idx_review_case_review_id
+    on test_case_review_case (review_id);
+
+create table if not exists test_case_review_item
+(
+    id           int auto_increment primary key,
+    review_id    int                           not null comment '评审单ID',
+    test_case_id int                           not null comment '用例ID',
+    reviewer_id  int                           not null comment '评审人ID',
+    conclusion   varchar(20) default 'PENDING' not null comment 'PENDING/PASS/REJECT',
+    comment      text                          null comment '评审意见',
+    review_time  datetime                      null,
+    unique key uk_review_case_reviewer (review_id, test_case_id, reviewer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '评审明细';
+
+create index idx_review_item_review_id
+    on test_case_review_item (review_id);
+
+create index idx_review_item_reviewer_id
+    on test_case_review_item (reviewer_id);
+
+create table if not exists test_case_review_reviewer
+(
+    id          int auto_increment primary key,
+    review_id   int not null,
+    reviewer_id int not null,
+    unique key uk_review_reviewer (review_id, reviewer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '评审单评审人';
+
+create index idx_review_reviewer_reviewer_id
+    on test_case_review_reviewer (reviewer_id);
+
+create index idx_review_reviewer_review_id
+    on test_case_review_reviewer (review_id);
+
+-- 专业质量管理流程：BUG 回归用例字段扩展（新库建表后执行）
+alter table bug
+    add column regression_case_id int null comment '沉淀的回归用例ID' after plan_case_id;
+-- =====================================================================
+-- MS v3 化改造 · 第1期：用例管理
+-- 内容：用例评论表（用例详情抽屉「评论」tab）
+-- 适用：已执行过 upgrade_professional_qa.sql 的库
+-- =====================================================================
+
+create table if not exists test_case_comment
+(
+    id               int auto_increment primary key,
+    test_case_id     int                                not null comment '用例ID',
+    parent_id        int default 0                      not null comment '父评论ID（0=顶层评论，支持二级回复）',
+    content          text                               not null comment '评论内容',
+    mention_user_ids varchar(500)                       null comment '@ 提及的用户ID（JSON数组）',
+    create_user_id   int                                null comment '创建人ID',
+    create_user_name varchar(100)                       null comment '创建人昵称（冗余）',
+    create_time      datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    key idx_case (test_case_id),
+    key idx_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci comment '用例评论';

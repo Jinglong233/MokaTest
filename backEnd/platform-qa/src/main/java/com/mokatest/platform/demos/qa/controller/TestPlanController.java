@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 测试计划管理接口（QA维度）
@@ -43,9 +44,10 @@ public class TestPlanController {
     public SaResult list(@RequestParam Integer projectId,
                          @RequestParam(required = false) String keyword,
                          @RequestParam(required = false) String status,
+                         @RequestParam(required = false) Integer moduleId,
                          @RequestParam(defaultValue = "1") Integer page,
                          @RequestParam(defaultValue = "10") Integer pageSize) {
-        return testPlanService.listByProject(projectId, keyword, status, page, pageSize);
+        return testPlanService.listByProject(projectId, keyword, status, moduleId, page, pageSize);
     }
 
     /**
@@ -126,6 +128,18 @@ public class TestPlanController {
     }
 
     /**
+     * 更新计划用例的测试点关联（关联/取消关联）
+     * 权限：qa:testplan:update
+     */
+    @SaCheckPermission("qa:testplan:update")
+    @PostMapping("/updateCaseTestPoint")
+    public SaResult updateCaseTestPoint(@RequestParam Integer planId,
+                                       @RequestParam Integer planCaseId,
+                                       @RequestParam(required = false) Integer testPointId) {
+        return testPlanService.updateCaseTestPoint(planId, planCaseId, testPointId);
+    }
+
+    /**
      * 执行计划用例
      * 权限：qa:testplan:execute
      */
@@ -135,8 +149,17 @@ public class TestPlanController {
     @PostMapping("/execute")
     public SaResult executeCase(@RequestParam Integer planCaseId,
                                 @RequestParam String result,
-                                @RequestParam(required = false) String remark) {
-        return testPlanService.executeCase(planCaseId, result, remark, Integer.valueOf(StpUtil.getLoginIdAsString()));
+                                @RequestParam(required = false) String remark,
+                                @RequestBody(required = false) List<Map<String, Object>> stepResults) {
+        String stepResultsJson = null;
+        if (stepResults != null) {
+            try {
+                stepResultsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(stepResults);
+            } catch (Exception e) {
+                return SaResult.error("步骤结果序列化失败");
+            }
+        }
+        return testPlanService.executeCase(planCaseId, result, remark, stepResultsJson, Integer.valueOf(StpUtil.getLoginIdAsString()));
     }
 
     /**
@@ -182,5 +205,25 @@ public class TestPlanController {
     @GetMapping("/{planId}/report")
     public SaResult report(@PathVariable Integer planId) {
         return testPlanService.getPlanReport(planId);
+    }
+
+    /**
+     * 获取测试点树（含关联用例）
+     * 权限：qa:testplan:view
+     */
+    @SaCheckPermission("qa:testplan:view")
+    @GetMapping("/{planId}/testPoints")
+    public SaResult testPoints(@PathVariable Integer planId) {
+        return testPlanService.getTestPoints(planId);
+    }
+
+    /**
+     * 保存测试点树（增删改 + 用例关联）
+     * 权限：qa:testplan:update
+     */
+    @SaCheckPermission("qa:testplan:update")
+    @PostMapping("/{planId}/testPoints/save")
+    public SaResult saveTestPoints(@PathVariable Integer planId, @RequestBody List<Map<String, Object>> testPoints) {
+        return testPlanService.saveTestPoints(planId, testPoints);
     }
 }

@@ -6,6 +6,7 @@
         <Breadcrumb :items="['menu.qa', 'menu.qa.bug', isEdit ? '编辑BUG' : '新建BUG']" />
         <div class="header-actions">
           <a-button class="header-cancel-btn" size="large" @click="handleCancel">取消</a-button>
+          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">保存继续创建</a-button>
           <a-button type="primary" class="header-save-btn" size="large" :loading="saving" @click="handleSave">保存</a-button>
         </div>
       </div>
@@ -20,6 +21,7 @@
     <div class="mobile-footer-bar">
       <a-space size="medium">
         <a-button long size="large" @click="handleCancel">取消</a-button>
+        <a-button v-if="!isEdit" :loading="savingContinue" long size="large" @click="handleSaveAndContinue">保存继续创建</a-button>
         <a-button type="primary" long class="header-save-btn" size="large" :loading="saving" @click="handleSave">保存</a-button>
       </a-space>
     </div>
@@ -47,6 +49,8 @@ const projectStore = useProjectStore();
 
 const formRef = ref();
 const saving = ref(false);
+const savingContinue = ref(false);
+let isContinueCreate = false;
 
 useDirtyGuard(() => formRef.value?.isDirty?.() ?? false);
 
@@ -70,7 +74,27 @@ const handleSave = async () => {
 };
 
 const handleSaved = () => {
+  if (isContinueCreate) {
+    isContinueCreate = false;
+    return;
+  }
   router.push({ name: 'Bug' });
+};
+
+const handleSaveAndContinue = async () => {
+  if (savingContinue.value) return;
+  isContinueCreate = true;
+  savingContinue.value = true;
+  try {
+    const success = await formRef.value?.save();
+    if (success) {
+      await formRef.value?.resetForm();
+    } else {
+      isContinueCreate = false;
+    }
+  } finally {
+    savingContinue.value = false;
+  }
 };
 
 const handleCancel = () => {

@@ -1,27 +1,20 @@
 <template>
   <div class="bug-form">
-    <a-form :model="formData" layout="vertical">
+    <a-form ref="formRef" :model="formData" layout="vertical">
       <a-row :gutter="20" class="form-row">
         <!-- 左侧主栏：核心文本输入区 -->
         <a-col :xs="24" :lg="16" class="main-col">
           <a-card class="main-card">
-            <div class="section-header">
-              <div class="section-icon" style="background: #fff1f3; color: #e11d48;">
-                <IconBug />
-              </div>
-              <span class="section-title">BUG 信息</span>
-            </div>
-
             <a-form-item
               field="title"
-              label="BUG标题"
-              :rules="[{ required: true, message: '请输入BUG标题' }]"
+              label="BUG名称"
+              :rules="[{ required: true, message: '请输入BUG名称' }]"
               :validate-trigger="['change', 'blur']"
               class="title-form-item"
             >
               <a-input
                 v-model="formData.title"
-                placeholder="请输入BUG标题"
+                placeholder="请输入BUG名称"
                 size="large"
                 class="title-input"
                 allow-clear
@@ -40,7 +33,7 @@
                 </a-form-item>
               </a-col>
               <a-col :xs="24" :md="12" class="editor-col">
-                <a-form-item v-if="fieldVis('reproduceSteps')" field="reproduceSteps" label="复现步骤" class="description-item">
+                <a-form-item field="reproduceSteps" label="复现步骤" class="description-item">
                   <RichEditor
                     v-model="formData.reproduceSteps"
                     placeholder="请输入复现步骤"
@@ -53,10 +46,9 @@
           </a-card>
         </a-col>
 
-        <!-- 右侧副栏：属性与关联管理 -->
+        <!-- 右侧副栏：属性管理 -->
         <a-col :xs="24" :lg="8" class="side-col">
           <a-scrollbar class="side-scrollbar">
-            <!-- 卡片一：属性与状态 -->
             <a-card class="side-card">
               <template #title>
                 <div class="card-title">
@@ -65,30 +57,16 @@
                 </div>
               </template>
 
-              <a-row :gutter="16">
-                <a-col :span="12">
-                  <a-form-item field="severity" label="严重程度">
-                    <a-select v-model="formData.severity" placeholder="请选择严重程度">
-                      <a-option value="FATAL" class="severity-option severity-fatal">致命</a-option>
-                      <a-option value="SERIOUS" class="severity-option severity-serious">严重</a-option>
-                      <a-option value="NORMAL">一般</a-option>
-                      <a-option value="TIPS">提示</a-option>
-                    </a-select>
-                  </a-form-item>
-                </a-col>
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('priority')" field="priority" label="优先级">
-                    <a-select v-model="formData.priority" placeholder="请选择优先级">
-                      <a-option value="URGENT">紧急</a-option>
-                      <a-option value="HIGH">高</a-option>
-                      <a-option value="MEDIUM">中</a-option>
-                      <a-option value="LOW">低</a-option>
-                    </a-select>
-                  </a-form-item>
-                </a-col>
-              </a-row>
+              <a-form-item field="severity" label="严重程度" :rules="[{ required: true, message: '请选择严重程度' }]" :validate-trigger="['change', 'blur']">
+                <a-select v-model="formData.severity" placeholder="请选择严重程度">
+                  <a-option value="FATAL" class="severity-option severity-fatal">致命</a-option>
+                  <a-option value="SERIOUS" class="severity-option severity-serious">严重</a-option>
+                  <a-option value="NORMAL">一般</a-option>
+                  <a-option value="TIPS">提示</a-option>
+                </a-select>
+              </a-form-item>
 
-              <a-form-item field="status" label="BUG状态">
+              <a-form-item field="status" label="BUG状态" :rules="[{ required: true, message: '请选择BUG状态' }]" :validate-trigger="['change', 'blur']">
                 <a-select
                   v-model="formData.status"
                   class="status-select"
@@ -96,132 +74,14 @@
                   placeholder="新建"
                   :disabled="!isEdit"
                 >
-                  <a-option v-for="s in allBugStatuses" :key="s.value" :value="s.value">{{ s.label }}</a-option>
-                </a-select>
-              </a-form-item>
-
-              <a-row :gutter="16">
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('environment')" field="environment" label="影响环境">
-                    <a-select v-model="formData.environment" placeholder="请选择环境" allow-clear>
-                      <a-option value="TEST">测试环境</a-option>
-                      <a-option value="STAGING">预发环境</a-option>
-                      <a-option value="PROD">生产环境</a-option>
-                    </a-select>
-                  </a-form-item>
-                </a-col>
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('deadline')" field="deadline" label="截止日期">
-                    <a-date-picker
-                      v-model="formData.deadline"
-                      value-format="YYYY-MM-DD"
-                      placeholder="请选择截止日期"
-                      style="width: 100%;"
-                    />
-                  </a-form-item>
-                </a-col>
-              </a-row>
-            </a-card>
-
-            <!-- 卡片二：版本与关联 -->
-            <a-card class="side-card">
-              <template #title>
-                <div class="card-title">
-                  <div class="card-title-dot" style="background: #165dff;" />
-                  版本与关联
-                </div>
-              </template>
-
-              <a-row :gutter="16">
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('foundVersion')" field="foundVersion" label="发现版本">
-                    <a-input v-model="formData.foundVersion" placeholder="如 v1.0.0" />
-                  </a-form-item>
-                </a-col>
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('fixedVersion')" field="fixedVersion" label="修复版本">
-                    <a-input v-model="formData.fixedVersion" placeholder="如 v1.0.1" />
-                  </a-form-item>
-                </a-col>
-              </a-row>
-
-              <a-form-item v-if="fieldVis('requirementId')" field="requirementId" label="关联需求">
-                <a-select
-                  v-model="requirementIds"
-                  multiple
-                  allow-clear
-                  allow-search
-                  :max-tag-count="1"
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索需求"
-                  @search="handleSearchRequirement"
-                  @dropdown-visible-change="handleRequirementDropdownVisibleChange"
-                  @dropdown-reach-bottom="loadMoreRequirement"
-                >
-                  <a-option v-for="req in requirementOptions" :key="req.id" :value="Number(req.id)">{{ req.reqCode }} - {{ req.title }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="requirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="requirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
-                    </div>
+                  <a-option v-if="!isEdit" value="NEW">新建</a-option>
+                  <template v-else>
+                    <a-option v-for="s in allBugStatuses" :key="s.value" :value="s.value">{{ s.label }}</a-option>
                   </template>
                 </a-select>
               </a-form-item>
 
-              <a-form-item v-if="fieldVis('testCaseId')" field="testCaseId" label="关联用例">
-                <a-select
-                  v-model="testCaseIds"
-                  multiple
-                  allow-clear
-                  allow-search
-                  :max-tag-count="1"
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索用例"
-                  @search="handleSearchTestCase"
-                  @dropdown-visible-change="handleTestCaseDropdownVisibleChange"
-                  @dropdown-reach-bottom="loadMoreTestCase"
-                >
-                  <a-option v-for="tc in testCaseOptions" :key="tc.id" :value="Number(tc.id)">{{ tc.caseCode }} - {{ tc.caseName }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="testCasePage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="testCaseOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item v-if="formData.status === 'CLOSED' && fieldVis('closeReason')" field="closeReason" label="关闭原因">
-                <a-select v-model="formData.closeReason" placeholder="请选择关闭原因" allow-clear>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="DUPLICATE">重复</a-option>
-                  <a-option value="NOT_BUG">不是BUG</a-option>
-                  <a-option value="CANNOT_REPRODUCE">无法复现</a-option>
-                  <a-option value="WONT_FIX">暂不处理</a-option>
-                </a-select>
-              </a-form-item>
-            </a-card>
-
-            <!-- 卡片三：协作与其它 -->
-            <a-card class="side-card">
-              <template #title>
-                <div class="card-title">
-                  <div class="card-title-dot" style="background: #00b42a;" />
-                  协作与其它
-                </div>
-              </template>
-
-              <a-form-item v-if="fieldVis('assigneeId')" field="assigneeId" label="指派给">
+              <a-form-item field="assigneeId" label="处理人" :rules="[{ required: true, message: '请选择处理人' }]" :validate-trigger="['change', 'blur']">
                 <a-select
                   v-model="formData.assigneeId"
                   allow-clear
@@ -250,22 +110,7 @@
                 </a-select>
               </a-form-item>
 
-              <a-form-item v-if="fieldVis('moduleId')" field="moduleId" label="所属模块">
-                <a-select v-model="formData.moduleId" allow-clear placeholder="请选择所属模块">
-                  <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item v-if="fieldVis('reproduceRate')" field="reproduceRate" label="重现概率">
-                <a-select v-model="formData.reproduceRate" placeholder="请选择重现概率" allow-clear>
-                  <a-option value="ALWAYS">必现</a-option>
-                  <a-option value="OFTEN">高概率</a-option>
-                  <a-option value="SOMETIMES">偶现</a-option>
-                  <a-option value="RARE">难现</a-option>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item v-if="fieldVis('tags')" field="tags" label="标签">
+              <a-form-item field="tags" label="标签">
                 <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear class="bug-tags-input" />
               </a-form-item>
             </a-card>
@@ -284,21 +129,11 @@ import RichEditor from '@/components/rich-editor/index.vue';
 import {useProjectStore} from '@/store';
 import {deleteRichTextImages} from '@/api/MyApi/fileUpload';
 import {
-  getBugList,
   saveBug,
   updateBug,
   getBugDetail,
-  getTestCaseList,
-  getRequirementList,
-  getRequirementDetail,
-  getTestCaseDetail,
-  getQaModuleList,
 } from '@/api/MyApi/qa';
 import {getUserListByPage} from '@/api/MyApi/user';
-import useProjectConfigStore from '@/store/modules/projectConfig';
-
-const projectConfigStore = useProjectConfigStore();
-const fieldVis = (key: string) => projectConfigStore.isFieldVisible('bug', key);
 
 const props = defineProps<{
   id?: number | string;
@@ -318,7 +153,7 @@ const windowWidth = ref(window.innerWidth);
 const handleWindowResize = () => {
   windowWidth.value = window.innerWidth;
 };
-const editorHeight = computed(() => (windowWidth.value >= 1200 ? '100%' : '32vh'));
+const editorHeight = computed(() => (windowWidth.value >= 1200 ? '100%' : '40vh'));
 onMounted(() => window.addEventListener('resize', handleWindowResize));
 onBeforeUnmount(() => window.removeEventListener('resize', handleWindowResize));
 
@@ -330,14 +165,11 @@ const VNodeRenderer = {
 };
 
 const formData = ref<any>({});
+const formRef = ref();
 const isEdit = ref(false);
 const initialFileIds = ref<Set<string>>(new Set());
 const uploadedFileIds = ref<Set<string>>(new Set());
 const initialSnapshot = ref('');
-
-// 关联需求/用例的多选标签绑定（后端为单值，前端以数组形式展示标签气泡）
-const requirementIds = ref<number[]>([]);
-const testCaseIds = ref<number[]>([]);
 
 const extractFileIds = (html?: string): Set<string> => {
   if (!html) return new Set();
@@ -383,14 +215,6 @@ const updateSnapshot = () => {
   initialSnapshot.value = JSON.stringify(buildComparable());
 };
 
-const moduleOptions = ref<any[]>([]);
-
-const requirementOptions = ref<any[]>([]);
-const requirementPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
-
-const testCaseOptions = ref<any[]>([]);
-const testCasePage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
-
 const userOptions = ref<any[]>([]);
 const userPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
 
@@ -404,28 +228,13 @@ const allBugStatuses = [
   { value: 'REJECTED', label: '已驳回' }
 ];
 
-const loadModuleOptions = async () => {
-  if (!projectStore.getProjectId) return;
-  try {
-    const res: any = await getQaModuleList(projectStore.getProjectId);
-    moduleOptions.value = res.data || [];
-  } catch (e) {
-    console.error(e);
-  }
-};
-
 const resetForm = () => {
   formData.value = {
     projectId: projectStore.getProjectId,
     severity: 'NORMAL',
-    priority: 'MEDIUM',
     status: 'NEW',
     tags: []
   };
-  requirementIds.value = [];
-  testCaseIds.value = [];
-  requirementOptions.value = [];
-  testCaseOptions.value = [];
   userOptions.value = [];
   initialFileIds.value = new Set();
   uploadedFileIds.value = new Set();
@@ -444,33 +253,10 @@ const loadDetail = async (id: number | string) => {
       }
       collectInitialFileIds();
       updateSnapshot();
-      requirementIds.value = formData.value.requirementId ? [Number(formData.value.requirementId)] : [];
-      testCaseIds.value = formData.value.testCaseId ? [Number(formData.value.testCaseId)] : [];
-      await loadRequirementOptions();
-      await loadTestCaseOptions();
       await handleSearchUser('');
-      if (formData.value.requirementId) {
-        await ensureRequirementInOptions(formData.value.requirementId);
-      }
-      if (formData.value.testCaseId) {
-        await ensureTestCaseInOptions(formData.value.testCaseId);
-      }
       if (formData.value.assigneeId) {
         ensureUserInOptions(formData.value.assigneeId, formData.value.assigneeName);
       }
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const ensureRequirementInOptions = async (id: number) => {
-  const exists = requirementOptions.value.some((r: any) => r.id === id);
-  if (exists) return;
-  try {
-    const res: any = await getRequirementDetail(id);
-    if (res.data) {
-      requirementOptions.value.unshift(res.data);
     }
   } catch (e) {
     console.error(e);
@@ -481,121 +267,6 @@ const ensureUserInOptions = (id: number, name?: string) => {
   const exists = userOptions.value.some((u: any) => u.id === id);
   if (exists) return;
   userOptions.value.unshift({id, username: name || '', nickname: name || ''});
-};
-
-const ensureTestCaseInOptions = async (id: number) => {
-  const exists = testCaseOptions.value.some((tc: any) => tc.id === id);
-  if (exists) return;
-  try {
-    const res: any = await getTestCaseDetail(id);
-    if (res.data) {
-      testCaseOptions.value.unshift(res.data);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const loadRequirementOptions = async (keyword?: string, isLoadMore = false) => {
-  if (!projectStore.getProjectId) return;
-  if (!isLoadMore) {
-    requirementPage.value.current = 1;
-    requirementPage.value.keyword = keyword || '';
-    requirementOptions.value = [];
-  }
-  try {
-    const res: any = await getRequirementList(
-        projectStore.getProjectId,
-        requirementPage.value.keyword || undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        requirementPage.value.current,
-        requirementPage.value.pageSize
-    );
-    const records = res.data?.records || [];
-    if (isLoadMore) {
-      requirementOptions.value.push(...records);
-    } else {
-      requirementOptions.value = records;
-    }
-    requirementPage.value.hasMore = records.length >= requirementPage.value.pageSize;
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const loadMoreRequirement = async () => {
-  if (!requirementPage.value.hasMore || requirementPage.value.loading) return;
-  requirementPage.value.loading = true;
-  try {
-    requirementPage.value.current++;
-    await loadRequirementOptions(undefined, true);
-  } finally {
-    requirementPage.value.loading = false;
-  }
-};
-
-const handleSearchRequirement = (keyword: string) => {
-  loadRequirementOptions(keyword);
-};
-
-const handleRequirementDropdownVisibleChange = (visible: boolean) => {
-  if (visible) {
-    loadRequirementOptions('');
-  }
-};
-
-const loadTestCaseOptions = async (keyword?: string, isLoadMore = false) => {
-  if (!projectStore.getProjectId) return;
-  if (!isLoadMore) {
-    testCasePage.value.current = 1;
-    testCasePage.value.keyword = keyword || '';
-    testCaseOptions.value = [];
-  }
-  try {
-    const res: any = await getTestCaseList(
-        projectStore.getProjectId,
-        undefined,
-        undefined,
-        testCasePage.value.keyword || undefined,
-        undefined,
-        undefined,
-        testCasePage.value.current,
-        testCasePage.value.pageSize
-    );
-    const records = res.data?.records || [];
-    if (isLoadMore) {
-      testCaseOptions.value.push(...records);
-    } else {
-      testCaseOptions.value = records;
-    }
-    testCasePage.value.hasMore = records.length >= testCasePage.value.pageSize;
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const loadMoreTestCase = async () => {
-  if (!testCasePage.value.hasMore || testCasePage.value.loading) return;
-  testCasePage.value.loading = true;
-  try {
-    testCasePage.value.current++;
-    await loadTestCaseOptions(undefined, true);
-  } finally {
-    testCasePage.value.loading = false;
-  }
-};
-
-const handleSearchTestCase = (keyword: string) => {
-  loadTestCaseOptions(keyword);
-};
-
-const handleTestCaseDropdownVisibleChange = (visible: boolean) => {
-  if (visible) {
-    loadTestCaseOptions('');
-  }
 };
 
 const handleSearchUser = async (keyword?: string, isLoadMore = false) => {
@@ -642,21 +313,34 @@ const handleUserDropdownVisibleChange = (visible: boolean) => {
 
 const save = async () => {
   if (!formData.value.title) {
-    Message.warning('请输入BUG标题');
+    Message.warning('请输入BUG名称');
+    return false;
+  }
+  if (!formData.value.severity) {
+    Message.warning('请选择严重程度');
+    return false;
+  }
+  if (!formData.value.status) {
+    Message.warning('请选择BUG状态');
+    return false;
+  }
+  if (!formData.value.assigneeId) {
+    Message.warning('请选择处理人');
     return false;
   }
   const payload = {...formData.value};
   if (payload.tags && Array.isArray(payload.tags)) {
     payload.tags = payload.tags.join(',');
   }
-  // 关联需求/用例以多选标签展示，提交时取首个值或置空
-  payload.requirementId = requirementIds.value[0] || null;
-  payload.testCaseId = testCaseIds.value[0] || null;
   try {
     const api = isEdit.value ? updateBug : saveBug;
     const res: any = await api(payload);
     if (res.code === 200) {
       Message.success('保存成功');
+      // 存储后端返回的 BUG ID
+      if (res.data) {
+        formData.value.id = res.data;
+      }
       // 计算并删除被移除的富文本图片
       const currentFileIds = new Set<string>();
       extractFileIds(formData.value.description).forEach(id => currentFileIds.add(id));
@@ -690,17 +374,7 @@ const initForm = async () => {
     isEdit.value = !!props.initialData.id;
     collectInitialFileIds();
     updateSnapshot();
-    requirementIds.value = formData.value.requirementId ? [Number(formData.value.requirementId)] : [];
-    testCaseIds.value = formData.value.testCaseId ? [Number(formData.value.testCaseId)] : [];
-    await loadRequirementOptions();
-    await loadTestCaseOptions();
     await handleSearchUser('');
-    if (formData.value.requirementId) {
-      await ensureRequirementInOptions(formData.value.requirementId);
-    }
-    if (formData.value.testCaseId) {
-      await ensureTestCaseInOptions(formData.value.testCaseId);
-    }
     if (formData.value.assigneeId) {
       ensureUserInOptions(formData.value.assigneeId, formData.value.assigneeName);
     }
@@ -710,52 +384,21 @@ const initForm = async () => {
   } else {
     isEdit.value = false;
     resetForm();
-    await loadRequirementOptions();
-    await loadTestCaseOptions();
     await handleSearchUser('');
   }
 };
 
 defineExpose({
   save,
+  formData,
   isDirty: () => isDirty.value,
+  resetForm,
 });
-
-watch(
-    () => projectStore.getProjectId,
-    (newId) => {
-      if (newId) {
-        loadModuleOptions();
-      }
-    },
-    {immediate: true}
-);
 
 watch(
     () => [props.id, props.initialData],
     () => {
       initForm();
-    },
-    {deep: true}
-);
-
-// 关联需求/用例最多只允许选中一个，保持与后端单值字段一致
-watch(
-    () => requirementIds.value,
-    (val) => {
-      if (val.length > 1) {
-        requirementIds.value = [val[val.length - 1]];
-      }
-    },
-    {deep: true}
-);
-
-watch(
-    () => testCaseIds.value,
-    (val) => {
-      if (val.length > 1) {
-        testCaseIds.value = [val[val.length - 1]];
-      }
     },
     {deep: true}
 );

@@ -108,7 +108,7 @@
             position="br"
             :auto-fit-position="true"
             :arrow-style="{ display: 'none' }"
-            :content-style="{ padding: 0, width: '360px' }"
+            :content-style="{ padding: 0, width: '480px' }"
             content-class="message-popover"
         >
           <a-tooltip :content="$t('settings.navbar.alerts')">

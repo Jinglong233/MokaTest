@@ -54,6 +54,25 @@ public enum NotifyScenario {
             "BUG评论提及",
             "${operatorName} 在 BUG ${bugCode}「${bugTitle}」的评论中@了您"),
 
+    BUG_COMMENT_REPLY(MessageEventType.BUG_COMMENT_REPLY, "bug", "评论回复",
+            roles("MENTION"),
+            vars("bugCode", "bugTitle", "operatorName", "commentContent", "severity", "projectName", "moduleName",
+                    "environment", "deadline", "foundVersion"),
+            "BUG评论回复",
+            "${operatorName} 回复了您在 BUG ${bugCode}「${bugTitle}」下的评论"),
+
+    CASE_COMMENT_MENTION(MessageEventType.CASE_COMMENT_MENTION, "testCase", "用例评论 @ 我 / 回复我",
+            roles("MENTION"),
+            vars("caseCode", "caseName", "operatorName", "commentContent", "projectName"),
+            "用例评论提及",
+            "${operatorName} 在用例 ${caseCode}「${caseName}」的评论中提到了您"),
+
+    CASE_COMMENT_REPLY(MessageEventType.CASE_COMMENT_REPLY, "testCase", "评论回复",
+            roles("MENTION"),
+            vars("caseCode", "caseName", "operatorName", "commentContent", "projectName"),
+            "用例评论回复",
+            "${operatorName} 回复了您在用例 ${caseCode}「${caseName}」下的评论"),
+
     REQ_CREATED(MessageEventType.REQ_CREATED, "requirement", "需求创建",
             roles("OWNER"),
             vars("reqCode", "reqTitle", "operatorName", "priority", "projectName", "moduleName"),
@@ -94,7 +113,49 @@ public enum NotifyScenario {
             roles("CREATOR"),
             vars("caseCode", "caseName", "operatorName", "oldStatus", "newStatus", "projectName", "moduleName"),
             "用例状态变更",
-            "用例 ${caseCode}「${caseName}」状态由 ${oldStatus} 变更为 ${newStatus}");
+            "用例 ${caseCode}「${caseName}」状态由 ${oldStatus} 变更为 ${newStatus}"),
+
+    CASE_UPDATED(MessageEventType.CASE_UPDATED, "testCase", "用例更新",
+            roles("CREATOR"),
+            vars("caseCode", "caseName", "operatorName", "projectName", "moduleName"),
+            "用例更新通知",
+            "用例 ${caseCode}「${caseName}」的信息已被 ${operatorName} 更新"),
+
+    CASE_DELETED(MessageEventType.CASE_DELETED, "testCase", "用例删除",
+            roles("CREATOR"),
+            vars("caseCode", "caseName", "operatorName", "projectName", "moduleName", "operateTime"),
+            "用例删除通知",
+            "用例 ${caseCode}「${caseName}」已被 ${operatorName} 删除"),
+
+    EXECUTION_ASSIGNED(MessageEventType.EXECUTION_ASSIGNED, "testPlan", "执行分配",
+            roles("EXECUTOR"),
+            vars("planName", "caseCode", "caseName", "operatorName", "projectName"),
+            "用例执行分配",
+            "${operatorName} 在计划「${planName}」中将用例 ${caseCode}「${caseName}」分配给您执行"),
+
+    PLAN_EXECUTION_FINISHED(MessageEventType.PLAN_EXECUTION_FINISHED, "testPlan", "自动化计划执行完成",
+            roles("CREATOR"),
+            vars("planName", "passRate", "reportId", "projectName"),
+            "自动化计划执行完成",
+            "计划「${planName}」执行完成，通过率 ${passRate}%"),
+
+    REPORT_GENERATED(MessageEventType.REPORT_GENERATED, "testPlan", "测试报告生成",
+            roles("CREATOR"),
+            vars("planName", "reportName", "operatorName", "passRate", "projectName"),
+            "测试报告已生成",
+            "计划「${planName}」的测试报告「${reportName}」已由 ${operatorName} 生成"),
+
+    REVIEW_INVITED(MessageEventType.REVIEW_INVITED, "testCase", "用例评审邀请",
+            roles("REVIEWER"),
+            vars("reviewCode", "reviewTitle", "caseCount", "operatorName", "projectName"),
+            "用例评审邀请",
+            "${operatorName} 邀请您参与评审单 ${reviewCode}「${reviewTitle}」，共 ${caseCount} 条用例待评审"),
+
+    REVIEW_COMPLETED(MessageEventType.REVIEW_COMPLETED, "testCase", "用例评审完成",
+            roles("CREATOR", "CASE_CREATOR"),
+            vars("reviewCode", "reviewTitle", "resultSummary", "operatorName", "projectName"),
+            "用例评审完成",
+            "评审单 ${reviewCode}「${reviewTitle}」已完成评审，结果：${resultSummary}");
 
     private final MessageEventType eventType;
     private final String bizType;

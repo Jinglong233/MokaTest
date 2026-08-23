@@ -15,7 +15,20 @@
       </a-space>
     </div>
 
-    <a-spin style="display: block" :loading="loading">
+    <div class="message-body">
+      <div class="message-sidebar">
+        <div class="sidebar-group" v-for="g in sidebarGroups" :key="g.key">
+          <div class="sidebar-group-title">{{ g.title }}</div>
+          <div
+            v-for="s in g.subs"
+            :key="s.key"
+            class="sidebar-item"
+            :class="{ active: activeGroup === g.key && activeSub === s.key }"
+            @click="selectCategory(g.key, s.key)"
+          >{{ s.label }}</div>
+        </div>
+      </div>
+      <a-spin style="display: block; flex: 1;" :loading="loading">
       <div v-if="!renderList.length" class="message-empty">
         <a-result status="404">
           <template #subtitle>
@@ -26,7 +39,7 @@
       <div v-else class="message-list-container" @scroll="handleScroll">
         <List
           :render-list="renderList"
-          @item-click="handleViewDetail"
+          @item-click="(items) => navigate(items[0])"
         />
         <div v-if="isLoadingMore" class="loading-more">
           <a-spin :size="16" />
@@ -36,150 +49,9 @@
           没有更多了
         </div>
       </div>
-    </a-spin>
-  </div>
-
-  <!-- 消息详情弹窗 -->
-  <a-modal
-    v-model:visible="detailVisible"
-    title="消息详情"
-    width="560px"
-    :footer="false"
-    :mask-closable="true"
-  >
-    <div v-if="currentMessage" class="message-detail">
-      <a-space direction="vertical" fill size="large">
-        <div>
-          <div class="detail-label">标题</div>
-          <div class="detail-value">{{ currentMessage.title }}</div>
-        </div>
-
-        <div>
-          <div class="detail-label">内容</div>
-          <div class="detail-value">{{ currentMessage.content }}</div>
-        </div>
-
-        <div class="detail-row">
-          <div>
-            <div class="detail-label">状态</div>
-            <a-tag v-if="!currentMessage.isRead" color="red">未读</a-tag>
-            <a-tag v-else color="gray">已读</a-tag>
-          </div>
-          <div>
-            <div class="detail-label">业务类型</div>
-            <a-tag v-if="currentMessage.bizType === 'bug'" color="red">BUG</a-tag>
-            <a-tag v-else-if="currentMessage.bizType === 'requirement'" color="arcoblue">需求</a-tag>
-            <span v-else style="color: #86909c;">-</span>
-          </div>
-          <div>
-            <div class="detail-label">接收时间</div>
-            <div class="detail-value">{{ currentMessage.createTime }}</div>
-          </div>
-        </div>
-
-        <!-- 来源快照 -->
-        <div v-if="currentMessage.snapshot" class="snapshot-card">
-          <div class="snapshot-title">
-            <icon-history />
-            <span>消息来源（发送时状态）</span>
-          </div>
-
-          <!-- BUG 快照 -->
-          <template v-if="currentMessage.bizType === 'bug'">
-            <div class="snapshot-grid">
-              <div class="snapshot-item">
-                <div class="snapshot-label">编号</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.bugCode || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">标题</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.title || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">所属团队</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.teamName || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">所属项目</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.projectName || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">严重程度</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.severity || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">优先级</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.priority || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">状态</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.status || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">环境</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.environment || '-' }}</div>
-              </div>
-            </div>
-            <div class="snapshot-item block">
-              <div class="snapshot-label">描述</div>
-              <div class="snapshot-value">{{ currentMessage.snapshot.description || '-' }}</div>
-            </div>
-          </template>
-
-          <!-- 需求快照 -->
-          <template v-else-if="currentMessage.bizType === 'requirement'">
-            <div class="snapshot-grid">
-              <div class="snapshot-item">
-                <div class="snapshot-label">编号</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.reqCode || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">标题</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.title || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">所属团队</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.teamName || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">所属项目</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.projectName || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">优先级</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.priority || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">状态</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.status || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">需求类型</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.reqType || '-' }}</div>
-              </div>
-              <div class="snapshot-item">
-                <div class="snapshot-label">来源</div>
-                <div class="snapshot-value">{{ currentMessage.snapshot.source || '-' }}</div>
-              </div>
-            </div>
-            <div class="snapshot-item block">
-              <div class="snapshot-label">描述</div>
-              <div class="snapshot-value">{{ currentMessage.snapshot.description || '-' }}</div>
-            </div>
-          </template>
-        </div>
-
-        <a-button
-          v-if="currentMessage.bizType && currentMessage.bizId"
-          type="primary"
-          long
-          @click="handleGoToSource"
-        >
-          查看来源
-        </a-button>
-      </a-space>
+      </a-spin>
     </div>
-  </a-modal>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -199,8 +71,45 @@
   const router = useRouter();
   const { loading, setLoading } = useLoading(true);
   const {navigate} = useMessageNavigator();
-  const detailVisible = ref(false);
-  const currentMessage = ref<MessageRecord | null>(null);
+
+  // 消息分类侧板栏
+  const sidebarGroups = [
+    { key: 'all', title: '全部消息', subs: [
+      { key: 'all', label: '全部' },
+      { key: 'mention', label: '@我的' },
+      { key: 'unread', label: '未读' },
+      { key: 'read', label: '已读' },
+    ]},
+    { key: 'qa', title: '质量管理', subs: [
+      { key: 'all', label: '全部' },
+      { key: 'mention', label: '@我的' },
+      { key: 'unread', label: '未读' },
+      { key: 'read', label: '已读' },
+    ]},
+    { key: 'testCase', title: '用例管理', subs: [
+      { key: 'all', label: '全部' },
+      { key: 'mention', label: '@我的' },
+      { key: 'unread', label: '未读' },
+      { key: 'read', label: '已读' },
+    ]},
+  ];
+  const activeGroup = ref('all');
+  const activeSub = ref('all');
+
+  function selectCategory(group: string, sub: string) {
+    activeGroup.value = group;
+    activeSub.value = sub;
+    fetchSourceData(true);
+  }
+
+  function subToParams(groupKey: string, subKey: string) {
+    const params: { bizType?: string; isRead?: number; isMention?: boolean } = {};
+    if (groupKey !== 'all') params.bizType = groupKey;
+    if (subKey === 'unread') params.isRead = 0;
+    else if (subKey === 'read') params.isRead = 1;
+    if (subKey === 'mention') params.isMention = true;
+    return params;
+  }
   const page = ref(1);
   const pageSize = ref(10);
   const hasMore = ref(true);
@@ -212,15 +121,6 @@
     renderList: [],
     messageList: [],
   });
-
-  const parseSnapshot = (extraData?: string): Record<string, any> | undefined => {
-    if (!extraData) return undefined;
-    try {
-      return JSON.parse(extraData);
-    } catch (e) {
-      return undefined;
-    }
-  };
 
   async function fetchSourceData(reset = false) {
     if (reset) {
@@ -235,10 +135,10 @@
       isLoadingMore.value = true;
     }
     try {
-      const res: any = await queryMessageList(page.value, pageSize.value);
+      const p = subToParams(activeGroup.value, activeSub.value);
+      const res: any = await queryMessageList(page.value, pageSize.value, p.isRead, p.bizType, p.isMention);
       const records = (res.data?.records || []).map((item: MessageRecord) => ({
         ...item,
-        snapshot: parseSnapshot(item.extraData),
       }));
       const total = res.data?.total || 0;
       if (reset) {
@@ -268,21 +168,6 @@
   const renderList = computed(() => {
     return messageData.messageList;
   });
-
-  const handleViewDetail = (items: MessageListType) => {
-    const item = Array.isArray(items) ? items[0] : items;
-    if (!item) return;
-    currentMessage.value = item;
-    detailVisible.value = true;
-    if (!item.isRead) {
-      readMessage([item]);
-    }
-  };
-
-  const handleGoToSource = async () => {
-    if (!currentMessage.value) return;
-    await navigate(currentMessage.value, {closePopover: true});
-  };
 
   const allRead = async () => {
     await markAllMessagesRead();
@@ -339,7 +224,47 @@
     padding-top: 40px;
   }
 
+  .message-body {
+    display: flex;
+    height: 360px;
+  }
+
+  .message-sidebar {
+    width: 130px;
+    border-right: 1px solid var(--color-neutral-3);
+    overflow-y: auto;
+    padding: 8px 0;
+    flex-shrink: 0;
+
+    .sidebar-group {
+      margin-bottom: 4px;
+    }
+
+    .sidebar-group-title {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--color-text-3);
+      font-weight: 500;
+    }
+
+    .sidebar-item {
+      padding: 6px 12px 6px 20px;
+      font-size: 13px;
+      color: var(--color-text-2);
+      cursor: pointer;
+      &:hover {
+        background: var(--color-fill-2);
+      }
+      &.active {
+        background: rgb(var(--primary-1));
+        color: rgb(var(--primary-6));
+        font-weight: 500;
+      }
+    }
+  }
+
   .message-list-container {
+    flex: 1;
     height: 360px;
     overflow-y: auto;
   }
@@ -378,68 +303,6 @@
   .loading-more {
     .loading-text {
       margin-left: 8px;
-    }
-  }
-
-  .message-detail {
-    padding: 16px 0;
-  }
-
-  .detail-label {
-    color: rgb(var(--gray-6));
-    font-size: 12px;
-    margin-bottom: 8px;
-  }
-
-  .detail-value {
-    color: rgb(var(--gray-8));
-    font-size: 14px;
-    word-break: break-all;
-  }
-
-  .detail-row {
-    display: flex;
-    gap: 24px;
-  }
-
-  .snapshot-card {
-    background-color: var(--color-fill-2);
-    border-radius: 4px;
-    padding: 16px;
-
-    .snapshot-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--color-text-1);
-      margin-bottom: 12px;
-    }
-
-    .snapshot-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .snapshot-item {
-      &.block {
-        grid-column: span 2;
-        margin-top: 4px;
-      }
-
-      .snapshot-label {
-        color: rgb(var(--gray-6));
-        font-size: 12px;
-        margin-bottom: 4px;
-      }
-
-      .snapshot-value {
-        color: rgb(var(--gray-8));
-        font-size: 13px;
-        word-break: break-all;
-      }
     }
   }
 

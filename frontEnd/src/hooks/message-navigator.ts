@@ -3,8 +3,7 @@ import {Message} from '@arco-design/web-vue';
 import {useWorkspaceStore, useProjectStore, useTeamStore} from '@/store';
 import usePermission from '@/hooks/permission';
 import useDataStore from '@/store/modules/nav';
-import {MessageRecord} from '@/api/message';
-import {getBugDetail, getRequirementDetail} from '@/api/MyApi/qa';
+import {MessageRecord, validateMessageSource} from '@/api/message';
 
 /**
  * 业务类型到路由名称的映射
@@ -12,6 +11,7 @@ import {getBugDetail, getRequirementDetail} from '@/api/MyApi/qa';
 const BIZ_ROUTE_MAP: Record<string, string> = {
   bug: 'Bug',
   requirement: 'Requirement',
+  testCase: 'TestCase',
 };
 
 /**
@@ -20,6 +20,7 @@ const BIZ_ROUTE_MAP: Record<string, string> = {
 const BIZ_PERMISSION_MAP: Record<string, string> = {
   bug: 'qa:bug:view',
   requirement: 'qa:requirement:view',
+  testCase: 'qa:testcase:view',
 };
 
 /**
@@ -40,18 +41,27 @@ export function useMessageNavigator() {
   const permission = usePermission();
 
   /**
-   * 校验消息来源资源是否仍然存在
+   * 校验消息来源资源是否仍然存在（BUG/用例 + 评论）
    */
-  async function validateSourceExists(message: MessageRecord): Promise<boolean> {
+  async function validateSourceExists(message: MessageRecord): Promise<{ valid: boolean; reason?: string }> {
     const {bizType, bizId} = message;
-    if (!bizType || !bizId) return false;
+    if (!bizType || !bizId) return {valid: false, reason: '消息缺少业务信息'};
+
+    // 解析评论ID
+    let commentId: number | undefined;
+    if (message.extraData) {
+      try {
+        const extra = JSON.parse(message.extraData);
+        commentId = extra.commentId;
+      } catch (e) { /* ignore */ }
+    }
+
     try {
-      const detailRes: any = bizType === 'bug'
-        ? await getBugDetail(bizId)
-        : await getRequirementDetail(bizId);
-      return detailRes.code === 200 && detailRes.data;
+      const res: any = await validateMessageSource(bizType, bizId, commentId);
+      if (res.code === 200) return {valid: true};
+      return {valid: false, reason: res.msg || '该来源已被删除或不存在'};
     } catch (e) {
-      return false;
+      return {valid: false, reason: '校验失败'};
     }
   }
 
@@ -71,10 +81,10 @@ export function useMessageNavigator() {
       return;
     }
 
-    // 2. 资源存在性校验
-    const exists = await validateSourceExists(message);
-    if (!exists) {
-      Message.warning('该来源已被删除或不存在，仅展示消息快照');
+    // 2. 资源存在性校验（BUG/用例 + 评论）
+    const validation = await validateSourceExists(message);
+    if (!validation.valid) {
+      Message.warning(validation.reason || '该来源已被删除或不存在，仅展示消息快照');
       return;
     }
 
@@ -84,9 +94,23 @@ export function useMessageNavigator() {
       Message.warning('暂不支持该类型消息的跳转');
       return;
     }
+    // 解析评论ID（后端在 extra_data JSON 中存 commentId）
+    let commentId: number | undefined;
+    if (message.extraData) {
+      try {
+        const extra = JSON.parse(message.extraData);
+        commentId = extra.commentId;
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+    
     const targetRoute = {
       name: routeName,
-      query: {highlight: String(bizId)},
+      query: {
+        highlight: String(bizId),
+        ...(commentId ? { detailTab: 'comments', commentId: String(commentId) } : {}),
+      },
     };
 
     // 4. 工作区上下文处理

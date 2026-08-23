@@ -49,10 +49,28 @@ public class TestCase {
 
     private Integer expectDuration;
 
+    /** 同级（同模块内）排序值，脑图拖拽/新建顺序持久化用 */
+    private Integer sort;
+
     private Integer requirementId;
+
+    /** 关联需求ID列表（逗号分隔，支持多需求关联；requirement_id 保持为列表第一个，兼容旧逻辑） */
+    private String requirementIds;
 
     @TableField(exist = false)
     private List<Integer> setIds;
+
+    /** 创建人名称（非表字段，详情/列表关联查询填充） */
+    @TableField(exist = false)
+    private String createUserName;
+
+    /** 更新人名称（非表字段，详情/列表关联查询填充） */
+    @TableField(exist = false)
+    private String updateUserName;
+
+    /** 所属模块名称（非表字段，详情/列表关联查询填充） */
+    @TableField(exist = false)
+    private String moduleName;
 
     private Integer createUserId;
 

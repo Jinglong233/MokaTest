@@ -25,6 +25,11 @@ public class QaModule {
 
     private String moduleName;
 
+    /**
+     * 模块类型：CASE-用例模块 / REVIEW-评审模块
+     */
+    private String moduleType;
+
     private Integer sort;
 
     private Date createTime;

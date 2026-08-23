@@ -5,23 +5,16 @@
         <!-- 左侧主栏：基本信息 -->
         <a-col :xs="24" :lg="16" class="main-col">
           <a-card class="main-card">
-            <div class="section-header">
-              <div class="section-icon" style="background: #e8f3ff; color: #165dff;">
-                <IconEdit />
-              </div>
-              <span class="section-title">基本信息</span>
-            </div>
-
             <a-form-item
               field="title"
-              label="需求标题"
-              :rules="[{ required: true, message: '请输入需求标题' }]"
+              label="需求名称"
+              :rules="[{ required: true, message: '请输入需求名称' }]"
               :validate-trigger="['change', 'blur']"
               class="title-form-item"
             >
               <a-input
                 v-model="formData.title"
-                placeholder="请输入需求标题"
+                placeholder="请输入需求名称"
                 size="large"
                 class="title-input"
                 allow-clear
@@ -32,7 +25,7 @@
               <RichEditor
                 v-model="formData.description"
                 placeholder="请输入需求描述，支持图文混排"
-                :height="editorHeight"
+                height="100%"
                 @uploaded="handleUploadedFile"
               />
             </a-form-item>
@@ -236,9 +229,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconEdit } from '@arco-design/web-vue/es/icon';
 import RichEditor from '@/components/rich-editor/index.vue';
 import {useProjectStore} from '@/store';
 import useProjectConfigStore from '@/store/modules/projectConfig';
@@ -265,16 +257,7 @@ const projectStore = useProjectStore();
 const projectConfigStore = useProjectConfigStore();
 const fieldVis = (key: string) => projectConfigStore.isFieldVisible('requirement', key);
 
-// 编辑器高度跟随浏览器自适应：
-// - 宽屏（a-col lg ≥1200px，左右双栏）：100%，由 flex 布局填满弹窗剩余空间
-// - 窄屏（单栏堆叠）：42vh，随窗口高度变化，避免 flex 链断裂后高度坍缩
-const windowWidth = ref(window.innerWidth);
-const handleWindowResize = () => {
-  windowWidth.value = window.innerWidth;
-};
-const editorHeight = computed(() => (windowWidth.value >= 1200 ? '100%' : '42vh'));
-onMounted(() => window.addEventListener('resize', handleWindowResize));
-onBeforeUnmount(() => window.removeEventListener('resize', handleWindowResize));
+
 
 const VNodeRenderer = {
   props: ['vnodes'],
@@ -674,6 +657,7 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
 
   // 让 form-item 内部各层包装节点全部参与 flex 布局，
   // 使富文本编辑器始终填满剩余空间而不是按视口高度硬算
@@ -690,30 +674,8 @@ onMounted(() => {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
   }
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.section-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-1);
 }
 
 .title-form-item {
@@ -794,15 +756,9 @@ onMounted(() => {
   }
 }
 
-// 窄屏单栏堆叠（与 a-col 的 lg 断点 1200px 对齐）：
-// 取消 100% 高度接力，改由内容自然撑开，弹窗内容区整体滚动
+// 窄屏单栏堆叠：主栏保持 100% 高度接力（编辑器充满），侧栏自然高度
 @media (max-width: 1199px) {
-  .requirement-form,
-  .requirement-form > :deep(.arco-form),
-  .form-row,
-  .main-col,
-  .side-col,
-  .main-card {
+  .side-col {
     height: auto;
   }
 }

@@ -49,6 +49,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     private final com.mokatest.platform.demos.qa.service.BugOperationLogService bugOperationLogService;
     private final com.mokatest.platform.demos.qa.mapper.BugCommentMapper bugCommentMapper;
     private final com.mokatest.platform.demos.qa.mapper.BugOperationLogMapper bugOperationLogMapper;
+    private final com.mokatest.platform.demos.qa.mapper.BugCaseMapper bugCaseMapper;
     private final MessageService messageService;
     private final com.mokatest.platform.demos.qa.message.service.impl.NotifyDispatchService notifyDispatchService;
 
@@ -57,7 +58,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     ));
 
     @Override
-    public SaResult listByProject(Integer projectId, String keyword, String status, String severity, String priority, Integer requirementId, Integer testCaseId, Integer moduleId, String environment, String reproduceRate, String closeReason, Integer page, Integer pageSize) {
+    public SaResult listByProject(Integer projectId, String keyword, String status, String severity, String priority, Integer requirementId, Integer testCaseId, Integer moduleId, String environment, String reproduceRate, String closeReason, Integer requirementScopeId, Integer page, Integer pageSize) {
         if (projectId == null) {
             return SaResult.error("缺少项目ID");
         }
@@ -75,11 +76,46 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (priority != null && !priority.isEmpty()) {
             wrapper.eq("priority", priority);
         }
-        if (requirementId != null) {
+        if (requirementScopeId != null) {
+            // 需求合并口径：requirement_id = X 的 BUG ∪ 需求下用例关联的 BUG
+            // 用例归属需求按 requirement_id（主）+ requirement_ids（多需求逗号串）双口径
+            QueryWrapper<TestCase> caseW = new QueryWrapper<>();
+            caseW.eq("project_id", projectId)
+                    .and(w -> w.eq("requirement_id", requirementScopeId)
+                            .or().apply("FIND_IN_SET({0}, requirement_ids)", requirementScopeId));
+            List<Integer> caseIds = testCaseMapper.selectList(caseW).stream()
+                    .map(TestCase::getId)
+                    .collect(Collectors.toList());
+            List<Integer> linkedBugIds = new ArrayList<>();
+            if (!caseIds.isEmpty()) {
+                QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcW = new QueryWrapper<>();
+                bcW.in("test_case_id", caseIds);
+                linkedBugIds = bugCaseMapper.selectList(bcW).stream()
+                        .map(com.mokatest.platform.demos.qa.domain.BugCase::getBugId)
+                        .collect(Collectors.toList());
+            }
+            final List<Integer> finalLinkedBugIds = linkedBugIds;
+            wrapper.and(w -> {
+                w.eq("requirement_id", requirementScopeId);
+                if (!finalLinkedBugIds.isEmpty()) {
+                    w.or().in("id", finalLinkedBugIds);
+                }
+            });
+        } else if (requirementId != null) {
             wrapper.eq("requirement_id", requirementId);
         }
         if (testCaseId != null) {
-            wrapper.eq("test_case_id", testCaseId);
+            // 只查 bug_case 关联表
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcWrapper = new QueryWrapper<>();
+            bcWrapper.eq("test_case_id", testCaseId);
+            List<Integer> linkedBugIds = bugCaseMapper.selectList(bcWrapper).stream()
+                    .map(com.mokatest.platform.demos.qa.domain.BugCase::getBugId)
+                    .collect(java.util.stream.Collectors.toList());
+            if (linkedBugIds.isEmpty()) {
+                wrapper.eq("id", -1);
+            } else {
+                wrapper.in("id", linkedBugIds);
+            }
         }
         if (moduleId != null) {
             wrapper.eq("module_id", moduleId);
@@ -124,18 +160,6 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             List<Requirement> reqs = requirementMapper.selectBatchIds(reqIds);
             reqMap = reqs.stream()
                     .collect(Collectors.toMap(Requirement::getId, Requirement::getTitle, (a, b) -> a));
-        }
-
-        // 查询用例名称
-        Set<Integer> caseIds = records.stream()
-                .map(Bug::getTestCaseId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Integer, String> caseMap = new HashMap<>();
-        if (!caseIds.isEmpty()) {
-            List<TestCase> cases = testCaseMapper.selectBatchIds(caseIds);
-            caseMap = cases.stream()
-                    .collect(Collectors.toMap(TestCase::getId, TestCase::getCaseName, (a, b) -> a));
         }
 
         // 查询模块名称
@@ -194,8 +218,6 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             vo.setProjectId(bug.getProjectId());
             vo.setRequirementId(bug.getRequirementId());
             vo.setRequirementTitle(reqMap.getOrDefault(bug.getRequirementId(), ""));
-            vo.setTestCaseId(bug.getTestCaseId());
-            vo.setCaseName(caseMap.getOrDefault(bug.getTestCaseId(), ""));
             vo.setReporterId(bug.getReporterId());
             vo.setReporterName(userMap.getOrDefault(bug.getReporterId(), ""));
             vo.setAssigneeId(bug.getAssigneeId());
@@ -214,6 +236,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             vo.setCreateTime(bug.getCreateTime());
             vo.setUpdateTime(bug.getUpdateTime());
             vo.setPlanName(planNameMap.getOrDefault(bug.getPlanCaseId(), ""));
+            vo.setPlanCaseId(bug.getPlanCaseId());
             voList.add(vo);
         }
 
@@ -237,8 +260,9 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             return SaResult.error("BUG标题不能为空");
         }
 
-        if (bug.getBugCode() == null || bug.getBugCode().trim().isEmpty()) {
-            bug.setBugCode(generateBugCode());
+        if (bug.getId() == null && (bug.getBugCode() == null || bug.getBugCode().trim().isEmpty())) {
+            // 先占一个临时唯一值，等插入拿到自增 id 后再改成 BUG-{id}
+            bug.setBugCode("TMP-" + System.nanoTime());
         }
         if (bug.getSeverity() == null) {
             bug.setSeverity("NORMAL");
@@ -266,22 +290,25 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         bug.setUpdateTime(new Date());
 
         boolean success = saveOrUpdate(bug);
-
-        // 记录操作日志
-        if (success && oldBug != null) {
+        if (!success) {
+            return SaResult.error("保存失败");
+        }
+        // 新增BUG时，把临时编号改为短格式 BUG-{id}
+        if (bug.getBugCode() != null && bug.getBugCode().startsWith("TMP-")) {
+            bug.setBugCode("BUG-" + bug.getId());
+            updateById(bug);
+        }
+        if (oldBug != null) {
             logBugChanges(oldBug, bug, loginId);
         }
 
         // 发送指派通知
-        if (success) {
-            sendBugAssignedMessage(bug, oldBug, loginId);
-            // 编辑保存时发送更新通知（与指派场景独立开关，指派人变更时两个场景都可能触发）
-            if (oldBug != null) {
-                sendBugUpdatedMessage(bug, loginId);
-            }
+        sendBugAssignedMessage(bug, oldBug, loginId);
+        if (oldBug != null) {
+            sendBugUpdatedMessage(bug, loginId);
         }
 
-        return success ? SaResult.ok().setData(bug.getId()) : SaResult.error("保存失败");
+        return SaResult.ok().setData(bug.getId());
     }
 
     /**
@@ -367,7 +394,10 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         logWrapper.eq("bug_id", id);
         bugOperationLogMapper.delete(logWrapper);
 
-        // 3. 逻辑删除 BUG 本身
+        // 3. 逻辑删除 BUG 本身（先改 bug_code 避免唯一约束冲突）
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bug> codeWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        codeWrapper.eq("id", id).set("bug_code", bug.getBugCode() + "-DEL-" + id);
+        baseMapper.update(null, codeWrapper);
         bug.setDeletedAt(new Date());
         boolean success = baseMapper.deleteById(bug) > 0;
         return success ? SaResult.ok("删除成功") : SaResult.error("删除失败");
@@ -400,10 +430,13 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         logWrapper.in("bug_id", ids);
         bugOperationLogMapper.delete(logWrapper);
 
-        // 3. 批量逻辑删除 BUG（逐条设置 deleted_at）
+        // 3. 批量逻辑删除 BUG（逐条改 bug_code 避免唯一约束冲突）
         Date now = new Date();
         for (Bug bug : bugs) {
             if (bug != null) {
+                com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bug> codeWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+                codeWrapper.eq("id", bug.getId()).set("bug_code", bug.getBugCode() + "-DEL-" + bug.getId());
+                baseMapper.update(null, codeWrapper);
                 bug.setDeletedAt(now);
                 baseMapper.deleteById(bug);
             }
@@ -588,7 +621,6 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         snapshot.put("closeReason", bug.getCloseReason());
         snapshot.put("moduleId", bug.getModuleId());
         snapshot.put("requirementId", bug.getRequirementId());
-        snapshot.put("testCaseId", bug.getTestCaseId());
         snapshot.put("reporterId", bug.getReporterId());
         snapshot.put("assigneeId", bug.getAssigneeId());
         snapshot.put("tags", bug.getTags());
@@ -710,6 +742,106 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SaResult generateRegressionCase(Integer bugId, Integer folderId) {
+        if (bugId == null) {
+            return SaResult.error("缺少BUG ID");
+        }
+        Bug bug = getById(bugId);
+        if (bug == null) {
+            return SaResult.error("BUG不存在");
+        }
+        // 仅已修复/已验证/已关闭的 BUG 允许沉淀回归用例
+        if (!Arrays.asList("FIXED", "VERIFIED", "CLOSED").contains(bug.getStatus())) {
+            return SaResult.error("仅已修复/已验证/已关闭的BUG才能沉淀回归用例");
+        }
+        if (bug.getRegressionCaseId() != null) {
+            return SaResult.error("该BUG已沉淀回归用例（用例ID: " + bug.getRegressionCaseId() + "）");
+        }
+        Integer loginId = StpUtil.getLoginIdAsInt();
+        Date now = new Date();
+
+        TestCase testCase = new TestCase();
+        testCase.setProjectId(bug.getProjectId());
+        testCase.setCaseName("[回归] " + bug.getTitle());
+        // 前置条件：环境描述
+        String envDesc = bug.getEnvironment() == null ? "" :
+                Map.of("TEST", "测试环境", "STAGING", "预发环境", "PROD", "生产环境")
+                        .getOrDefault(bug.getEnvironment(), bug.getEnvironment());
+        testCase.setPreCondition(envDesc.isEmpty() ? null : "环境：" + envDesc
+                + (bug.getFoundVersion() != null ? "；发现版本：" + bug.getFoundVersion() : ""));
+        // 测试步骤：若 BUG 已关联用例，先复制该用例步骤作为基础，再叠加重现步骤
+        List<TestCase.TestStepItem> steps = new ArrayList<>();
+        // 从 bug_case 关联表查第一条关联用例
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcStepW = new QueryWrapper<>();
+        bcStepW.eq("bug_id", bug.getId()).last("LIMIT 1");
+        com.mokatest.platform.demos.qa.domain.BugCase linkedBc = bugCaseMapper.selectOne(bcStepW);
+        if (linkedBc != null) {
+            TestCase baseCase = testCaseMapper.selectById(linkedBc.getTestCaseId());
+            if (baseCase != null && baseCase.getTestSteps() != null) {
+                steps.addAll(baseCase.getTestSteps());
+            }
+        }
+        if (bug.getReproduceSteps() != null && !bug.getReproduceSteps().isBlank()) {
+            for (String line : bug.getReproduceSteps().split("\\R")) {
+                String stepText = line.trim();
+                if (stepText.isEmpty()) continue;
+                TestCase.TestStepItem item = new TestCase.TestStepItem();
+                item.setStep(stepText);
+                item.setExpected("功能正常，不再复现原BUG");
+                steps.add(item);
+            }
+        }
+        if (steps.isEmpty()) {
+            TestCase.TestStepItem item = new TestCase.TestStepItem();
+            item.setStep("按原BUG场景执行回归验证");
+            item.setExpected("功能正常，不再复现原BUG");
+            steps.add(item);
+        }
+        testCase.setTestSteps(steps);
+        // 严重程度 → 优先级映射：FATAL/SERIOUS→P0, NORMAL→P1, TIPS→P2
+        String priority = switch (bug.getSeverity() == null ? "NORMAL" : bug.getSeverity()) {
+            case "FATAL", "SERIOUS" -> "P0";
+            case "TIPS" -> "P2";
+            default -> "P1";
+        };
+        testCase.setPriority(priority);
+        testCase.setCaseType("FUNCTION");
+        testCase.setStatus("DRAFT");
+        testCase.setModuleId(bug.getModuleId());
+        testCase.setRequirementId(bug.getRequirementId());
+        // 标签追加「回归」
+        String tags = bug.getTags() == null || bug.getTags().isBlank() ? "回归"
+                : (bug.getTags().contains("回归") ? bug.getTags() : bug.getTags() + ",回归");
+        testCase.setTags(tags);
+        testCase.setCaseCode("TMP-" + System.nanoTime());
+        testCase.setCreateUserId(loginId);
+        testCase.setUpdateUserId(loginId);
+        testCase.setCreateTime(now);
+        testCase.setUpdateTime(now);
+        testCaseMapper.insert(testCase);
+        // 临时编号改为短格式 CASE-{id}
+        testCase.setCaseCode("CASE-" + testCase.getId());
+        testCaseMapper.updateById(testCase);
+        // 指定文件夹时设置 folder_id（TestCase 实体未映射该字段，直接用 UpdateWrapper 写列）
+        if (folderId != null && folderId > 0) {
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<TestCase> folderWrapper =
+                    new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            folderWrapper.eq("id", testCase.getId()).set("folder_id", folderId);
+            testCaseMapper.update(null, folderWrapper);
+        }
+        // 回填 BUG 的回归用例ID
+        Bug update = new Bug();
+        update.setId(bug.getId());
+        update.setRegressionCaseId(testCase.getId());
+        updateById(update);
+        // 写 BUG 操作日志
+        bugOperationLogService.logOperation(bugId, "regressionCaseId", null,
+                testCase.getCaseCode(), loginId);
+        return SaResult.ok("回归用例已生成").setData(testCase.getId());
+    }
+
+    @Override
     public SaResult stats(Integer projectId) {
         if (projectId == null) {
             return SaResult.error("缺少项目ID");
@@ -721,5 +853,111 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         map.put("serious", baseMapper.selectCount(new QueryWrapper<Bug>().eq("project_id", projectId).eq("severity", "SERIOUS")));
         map.put("fatal", baseMapper.selectCount(new QueryWrapper<Bug>().eq("project_id", projectId).eq("severity", "FATAL")));
         return SaResult.data(map);
+    }
+
+    @Override
+    public SaResult bindTestCase(Integer bugId, Integer testCaseId) {
+        if (bugId == null) {
+            return SaResult.error("缺少BUG ID");
+        }
+        if (testCaseId == null) {
+            // 解绑：删除 bug_case 中该 BUG 的所有关联
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> delW = new QueryWrapper<>();
+            delW.eq("bug_id", bugId);
+            boolean success = bugCaseMapper.delete(delW) > 0;
+            return success ? SaResult.ok("已解绑用例") : SaResult.ok("无关联记录");
+        }
+        // 关联：插入 bug_case（避免重复）
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> existW = new QueryWrapper<>();
+        existW.eq("bug_id", bugId).eq("test_case_id", testCaseId);
+        if (bugCaseMapper.selectCount(existW) == 0) {
+            bugCaseMapper.insert(new com.mokatest.platform.demos.qa.domain.BugCase(null, bugId, testCaseId));
+        }
+        return SaResult.ok("已关联用例");
+    }
+
+    @Override
+    @Transactional
+    public SaResult bindCases(Integer bugId, List<Integer> testCaseIds) {
+        if (bugId == null) return SaResult.error("缺少BUG ID");
+        if (testCaseIds == null || testCaseIds.isEmpty()) return SaResult.error("未选择用例");
+        // 先查出已有的关联，避免重复插入
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> existWrapper = new QueryWrapper<>();
+        existWrapper.eq("bug_id", bugId);
+        Set<Integer> existingIds = bugCaseMapper.selectList(existWrapper).stream()
+                .map(com.mokatest.platform.demos.qa.domain.BugCase::getTestCaseId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<com.mokatest.platform.demos.qa.domain.BugCase> toInsert = new ArrayList<>();
+        for (Integer tcId : testCaseIds) {
+            if (!existingIds.contains(tcId)) {
+                toInsert.add(new com.mokatest.platform.demos.qa.domain.BugCase(null, bugId, tcId));
+            }
+        }
+        if (!toInsert.isEmpty()) {
+            for (com.mokatest.platform.demos.qa.domain.BugCase bc : toInsert) {
+                bugCaseMapper.insert(bc);
+            }
+        }
+        return SaResult.ok("已关联 " + toInsert.size() + " 条用例");
+    }
+
+    @Override
+    @Transactional
+    public SaResult unbindCase(Integer bugId, Integer testCaseId) {
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> wrapper = new QueryWrapper<>();
+        wrapper.eq("bug_id", bugId).eq("test_case_id", testCaseId);
+        bugCaseMapper.delete(wrapper);
+        return SaResult.ok("已解绑");
+    }
+
+    @Override
+    @Transactional
+    public SaResult bindPlanCase(Integer bugId, Integer planCaseId) {
+        if (bugId == null) return SaResult.error("缺少BUG ID");
+        Bug bug = getById(bugId);
+        if (bug == null) return SaResult.error("BUG不存在");
+        if (planCaseId != null) {
+            // 数据边界：计划用例必须存在且与 BUG 同项目，禁止跨项目绑定
+            com.mokatest.platform.demos.qa.domain.TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
+            if (pc == null) return SaResult.error("计划用例不存在");
+            com.mokatest.platform.demos.qa.domain.TestPlan plan = testPlanMapper.selectById(pc.getPlanId());
+            if (plan == null || !plan.getProjectId().equals(bug.getProjectId())) {
+                return SaResult.error("计划用例与BUG不属于同一项目");
+            }
+        }
+        // planCaseId 允许为 null（解绑），必须用 UpdateWrapper.set 才能生成 SET NULL
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bug> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        wrapper.eq("id", bugId).set("plan_case_id", planCaseId);
+        baseMapper.update(null, wrapper);
+        return SaResult.ok(planCaseId == null ? "已取消关联" : "已关联");
+    }
+
+    @Override
+    public SaResult listPlanCaseBugs(Integer testCaseId) {
+        if (testCaseId == null) return SaResult.error("缺少用例ID");
+        // test_case_id -> test_plan_case.id -> bug.plan_case_id
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.TestPlanCase> pcW = new QueryWrapper<>();
+        pcW.eq("test_case_id", testCaseId);
+        List<Integer> pcIds = testPlanCaseMapper.selectList(pcW).stream()
+                .map(com.mokatest.platform.demos.qa.domain.TestPlanCase::getId)
+                .collect(java.util.stream.Collectors.toList());
+        if (pcIds.isEmpty()) return SaResult.ok().setData(Collections.emptyList());
+        QueryWrapper<Bug> w = new QueryWrapper<>();
+        w.in("plan_case_id", pcIds).orderByDesc("create_time");
+        return SaResult.ok().setData(baseMapper.selectList(w));
+    }
+
+    @Override
+    public SaResult listLinkedCases(Integer bugId) {
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> wrapper = new QueryWrapper<>();
+        wrapper.eq("bug_id", bugId);
+        List<com.mokatest.platform.demos.qa.domain.BugCase> links = bugCaseMapper.selectList(wrapper);
+        if (links.isEmpty()) return SaResult.ok().setData(Collections.emptyList());
+        List<Integer> caseIds = links.stream()
+                .map(com.mokatest.platform.demos.qa.domain.BugCase::getTestCaseId)
+                .collect(java.util.stream.Collectors.toList());
+        List<TestCase> cases = testCaseMapper.selectBatchIds(caseIds);
+        return SaResult.ok().setData(cases);
     }
 }

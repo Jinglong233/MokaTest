@@ -45,6 +45,7 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
     private final TeamMapper teamMapper;
     private final com.mokatest.platform.demos.qa.mapper.QaModuleMapper qaModuleMapper;
     private final com.mokatest.platform.demos.qa.mapper.BugMapper bugMapper;
+    private final com.mokatest.platform.demos.qa.mapper.BugCaseMapper bugCaseMapper;
     private final MessageService messageService;
     private final com.mokatest.platform.demos.qa.message.service.impl.NotifyDispatchService notifyDispatchService;
 
@@ -116,20 +117,68 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
                     .collect(Collectors.groupingBy(TestCase::getRequirementId, Collectors.counting()));
         }
 
-        // 查询关联BUG数 & 未关闭BUG数
+        // 查询关联BUG数 & 未关闭BUG数（合并口径：直接挂需求 ∪ 需求下用例关联，与需求BUG tab列表一致）
         Map<Integer, Long> bugCountMap = new HashMap<>();
         Map<Integer, Long> openBugCountMap = new HashMap<>();
         if (!reqIds.isEmpty()) {
-            QueryWrapper<com.mokatest.platform.demos.qa.domain.Bug> bugWrapper = new QueryWrapper<>();
-            bugWrapper.in("requirement_id", reqIds);
-            List<com.mokatest.platform.demos.qa.domain.Bug> bugs = bugMapper.selectList(bugWrapper);
-            for (com.mokatest.platform.demos.qa.domain.Bug bug : bugs) {
-                Integer reqId = bug.getRequirementId();
-                bugCountMap.merge(reqId, 1L, Long::sum);
-                if (!"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus())) {
-                    openBugCountMap.merge(reqId, 1L, Long::sum);
+            // 需求下用例（requirement_id 主字段 + requirement_ids 多需求逗号串双口径）
+            QueryWrapper<TestCase> tcW = new QueryWrapper<>();
+            tcW.in("requirement_id", reqIds);
+            for (Integer rid : reqIds) {
+                tcW.or().apply("FIND_IN_SET({0}, requirement_ids)", rid);
+            }
+            List<TestCase> scopedCases = testCaseMapper.selectList(tcW);
+            // caseId → 归属需求集合
+            Map<Integer, Set<Integer>> caseReqMap = new HashMap<>();
+            for (TestCase tc : scopedCases) {
+                Set<Integer> owners = new HashSet<>();
+                if (tc.getRequirementId() != null) owners.add(tc.getRequirementId());
+                if (tc.getRequirementIds() != null && !tc.getRequirementIds().isEmpty()) {
+                    for (String s : tc.getRequirementIds().split(",")) {
+                        try {
+                            owners.add(Integer.parseInt(s.trim()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+                owners.retainAll(reqIds);
+                if (!owners.isEmpty()) caseReqMap.put(tc.getId(), owners);
+            }
+            List<Integer> scopedCaseIds = new ArrayList<>(caseReqMap.keySet());
+            // bug_case 多对多关联：bugId → 用例集合
+            Map<Integer, Set<Integer>> bugCaseMap = new HashMap<>();
+            if (!scopedCaseIds.isEmpty()) {
+                QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcW = new QueryWrapper<>();
+                bcW.in("test_case_id", scopedCaseIds);
+                for (com.mokatest.platform.demos.qa.domain.BugCase bc : bugCaseMapper.selectList(bcW)) {
+                    bugCaseMap.computeIfAbsent(bc.getBugId(), k -> new HashSet<>()).add(bc.getTestCaseId());
                 }
             }
+            // 候选 BUG 全集（bug↔用例只走 bug_case 关联表，bug 表无 test_case_id 列）
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.Bug> bugWrapper = new QueryWrapper<>();
+            bugWrapper.and(w -> {
+                w.in("requirement_id", reqIds);
+                if (!bugCaseMap.isEmpty()) w.or().in("id", bugCaseMap.keySet());
+            });
+            List<com.mokatest.platform.demos.qa.domain.Bug> bugs = bugMapper.selectList(bugWrapper);
+            // 按需求归集（去重）
+            Map<Integer, Set<Integer>> reqBugIds = new HashMap<>();
+            Map<Integer, Set<Integer>> reqOpenBugIds = new HashMap<>();
+            for (com.mokatest.platform.demos.qa.domain.Bug bug : bugs) {
+                Set<Integer> owners = new HashSet<>();
+                if (bug.getRequirementId() != null) owners.add(bug.getRequirementId());
+                for (Integer cid : bugCaseMap.getOrDefault(bug.getId(), Collections.emptySet())) {
+                    owners.addAll(caseReqMap.getOrDefault(cid, Collections.emptySet()));
+                }
+                owners.retainAll(reqIds);
+                boolean open = !"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus());
+                for (Integer rid : owners) {
+                    reqBugIds.computeIfAbsent(rid, k -> new HashSet<>()).add(bug.getId());
+                    if (open) reqOpenBugIds.computeIfAbsent(rid, k -> new HashSet<>()).add(bug.getId());
+                }
+            }
+            reqBugIds.forEach((rid, set) -> bugCountMap.put(rid, (long) set.size()));
+            reqOpenBugIds.forEach((rid, set) -> openBugCountMap.put(rid, (long) set.size()));
         }
 
         // 组装数据
@@ -183,9 +232,9 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
             return SaResult.error("需求标题不能为空");
         }
 
-        // 生成编号
-        if (requirement.getReqCode() == null || requirement.getReqCode().trim().isEmpty()) {
-            requirement.setReqCode(generateReqCode());
+        // 生成编号（与 BUG 同规则：先占位，插入后按自增 id 改为 REQ-{id}）
+        if (requirement.getId() == null && (requirement.getReqCode() == null || requirement.getReqCode().trim().isEmpty())) {
+            requirement.setReqCode("TMP-" + System.nanoTime());
         }
 
         // 默认值
@@ -213,6 +262,12 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         requirement.setUpdateTime(new Date());
 
         boolean success = saveOrUpdate(requirement);
+
+        // 新增需求：临时编号改为短格式 REQ-{id}（与 BUG-{id} 同规则）
+        if (success && requirement.getReqCode() != null && requirement.getReqCode().startsWith("TMP-")) {
+            requirement.setReqCode("REQ-" + requirement.getId());
+            updateById(requirement);
+        }
 
         // 发送指派通知
         if (success) {
@@ -350,8 +405,75 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
 
     @Override
     @Transactional
-    public SaResult batchDeleteRequirement(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
+    public SaResult unbindCase(Integer requirementId, Integer caseId) {
+        if (requirementId == null || caseId == null) {
+            return SaResult.error("缺少参数");
+        }
+        TestCase tc = testCaseMapper.selectById(caseId);
+        if (tc == null) {
+            return SaResult.error("用例不存在");
+        }
+        UpdateWrapper<TestCase> uw = new UpdateWrapper<>();
+        uw.eq("id", caseId);
+        boolean changed = false;
+        if (java.util.Objects.equals(tc.getRequirementId(), requirementId)) {
+            // MP update 忽略 null 字段，置空必须走 UpdateWrapper.set
+            uw.set("requirement_id", null);
+            changed = true;
+        }
+        String csv = tc.getRequirementIds();
+        if (csv != null && !csv.isEmpty()) {
+            String target = String.valueOf(requirementId);
+            String newCsv = Arrays.stream(csv.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty() && !s.equals(target))
+                    .collect(Collectors.joining(","));
+            if (!newCsv.equals(csv)) {
+                uw.set("requirement_ids", newCsv);
+                changed = true;
+            }
+        }
+        if (changed) {
+            testCaseMapper.update(null, uw);
+        }
+        return SaResult.ok("已取消关联");
+    }
+
+    @Override
+    @Transactional
+    public SaResult unbindBug(Integer requirementId, Integer bugId) {
+        if (requirementId == null || bugId == null) {
+            return SaResult.error("缺少参数");
+        }
+        com.mokatest.platform.demos.qa.domain.Bug bug = bugMapper.selectById(bugId);
+        if (bug == null) {
+            return SaResult.error("BUG不存在");
+        }
+        // 1. 直接关联：清 requirement_id
+        if (java.util.Objects.equals(bug.getRequirementId(), requirementId)) {
+            UpdateWrapper<com.mokatest.platform.demos.qa.domain.Bug> uw = new UpdateWrapper<>();
+            uw.eq("id", bugId).set("requirement_id", null);
+            bugMapper.update(null, uw);
+        }
+        // 2. 用例关联：解除其与该需求下用例的 bug_case 绑定
+        QueryWrapper<TestCase> caseW = new QueryWrapper<>();
+        caseW.eq("project_id", bug.getProjectId())
+                .and(w -> w.eq("requirement_id", requirementId)
+                        .or().apply("FIND_IN_SET({0}, requirement_ids)", requirementId));
+        List<Integer> caseIds = testCaseMapper.selectList(caseW).stream()
+                .map(TestCase::getId)
+                .collect(Collectors.toList());
+        if (!caseIds.isEmpty()) {
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcW = new QueryWrapper<>();
+            bcW.eq("bug_id", bugId).in("test_case_id", caseIds);
+            bugCaseMapper.delete(bcW);
+        }
+        return SaResult.ok("已取消关联");
+    }
+
+    @Override
+    @Transactional
+    public SaResult batchDeleteRequirement(List<Integer> ids) {        if (ids == null || ids.isEmpty()) {
             return SaResult.error("未选择要删除的需求");
         }
         Integer loginId = StpUtil.getLoginIdAsInt();
@@ -769,31 +891,61 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         List<Map<String, Object>> directBugs = new ArrayList<>();
         int totalBugs = 0, openBugs = 0;
 
-        // 1. 通过用例关联的BUG
+        // 1. 通过 bug_case 关联表查用例关联的BUG
         if (!caseIds.isEmpty()) {
-            QueryWrapper<com.mokatest.platform.demos.qa.domain.Bug> bugWrapper = new QueryWrapper<>();
-            bugWrapper.in("test_case_id", caseIds);
-            List<com.mokatest.platform.demos.qa.domain.Bug> bugs = bugMapper.selectList(bugWrapper);
-            for (com.mokatest.platform.demos.qa.domain.Bug bug : bugs) {
-                Map<String, Object> bugMap = buildBugMap(bug);
-                bugsByCase.computeIfAbsent(bug.getTestCaseId(), k -> new ArrayList<>()).add(bugMap);
-                totalBugs++;
-                if (!"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus())) {
-                    openBugs++;
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcWrapper = new QueryWrapper<>();
+            bcWrapper.in("test_case_id", caseIds);
+            List<com.mokatest.platform.demos.qa.domain.BugCase> bugCases = bugCaseMapper.selectList(bcWrapper);
+            // 按 testCaseId 分组
+            Map<Integer, List<Integer>> bugIdsByCase = new HashMap<>();
+            Set<Integer> allBugIds = new java.util.HashSet<>();
+            for (com.mokatest.platform.demos.qa.domain.BugCase bc : bugCases) {
+                bugIdsByCase.computeIfAbsent(bc.getTestCaseId(), k -> new ArrayList<>()).add(bc.getBugId());
+                allBugIds.add(bc.getBugId());
+            }
+            if (!allBugIds.isEmpty()) {
+                List<com.mokatest.platform.demos.qa.domain.Bug> bugs = bugMapper.selectBatchIds(allBugIds);
+                Map<Integer, com.mokatest.platform.demos.qa.domain.Bug> bugMapById = bugs.stream()
+                        .collect(Collectors.toMap(com.mokatest.platform.demos.qa.domain.Bug::getId, b -> b, (a, b) -> a));
+                for (Map.Entry<Integer, List<Integer>> entry : bugIdsByCase.entrySet()) {
+                    Integer tcId = entry.getKey();
+                    for (Integer bugId : entry.getValue()) {
+                        com.mokatest.platform.demos.qa.domain.Bug bug = bugMapById.get(bugId);
+                        if (bug != null) {
+                            Map<String, Object> bugMap = buildBugMap(bug);
+                            bugsByCase.computeIfAbsent(tcId, k -> new ArrayList<>()).add(bugMap);
+                            totalBugs++;
+                            if (!"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus())) {
+                                openBugs++;
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // 2. 直接关联需求但未关联用例的BUG
+        // 2. 直接关联需求但未通过 bug_case 关联用例的 BUG
+        // 先查出所有关联了该需求的 BUG
         QueryWrapper<com.mokatest.platform.demos.qa.domain.Bug> directBugWrapper = new QueryWrapper<>();
-        directBugWrapper.eq("requirement_id", requirementId)
-                .and(w -> w.isNull("test_case_id").or().eq("test_case_id", 0));
+        directBugWrapper.eq("requirement_id", requirementId);
         List<com.mokatest.platform.demos.qa.domain.Bug> directBugList = bugMapper.selectList(directBugWrapper);
+        // 过滤掉已在 bug_case 中关联了用例的 BUG
+        Set<Integer> directBugIds = directBugList.stream().map(com.mokatest.platform.demos.qa.domain.Bug::getId).collect(Collectors.toSet());
+        Set<Integer> linkedBugIds = new java.util.HashSet<>();
+        if (!directBugIds.isEmpty()) {
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcCheck = new QueryWrapper<>();
+            bcCheck.in("bug_id", directBugIds);
+            linkedBugIds = bugCaseMapper.selectList(bcCheck).stream()
+                    .map(com.mokatest.platform.demos.qa.domain.BugCase::getBugId)
+                    .collect(Collectors.toSet());
+        }
         for (com.mokatest.platform.demos.qa.domain.Bug bug : directBugList) {
-            directBugs.add(buildBugMap(bug));
-            totalBugs++;
-            if (!"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus())) {
-                openBugs++;
+            if (!linkedBugIds.contains(bug.getId())) {
+                directBugs.add(buildBugMap(bug));
+                totalBugs++;
+                if (!"CLOSED".equals(bug.getStatus()) && !"REJECTED".equals(bug.getStatus())) {
+                    openBugs++;
+                }
             }
         }
 
@@ -832,15 +984,6 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         return bugMap;
     }
 
-    private static final java.util.concurrent.ThreadLocalRandom REQ_RANDOM = java.util.concurrent.ThreadLocalRandom.current();
-    private static final java.util.concurrent.atomic.AtomicInteger REQ_SEQ = new java.util.concurrent.atomic.AtomicInteger(0);
-
-    private String generateReqCode() {
-        String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
-        int seq = REQ_SEQ.incrementAndGet() % 10000;
-        int random = REQ_RANDOM.nextInt(1000, 9999);
-        return "REQ-" + dateStr + "-" + String.format("%04d%04d", seq, random);
-    }
 
     @Override
     public SaResult stats(Integer projectId) {

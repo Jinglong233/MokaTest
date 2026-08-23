@@ -74,10 +74,6 @@ const handleSaved = () => {
 };
 
 const handleCancel = () => {
-  if (formRef.value?.isDirty?.()) {
-    const leave = confirm('您有未保存的更改，确定要离开吗？');
-    if (!leave) return;
-  }
   router.back();
 };
 </script>

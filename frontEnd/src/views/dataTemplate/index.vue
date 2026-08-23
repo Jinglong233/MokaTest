@@ -57,7 +57,7 @@
                   draggable
                   default-expand-all
                   block-node
-                  style="margin-top: 10px; padding-right: 0"
+                  style="margin-top: 4px"
                   @select="handleTreeSelect"
                   @drop="handleTreeDrop"
                   @drag-start="isDragging = true"
@@ -1403,7 +1403,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 12px 0 12px 12px;
+  padding: 12px 0;
 }
 
 .tree-search-wrap {
@@ -1431,7 +1431,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 .tree-scroll-wrapper :deep(.arco-scrollbar-container) {
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  padding-right: 12px;
+  padding: 0 12px;
 }
 
 .tree-scroll-wrapper :deep(.arco-tree-node) {

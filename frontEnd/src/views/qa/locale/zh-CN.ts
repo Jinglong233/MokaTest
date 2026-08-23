@@ -1,5 +1,6 @@
 export default {
     'menu.qa': '质量管理',
+    'menu.qa.workbench': '测试工作台',
     'menu.qa.requirement': '需求池',
     'menu.qa.bug': 'BUG池',
     'menu.qa.testCase': '用例列表',
@@ -43,10 +44,16 @@ export default {
     'qa.testCase.bindAuto': '关联自动化',
     'qa.testCase.autoType': '自动化类型',
     'qa.testCase.autoId': '自动化用例',
+    'qa.testCase.tab.case': '用例',
+    'qa.testCase.tab.review': '用例评审',
 
     'qa.module.title': '模块管理',
 
     'menu.qa.testPlan': '测试计划',
+    'menu.qa.review': '用例评审',
+    'menu.qa.reviewCreate': '新建评审',
+    'menu.qa.reviewDetail': '评审详情',
+    'menu.qa.reviewWorkbench': '评审工作台',
     'menu.qa.testPlanDetail': '计划详情',
     'menu.qa.traceability': '血缘追踪',
     'qa.testPlan.title': '测试计划',

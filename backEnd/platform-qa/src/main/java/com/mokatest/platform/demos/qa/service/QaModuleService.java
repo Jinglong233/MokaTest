@@ -6,7 +6,7 @@ import com.mokatest.platform.demos.qa.domain.QaModule;
 
 public interface QaModuleService extends IService<QaModule> {
 
-    SaResult listByProject(Integer projectId);
+    SaResult listByProject(Integer projectId, String moduleType);
 
     /**
      * 获取模块树
@@ -14,9 +14,10 @@ public interface QaModuleService extends IService<QaModule> {
      * 按项目查询模块列表并构建树形结构，返回虚拟根节点「全部用例」。
      *
      * @param projectId 项目ID
+     * @param moduleType 模块类型：CASE / REVIEW
      * @return 树形结构
      */
-    SaResult tree(Integer projectId);
+    SaResult tree(Integer projectId, String moduleType);
 
     /**
      * 保存或更新模块

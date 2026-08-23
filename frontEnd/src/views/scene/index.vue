@@ -57,10 +57,9 @@
                 style="height: 100%; overflow-x: hidden; overflow-y: auto;"
             >
               <a-tree :data="treeData"
-                    style="margin-top: 10px; padding-right: 0"
+                    style="margin-top: 4px"
                     :selected-keys="[selectedScene]"
                     block-node
-                    show-line
                     ref="sceneTreeRef"
                     :draggable="hasSceneUpdatePermission"
                     @drop="onDrop"
@@ -4120,7 +4119,7 @@ watch(
 }
 
 .scene-folder-card :deep(.arco-card-body) {
-  padding: 12px 0 12px 12px;
+  padding: 12px 0;
 }
 
 .scene-tree-search-wrap {
@@ -4148,7 +4147,7 @@ watch(
 .tree-scroll-wrapper :deep(.arco-scrollbar-container) {
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  padding-right: 12px;
+  padding: 0 12px;
 }
 
 .tree-scroll-wrapper :deep(.arco-tree-node) {

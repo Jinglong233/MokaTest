@@ -19,11 +19,17 @@ public class TestPlan {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
+    private String planCode;
+
     private Integer projectId;
+
+    private Integer moduleId;
 
     private String planName;
 
     private String description;
+
+    private String tags;
 
     private String status;
 

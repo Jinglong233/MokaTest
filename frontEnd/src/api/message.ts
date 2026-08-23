@@ -21,9 +21,9 @@ export type MessageListType = MessageRecord[];
 /**
  * 查询消息列表
  */
-export function queryMessageList(page?: number, pageSize?: number, isRead?: number) {
+export function queryMessageList(page?: number, pageSize?: number, isRead?: number, bizType?: string, isMention?: boolean) {
   return axios.get('/api/qa/message/list', {
-    params: { page, pageSize, isRead }
+    params: { page, pageSize, isRead, bizType, isMention }
   });
 }
 
@@ -61,6 +61,15 @@ export function markAllMessagesRead() {
  */
 export function deleteMessage(id: number) {
   return axios.post(`/api/qa/message/delete/${id}`);
+}
+
+/**
+ * 校验消息来源资源是否存在
+ */
+export function validateMessageSource(bizType: string, bizId: number, commentId?: number) {
+  return axios.get('/api/qa/message/validate-source', {
+    params: { bizType, bizId, commentId },
+  });
 }
 
 export interface ChatRecord {

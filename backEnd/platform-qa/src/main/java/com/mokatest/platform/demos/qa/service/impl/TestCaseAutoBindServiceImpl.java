@@ -104,8 +104,11 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
                 options.add(item);
             }
         } else if ("API_CASE".equals(autoType)) {
-            // 查询API接口/用例列表
+            // 查询API接口/用例列表（按项目隔离，避免跨项目泄露）
             QueryWrapper<ApiRequest> wrapper = new QueryWrapper<>();
+            if (projectId != null) {
+                wrapper.eq("project_id", projectId);
+            }
             wrapper.orderByDesc("create_time");
             List<ApiRequest> apis = apiRequestMapper.selectList(wrapper);
             for (ApiRequest api : apis) {

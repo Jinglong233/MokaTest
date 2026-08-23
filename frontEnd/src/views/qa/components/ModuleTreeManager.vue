@@ -6,6 +6,7 @@
         placeholder="输入模块名称筛选"
         class="module-list-search"
       />
+      <slot name="search-extra" />
     </div>
     <a-button-group v-if="showActions" class="module-list-actions">
       <a-popover
@@ -16,6 +17,17 @@
           <template #icon>
             <icon-menu-fold v-if="isExpandAll" />
             <icon-menu-unfold v-if="!isExpandAll" />
+          </template>
+        </a-button>
+      </a-popover>
+      <a-popover title="新建根模块" style="flex: 1">
+        <a-button
+          v-permission="'qa:module:create'"
+          style="width: 100%"
+          @click="handleAddSub({ id: 0, moduleName: '' })"
+        >
+          <template #icon>
+            <icon-plus />
           </template>
         </a-button>
       </a-popover>
@@ -36,7 +48,6 @@
           :field-names="{ key: 'id', title: 'moduleName' }"
           :draggable="!searchKey"
           block-node
-          show-line
           :selected-keys="selectedKeys"
           :default-expand-all="defaultExpandAll"
           @select="handleSelect"
@@ -45,16 +56,6 @@
           @drag-end="isDragging = false"
         >
           <template #drag-icon> </template>
-          <template #switcher-icon>
-            <icon-caret-down
-              class="switcher-icon-expanded"
-              style="font-size: 12px; color: rgb(var(--color-text-3))"
-            />
-            <icon-caret-right
-              class="switcher-icon-collapsed"
-              style="font-size: 12px; color: rgb(var(--color-text-3))"
-            />
-          </template>
           <template #title="nodeData">
             <a-tooltip
               :content="nodeData.moduleName"
@@ -64,20 +65,14 @@
               <div class="tree-node-title">
                 <icon-apps
                   v-if="nodeData.id === 0"
-                  style="color: rgb(var(--primary-6)); flex-shrink: 0"
+                  style="font-size: 12px; color: var(--color-text-3); flex-shrink: 0"
                 />
                 <icon-folder
-                  v-else-if="nodeData.parentId === 0"
-                  style="color: rgb(var(--arcoblue-6)); flex-shrink: 0"
-                />
-                <icon-storage
                   v-else
-                  style="color: rgb(var(--green-6)); flex-shrink: 0"
+                  style="font-size: 12px; color: var(--color-text-3); flex-shrink: 0"
                 />
                 <span class="tree-node-name">{{ nodeData.moduleName }}</span>
-                <span class="tree-node-count"
-                  >[{{ nodeData.totalCaseCount ?? nodeData.caseCount ?? 0 }}]</span
-                >
+                <span class="tree-node-count">{{ nodeData.totalCaseCount ?? nodeData.caseCount ?? 0 }}</span>
               </div>
             </a-tooltip>
           </template>
@@ -147,13 +142,11 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import {
   IconFolder,
-  IconStorage,
-  IconApps,
+    IconApps,
   IconMenuFold,
   IconMenuUnfold,
   IconMore,
-  IconCaretRight,
-  IconCaretDown,
+  IconPlus,
 } from '@arco-design/web-vue/es/icon';
 import { useProjectStore } from '@/store';
 import {
@@ -169,14 +162,18 @@ interface Props {
   showVirtualRoot?: boolean;
   selectedKeys?: (string | number)[];
   defaultExpandAll?: boolean;
+  moduleType?: string;
+  rootName?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showSearch: true,
-  showActions: true,
+  showActions: false,
   showVirtualRoot: false,
   selectedKeys: () => [],
   defaultExpandAll: false,
+  moduleType: 'CASE',
+  rootName: '',
 });
 
 const emit = defineEmits<{
@@ -205,8 +202,9 @@ const loadData = async () => {
   if (!projectStore.getProjectId) return;
   loading.value = true;
   try {
-    const res: any = await getQaModuleList(projectStore.getProjectId);
+    const res: any = await getQaModuleList(projectStore.getProjectId, props.moduleType);
     moduleList.value = res.data || [];
+    backendTotalCount.value = typeof res.totalCount === 'number' ? res.totalCount : null;
   } catch (e) {
     console.error(e);
   } finally {
@@ -237,17 +235,18 @@ const moduleTreeData = computed(() => {
   return buildTree(moduleList.value);
 });
 
-// 虚拟根节点包装
+// 虚拟根节点包装；总数优先用后端全量口径（含未选模块的记录），无则退化为各模块之和
+const backendTotalCount = ref<number | null>(null);
 const treeWithVirtualRoot = computed(() => {
   if (!props.showVirtualRoot) return moduleTreeData.value;
-  const totalCount = moduleTreeData.value.reduce(
+  const totalCount = backendTotalCount.value ?? moduleTreeData.value.reduce(
     (sum, node) => sum + (node.totalCaseCount || 0),
     0
   );
   return [
     {
       id: 0,
-      moduleName: '全部用例',
+      moduleName: props.rootName || (props.moduleType === 'REVIEW' ? '全部评审' : '全部用例'),
       parentId: -1,
       totalCaseCount: totalCount,
       children: moduleTreeData.value,
@@ -325,6 +324,7 @@ const handleAddSub = (record: any) => {
   formData.value = {
     projectId: projectStore.getProjectId,
     parentId: record.id,
+    moduleType: props.moduleType,
   };
   modalVisible.value = true;
 };
@@ -523,19 +523,23 @@ defineExpose({
 }
 
 .module-list-search-wrap {
-  padding: 0 16px;
-  margin-bottom: 8px;
+  padding: 0 4px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .module-list-search {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .module-list-actions {
   display: flex;
   width: 100%;
-  padding: 0 16px;
-  margin-bottom: 8px;
+  padding: 0 4px;
+  margin-bottom: 4px;
 }
 
 .module-list-scrollbar {
@@ -547,11 +551,11 @@ defineExpose({
 .module-list-scrollbar :deep(.arco-scrollbar-container) {
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  padding-right: 12px;
+  padding: 0 4px;
 }
 
 .tree-skeleton {
-  padding: 16px;
+  padding: 16px 4px;
 }
 
 :deep(.arco-tree-node) {
@@ -597,29 +601,6 @@ defineExpose({
 
 :deep(.arco-tree-node-switcher:hover) {
   color: rgb(var(--primary-6));
-}
-
-.switcher-icon-expanded,
-.switcher-icon-collapsed {
-  display: none;
-}
-
-:deep(.arco-tree-node-expanded) .switcher-icon-expanded {
-  display: inline-flex;
-}
-
-:deep(.arco-tree-node-expanded) .switcher-icon-collapsed {
-  display: none;
-}
-
-:deep(.arco-tree-node:not(.arco-tree-node-expanded):not(.arco-tree-node-is-leaf))
-  .switcher-icon-expanded {
-  display: none;
-}
-
-:deep(.arco-tree-node:not(.arco-tree-node-expanded):not(.arco-tree-node-is-leaf))
-  .switcher-icon-collapsed {
-  display: inline-flex;
 }
 
 /* 保留 min-width:0，确保 flex 子项可以收缩；不设置 overflow:hidden，

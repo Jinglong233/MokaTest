@@ -61,6 +61,11 @@
                         </div>
                       </template>
                     </a-table-column>
+                    <a-table-column title="指定人员" :width="220">
+                      <template #cell="{ record }">
+                        <a-select v-model="record.specificUserIds" :options="memberOptions" :field-names="{ value: 'userId', label: 'nickname' }" multiple allow-clear placeholder="可选" :max-tag-count="2" :disabled="!record.enabled" />
+                      </template>
+                    </a-table-column>
                     <a-table-column title="通知模板" :width="130" align="center">
                       <template #cell="{ record }">
                         <a-space :size="4">
@@ -81,40 +86,6 @@
                   {{ biz.label }}：已启用 {{ rulesOf(biz.key).filter((r) => r.enabled).length }} /
                   {{ rulesOf(biz.key).length }} 个场景，
                   自定义模板 {{ rulesOf(biz.key).filter((r) => r.customized).length }} 个
-                </div>
-              </a-tab-pane>
-            </a-tabs>
-          </a-tab-pane>
-
-          <!-- ============ 字段配置 ============ -->
-          <a-tab-pane key="field" title="字段配置">
-            <div class="tab-desc">
-              控制各业务对象在本项目中的字段显隐，隐藏后该字段在<b>列表、编辑弹窗、预览抽屉</b>中均不展示（数据保留，重新开启即恢复）。
-              核心字段与必填字段不可隐藏。
-            </div>
-            <a-tabs v-model:active-key="activeFieldBiz" type="card-gutter" class="biz-tabs">
-              <a-tab-pane v-for="biz in bizList" :key="biz.key" :title="biz.label">
-                <div class="field-grid">
-                  <div
-                    v-for="field in fieldMeta[biz.key]"
-                    :key="field.key"
-                    class="field-item"
-                    :class="{ locked: field.locked, hidden: !field.visible }"
-                  >
-                    <a-checkbox
-                      :model-value="field.visible"
-                      :disabled="field.locked"
-                      @change="(v: boolean | (string | number | boolean)[]) => (field.visible = v === true)"
-                    >
-                      {{ field.label }}
-                    </a-checkbox>
-                    <a-tag v-if="field.locked" size="small" color="orangered">核心</a-tag>
-                    <a-tag v-else-if="!field.visible" size="small" color="gray">已隐藏</a-tag>
-                  </div>
-                </div>
-                <div class="summary">
-                  {{ biz.label }}：显示 {{ visibleCount(biz.key) }} / {{ fieldMeta[biz.key].length }} 个字段，
-                  隐藏 {{ fieldMeta[biz.key].length - visibleCount(biz.key) }} 个
                 </div>
               </a-tab-pane>
             </a-tabs>
@@ -148,9 +119,6 @@
                       {{ v.label }}
                     </div>
                   </a-tooltip>
-                </div>
-                <div v-if="hiddenVariableCount > 0" class="var-hidden-tip">
-                  {{ hiddenVariableCount }} 个变量因对应字段被隐藏而不可用
                 </div>
               </div>
 
@@ -214,6 +182,7 @@ import { IconBookmark, IconBug, IconFile, IconUndo } from '@arco-design/web-vue/
 import { useProjectStore } from '@/store';
 import useProjectConfigStore from '@/store/modules/projectConfig';
 import { getProjectConfigList, resetProjectConfig, saveProjectConfigAll } from '@/api/MyApi/projectConfig';
+import { getProjectMembers } from '@/api/MyApi/project';
 
 const projectStore = useProjectStore();
 const projectConfigStore = useProjectConfigStore();
@@ -249,6 +218,7 @@ interface NotifyRule {
   title: string;
   content: string;
   customized: boolean;
+  specificUserIds: number[];
 }
 
 const BUG_ROLES: RoleOption[] = [
@@ -297,6 +267,7 @@ const CASE_VARS: TemplateVariable[] = [
   { key: 'newStatus', label: '新状态', sample: '已评审' },
   { key: 'projectName', label: '项目名称', sample: '商城系统' },
   { key: 'moduleName', label: '所属模块', sample: '支付系统', field: 'moduleId' },
+  { key: 'operateTime', label: '操作时间', sample: '2026-08-22 14:30:25' },
 ];
 
 function rule(
@@ -308,6 +279,7 @@ function rule(
     title: partial.defaultTitle,
     content: partial.defaultContent,
     customized: false,
+    specificUserIds: [],
   };
 }
 
@@ -404,7 +376,7 @@ function buildDefaultRules(): NotifyRule[] {
     }),
     rule({
       eventType: 'CASE_CREATED', bizType: 'testCase', eventName: '用例创建',
-      description: '有用例创建时，通知创建人（预留事件）',
+      description: '有用例创建时，通知创建人',
       enabled: true, receivers: ['CREATOR'], availableRoles: [{ value: 'CREATOR', label: '创建人' }],
       variables: CASE_VARS.filter((v) => ['caseCode', 'caseName', 'operatorName', 'projectName', 'moduleName'].includes(v.key)),
       defaultTitle: '用例创建通知',
@@ -412,102 +384,52 @@ function buildDefaultRules(): NotifyRule[] {
     }),
     rule({
       eventType: 'CASE_STATUS_CHANGED', bizType: 'testCase', eventName: '用例状态变更',
-      description: '用例状态发生流转时，通知创建人（预留事件）',
+      description: '用例状态发生流转时，通知创建人',
       enabled: true, receivers: ['CREATOR'], availableRoles: [{ value: 'CREATOR', label: '创建人' }],
       variables: CASE_VARS,
       defaultTitle: '用例状态变更',
       defaultContent: '用例 ${caseCode}「${caseName}」状态由 ${oldStatus} 变更为 ${newStatus}',
     }),
+    rule({
+      eventType: 'CASE_UPDATED', bizType: 'testCase', eventName: '用例更新',
+      description: '用例信息被编辑时，通知创建人',
+      enabled: true, receivers: ['CREATOR'], availableRoles: [{ value: 'CREATOR', label: '创建人' }],
+      variables: CASE_VARS.filter((v) => ['caseCode', 'caseName', 'operatorName', 'projectName', 'moduleName'].includes(v.key)),
+      defaultTitle: '用例更新通知',
+      defaultContent: '用例 ${caseCode}「${caseName}」的信息已被 ${operatorName} 更新',
+    }),
+    rule({
+      eventType: 'CASE_DELETED', bizType: 'testCase', eventName: '用例删除',
+      description: '用例被删除时，通知创建人',
+      enabled: true, receivers: ['CREATOR'], availableRoles: [{ value: 'CREATOR', label: '创建人' }],
+      variables: CASE_VARS.filter((v) => ['caseCode', 'caseName', 'operatorName', 'projectName', 'moduleName', 'operateTime'].includes(v.key)),
+      defaultTitle: '用例删除通知',
+      defaultContent: '用例 ${caseCode}「${caseName}」已被 ${operatorName} 删除',
+    }),
   ];
-}
-
-/* ---------------- 字段元数据 ---------------- */
-
-interface FieldMeta {
-  key: string;
-  label: string;
-  locked: boolean;
-  visible: boolean;
-}
-
-function f(key: string, label: string, locked = false): FieldMeta {
-  return { key, label, locked, visible: true };
-}
-
-function buildDefaultFields(): Record<string, FieldMeta[]> {
-  return {
-    bug: [
-      f('bugCode', '编号', true),
-      f('title', '标题', true),
-      f('status', '状态', true),
-      f('severity', '严重程度', true),
-      f('priority', '优先级'),
-      f('moduleId', '所属模块'),
-      f('environment', '环境'),
-      f('deadline', '截止日期'),
-      f('foundVersion', '发现版本'),
-      f('fixedVersion', '修复版本'),
-      f('reproduceRate', '重现概率'),
-      f('closeReason', '关闭原因'),
-      f('tags', '标签'),
-      f('requirementId', '关联需求'),
-      f('testCaseId', '关联用例'),
-      f('assigneeId', '指派人'),
-      f('reproduceSteps', '重现步骤'),
-    ],
-    requirement: [
-      f('reqCode', '编号', true),
-      f('title', '标题', true),
-      f('status', '状态', true),
-      f('priority', '优先级', true),
-      f('moduleId', '所属模块'),
-      f('parentId', '父需求'),
-      f('reqType', '需求类型'),
-      f('source', '来源'),
-      f('participants', '参与人'),
-      f('expectReleaseTime', '期望上线时间'),
-      f('tags', '标签'),
-      f('version', '版本'),
-      f('ownerId', '负责人'),
-    ],
-    testCase: [
-      f('caseCode', '编号', true),
-      f('caseName', '用例名称', true),
-      f('status', '状态', true),
-      f('priority', '优先级'),
-      f('caseType', '用例类型'),
-      f('moduleId', '所属模块'),
-      f('preCondition', '前置条件'),
-      f('testSteps', '测试步骤', true),
-      f('lastResult', '最近执行结果'),
-      f('lastExecuteTime', '最近执行时间'),
-      f('expectDuration', '预期执行时长'),
-      f('tags', '标签'),
-      f('requirementId', '关联需求'),
-    ],
-  };
 }
 
 /* ---------------- 状态与持久化（project_config 差量存储，无记录 = 平台默认） ---------------- */
 
 const activeTab = ref('notify');
 const activeNotifyBiz = ref('bug');
-const activeFieldBiz = ref('bug');
 const bizList = [
   { key: 'bug', label: 'BUG' },
   { key: 'requirement', label: '需求' },
   { key: 'testCase', label: '用例' },
 ];
 
-/** 前端业务对象 key → 后端 FIELD_VISIBLE config_key */
-const BIZ_CONFIG_KEY: Record<string, string> = {
-  bug: 'bug',
-  requirement: 'requirement',
-  testCase: 'test_case',
-};
-
 const notifyRules = reactive<NotifyRule[]>(buildDefaultRules());
-const fieldMeta = reactive<Record<string, FieldMeta[]>>(buildDefaultFields());
+
+const memberOptions = ref<{ userId: number; nickname: string }[]>([]);
+async function loadMembers() {
+  const projectId = projectStore.getProjectId;
+  if (!projectId) return;
+  try {
+    const res: any = await getProjectMembers(projectId);
+    memberOptions.value = (res?.data || []).map((m: any) => ({ userId: m.userId, nickname: m.nickname || m.username }));
+  } catch { /* ignore */ }
+}
 
 function rulesOf(biz: string) {
   return notifyRules.filter((r) => r.bizType === biz);
@@ -541,18 +463,12 @@ function applyConfigRows(rows: any[]) {
             ? receiverMap[roleValue] === true
             : r.defaultReceivers.includes(roleValue)
         );
+      r.specificUserIds = value?.specificUserIds || [];
       if (value?.titleTemplate != null || value?.contentTemplate != null) {
         r.title = value.titleTemplate ?? r.defaultTitle;
         r.content = value.contentTemplate ?? r.defaultContent;
         r.customized = true;
       }
-    } else if (row.configType === 'FIELD_VISIBLE') {
-      const biz = Object.keys(BIZ_CONFIG_KEY).find((k) => BIZ_CONFIG_KEY[k] === row.configKey);
-      const hidden: string[] = Array.isArray(value?.hiddenFields) ? value.hiddenFields : [];
-      hidden.forEach((key) => {
-        const field = biz ? fieldMeta[biz]?.find((fd) => fd.key === key) : null;
-        if (field) field.visible = false;
-      });
     }
   });
 }
@@ -560,10 +476,7 @@ function applyConfigRows(rows: any[]) {
 async function loadConfig() {
   configLoading = true;
   Object.assign(notifyRules, buildDefaultRules());
-  const freshFields = buildDefaultFields();
-  Object.keys(freshFields).forEach((k) => {
-    fieldMeta[k] = freshFields[k];
-  });
+  await loadMembers();
   try {
     const projectId = projectStore.getProjectId;
     if (projectId) {
@@ -582,7 +495,7 @@ async function loadConfig() {
 }
 
 watch(
-  [notifyRules, fieldMeta],
+  notifyRules,
   () => {
     if (!configLoading) dirty.value = true;
   },
@@ -595,7 +508,7 @@ function buildConfigRows() {
   const sameSet = (a: string[], b: string[]) =>
     a.length === b.length && a.every((x) => b.includes(x));
   notifyRules
-    .filter((r) => !r.enabled || !sameSet(r.receivers, r.defaultReceivers) || r.customized)
+    .filter((r) => !r.enabled || !sameSet(r.receivers, r.defaultReceivers) || r.customized || (r.specificUserIds?.length ?? 0) > 0)
     .forEach((r) => {
       const receivers: Record<string, boolean> = {};
       r.availableRoles.forEach((role) => {
@@ -607,20 +520,11 @@ function buildConfigRows() {
         configValue: JSON.stringify({
           enabled: r.enabled,
           receivers,
+          ...(r.specificUserIds?.length ? { specificUserIds: r.specificUserIds } : {}),
           ...(r.customized ? { titleTemplate: r.title, contentTemplate: r.content } : {}),
         }),
       });
     });
-  Object.entries(fieldMeta).forEach(([biz, fields]) => {
-    const hidden = fields.filter((fd) => !fd.visible).map((fd) => fd.key);
-    if (hidden.length > 0) {
-      rows.push({
-        configType: 'FIELD_VISIBLE',
-        configKey: BIZ_CONFIG_KEY[biz],
-        configValue: JSON.stringify({ hiddenFields: hidden }),
-      });
-    }
-  });
   return rows;
 }
 
@@ -651,7 +555,7 @@ async function saveConfig() {
 function resetAll() {
   Modal.confirm({
     title: '恢复默认配置',
-    content: '将清空本项目的全部自定义通知规则和字段显隐配置，恢复为平台默认行为。确定继续吗？',
+    content: '将清空本项目的全部自定义通知规则，恢复为平台默认行为。确定继续吗？',
     okButtonProps: { status: 'warning' },
     onOk: async () => {
       if (!projectStore.getProjectId) return;
@@ -719,30 +623,16 @@ function insertVariable(key: string) {
   editContent.value += `\${${key}}`;
 }
 
-/** 变量是否因对应字段被隐藏而不可用（与后端发送置空逻辑一致） */
-function isVariableHidden(biz: string, v: TemplateVariable) {
-  if (!v.field) return false;
-  const field = fieldMeta[biz]?.find((fd) => fd.key === v.field);
-  return field ? !field.visible : false;
-}
-
-/** 当前编辑场景可用的变量（过滤掉字段被隐藏的） */
+/** 当前编辑场景可用的变量 */
 const visibleVariables = computed(() => {
   if (!editingRule.value) return [];
-  return editingRule.value.variables.filter((v) => !isVariableHidden(editingRule.value!.bizType, v));
-});
-
-/** 被字段显隐隐藏掉的变量数量（用于列表底部提示） */
-const hiddenVariableCount = computed(() => {
-  if (!editingRule.value) return 0;
-  return editingRule.value.variables.length - visibleVariables.value.length;
+  return editingRule.value.variables;
 });
 
 function renderPreview(tpl: string, r: NotifyRule) {
   let out = tpl;
   r.variables.forEach((v) => {
-    // 字段被隐藏的变量发送时置空，预览同步呈现为空
-    out = out.split(`\${${v.key}}`).join(isVariableHidden(r.bizType, v) ? '' : v.sample);
+    out = out.split(`\${${v.key}}`).join(v.sample);
   });
   return out;
 }
@@ -824,11 +714,6 @@ function revertTemplate(r: NotifyRule) {
   Message.info(`「${r.eventName}」已恢复默认模板`);
 }
 
-/* ---------------- 字段统计 ---------------- */
-
-function visibleCount(biz: string) {
-  return fieldMeta[biz].filter((fd) => fd.visible).length;
-}
 </script>
 
 <style scoped>
@@ -988,13 +873,6 @@ function visibleCount(biz: string) {
   outline-offset: -2px;
 }
 
-.var-hidden-tip {
-  padding: 6px 12px 8px;
-  font-size: 12px;
-  color: rgb(var(--orange-6));
-  border-top: 1px dashed var(--color-border-2);
-}
-
 .unknown-var-alert {
   margin-top: 10px;
 }
@@ -1110,34 +988,5 @@ function visibleCount(biz: string) {
   line-height: 1.6;
   word-break: break-all;
   white-space: pre-wrap;
-}
-
-.field-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.field-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border-2);
-  border-radius: 6px;
-  background: var(--color-bg-2);
-}
-
-.field-item.locked {
-  background: var(--color-fill-1);
-}
-
-.field-item :deep(.arco-tag) {
-  margin-left: auto;
-}
-
-.field-item.hidden {
-  opacity: 0.65;
-  border-style: dashed;
 }
 </style>

@@ -4,6 +4,7 @@ import {useI18n} from 'vue-i18n';
 import {useRoute, useRouter, RouteRecordRaw} from 'vue-router';
 import type {RouteMeta} from 'vue-router';
 import {useAppStore} from '@/store';
+import useReviewTodoStore from '@/store/modules/review-todo';
 import {listenerRouteChange} from '@/utils/route-listener';
 import {openWindow, regexUrl} from '@/utils';
 import useMenuTree from './use-menu-tree';
@@ -19,6 +20,10 @@ export default defineComponent({
   setup(props) {
     const {t} = useI18n();
     const appStore = useAppStore();
+    const reviewTodoStore = useReviewTodoStore();
+    // 评审待办徽标挂在「用例管理」菜单项上（评审已并入用例管理 tab，静默失败，无权限时不显示）
+    reviewTodoStore.refresh();
+    const reviewTodoCount = computed(() => reviewTodoStore.count);
     const router = useRouter();
     const route = useRoute();
     const {menuTree} = useMenuTree();
@@ -124,7 +129,13 @@ export default defineComponent({
                         v-slots={{icon}}
                         onClick={() => goto(element)}
                     >
-                      {element?.meta?.locale ? t(element.meta.locale) : ''}
+                      {element?.name === 'TestCase' && reviewTodoCount.value > 0 ? (
+                          <a-badge count={reviewTodoCount.value} max-count={99}>
+                            {element?.meta?.locale ? t(element.meta.locale) : ''}
+                          </a-badge>
+                      ) : (
+                          element?.meta?.locale ? t(element.meta.locale) : ''
+                      )}
                     </a-menu-item>
                 );
             nodes.push(node as never);

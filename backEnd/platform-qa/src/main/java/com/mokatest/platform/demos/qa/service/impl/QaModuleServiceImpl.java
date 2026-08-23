@@ -6,10 +6,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mokatest.platform.demos.qa.domain.QaModule;
 import com.mokatest.platform.demos.qa.domain.TestCase;
+import com.mokatest.platform.demos.qa.domain.TestPlan;
 import com.mokatest.platform.demos.qa.mapper.BugMapper;
 import com.mokatest.platform.demos.qa.mapper.QaModuleMapper;
 import com.mokatest.platform.demos.qa.mapper.RequirementMapper;
 import com.mokatest.platform.demos.qa.mapper.TestCaseMapper;
+import com.mokatest.platform.demos.qa.mapper.TestPlanMapper;
 import com.mokatest.platform.demos.qa.service.QaModuleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,23 +31,26 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
     private final RequirementMapper requirementMapper;
     private final BugMapper bugMapper;
     private final TestCaseMapper testCaseMapper;
+    private final TestPlanMapper testPlanMapper;
+    private final com.mokatest.platform.demos.qa.mapper.TestCaseReviewMapper testCaseReviewMapper;
 
     @Override
-    public SaResult listByProject(Integer projectId) {
+    public SaResult listByProject(Integer projectId, String moduleType) {
         if (projectId == null) {
             return SaResult.error("缺少项目ID");
         }
+        String type = (moduleType == null || moduleType.isEmpty()) ? "CASE" : moduleType;
         QueryWrapper<QaModule> wrapper = new QueryWrapper<>();
-        wrapper.eq("project_id", projectId).orderByAsc("sort", "id");
+        wrapper.eq("project_id", projectId).eq("module_type", type).orderByAsc("sort", "id");
         List<QaModule> list = baseMapper.selectList(wrapper);
 
-        // 填充每个模块下的直接归属用例数量
-        Map<Integer, Long> caseCountMap = countCaseByModule(projectId);
+        // 填充每个模块下的直接归属数量（CASE 类型=用例数，REVIEW 类型=评审单数）
+        Map<Integer, Long> caseCountMap = countByModuleType(projectId, type);
         for (QaModule module : list) {
             module.setCaseCount(caseCountMap.getOrDefault(module.getId(), 0L));
         }
-
-        return SaResult.ok().setData(list);
+        // 全量总数（含未选模块的记录），供前端虚拟根节点「全部」展示
+        return SaResult.ok().setData(list).set("totalCount", totalByModuleType(projectId, type));
     }
 
     /**
@@ -68,13 +73,67 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         return result;
     }
 
+    /**
+     * 按模块类型统计数量：CASE=用例数，REVIEW=评审单数
+     */
+    private Map<Integer, Long> countByModuleType(Integer projectId, String type) {
+        if ("REVIEW".equals(type)) {
+            return countReviewByModule(projectId);
+        }
+        if ("CASE".equals(type)) {
+            return countCaseByModule(projectId);
+        }
+        if ("PLAN".equals(type)) {
+            return countPlanByModule(projectId);
+        }
+        return new HashMap<>();
+    }
+
+    private Map<Integer, Long> countPlanByModule(Integer projectId) {
+        QueryWrapper<TestPlan> wrapper = new QueryWrapper<>();
+        wrapper.eq("project_id", projectId)
+                .eq("is_deleted", 0)
+                .isNotNull("module_id")
+                .groupBy("module_id")
+                .select("module_id", "count(*) as cnt");
+        List<Map<String, Object>> maps = testPlanMapper.selectMaps(wrapper);
+        Map<Integer, Long> result = new HashMap<>();
+        for (Map<String, Object> map : maps) {
+            Integer moduleId = (Integer) map.get("module_id");
+            Long count = ((Number) map.get("cnt")).longValue();
+            result.put(moduleId, count);
+        }
+        return result;
+    }
+
+    /**
+     * 按 module_id 统计项目下未删除评审单数量
+     */
+    private Map<Integer, Long> countReviewByModule(Integer projectId) {
+        QueryWrapper<com.mokatest.platform.demos.qa.domain.TestCaseReview> wrapper = new QueryWrapper<>();
+        wrapper.eq("project_id", projectId)
+                .eq("is_deleted", 0)
+                .isNotNull("module_id")
+                .groupBy("module_id")
+                .select("module_id", "count(*) as cnt");
+        List<Map<String, Object>> maps = testCaseReviewMapper.selectMaps(wrapper);
+        Map<Integer, Long> result = new HashMap<>();
+        for (Map<String, Object> map : maps) {
+            Integer moduleId = (Integer) map.get("module_id");
+            Long count = ((Number) map.get("cnt")).longValue();
+            result.put(moduleId, count);
+        }
+        return result;
+    }
+
     @Override
-    public SaResult tree(Integer projectId) {
+    public SaResult tree(Integer projectId, String moduleType) {
         if (projectId == null) {
             return SaResult.error("缺少项目ID");
         }
+        String type = (moduleType == null || moduleType.isEmpty()) ? "CASE" : moduleType;
         QueryWrapper<QaModule> wrapper = new QueryWrapper<>();
-        wrapper.eq("project_id", projectId).orderByAsc("sort", "id");
+        wrapper.eq("project_id", projectId).eq("module_type", type).orderByAsc("sort", "id");
         List<QaModule> list = baseMapper.selectList(wrapper);
 
         Map<Integer, List<QaModule>> parentMap = new HashMap<>();
@@ -83,18 +142,42 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
             parentMap.computeIfAbsent(pid, k -> new ArrayList<>()).add(module);
         }
 
-        // 填充用例数量，便于前端展示
-        Map<Integer, Long> caseCountMap = countCaseByModule(projectId);
+        // 填充数量，便于前端展示（CASE=用例数，REVIEW=评审单数）
+        Map<Integer, Long> caseCountMap = countByModuleType(projectId, type);
         List<Map<String, Object>> tree = buildTreeNodes(parentMap, 0, caseCountMap);
 
         Map<String, Object> root = new HashMap<>();
         root.put("id", 0);
-        root.put("moduleName", "全部用例");
+        String rootName = "CASE".equals(type) ? "全部用例" : "REVIEW".equals(type) ? "全部评审" : "全部计划";
+        root.put("moduleName", rootName);
         root.put("parentId", 0);
-        root.put("caseCount", caseCountMap.values().stream().mapToLong(Long::longValue).sum());
+        // 根节点统计全量（含未选择模块、module_id 为空的记录），而非仅各模块之和
+        root.put("caseCount", totalByModuleType(projectId, type));
         root.put("children", tree);
 
         return SaResult.ok().setData(List.of(root));
+    }
+
+    /**
+     * 项目下该类型的全量数量（不限模块归属）：CASE=用例数，REVIEW=评审单数
+     */
+    private long totalByModuleType(Integer projectId, String type) {
+        if ("REVIEW".equals(type)) {
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.TestCaseReview> wrapper = new QueryWrapper<>();
+            wrapper.eq("project_id", projectId).eq("is_deleted", 0);
+            return testCaseReviewMapper.selectCount(wrapper);
+        }
+        if ("CASE".equals(type)) {
+            QueryWrapper<TestCase> wrapper = new QueryWrapper<>();
+            wrapper.eq("project_id", projectId).eq("is_deleted", 0);
+            return testCaseMapper.selectCount(wrapper);
+        }
+        if ("PLAN".equals(type)) {
+            QueryWrapper<TestPlan> wrapper = new QueryWrapper<>();
+            wrapper.eq("project_id", projectId).eq("is_deleted", 0);
+            return testPlanMapper.selectCount(wrapper);
+        }
+        return 0L;
     }
 
     private List<Map<String, Object>> buildTreeNodes(Map<Integer, List<QaModule>> parentMap, Integer parentId, Map<Integer, Long> caseCountMap) {
@@ -127,9 +210,13 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         if (module.getParentId() == null) {
             module.setParentId(0);
         }
+        if (module.getModuleType() == null || module.getModuleType().isEmpty()) {
+            module.setModuleType("CASE");
+        }
 
-        // sort 为空时，自动放到所属父模块的末尾
-        if (module.getSort() == null) {
+        // sort 为空时，自动放到所属父模块的末尾（仅新建；更新时 sort 为 null 表示不调整顺序，
+        // 否则 MyBatis-Plus saveOrUpdate 会把重算后的 sort 写回，改名/移动操作会意外打乱同级顺序）
+        if (module.getId() == null && module.getSort() == null) {
             QueryWrapper<QaModule> sortWrapper = new QueryWrapper<>();
             sortWrapper.eq("project_id", module.getProjectId())
                     .eq("parent_id", module.getParentId())
@@ -168,6 +255,11 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         caseWrapper.eq("module_id", id).set("module_id", null);
         testCaseMapper.update(null, caseWrapper);
 
+        // 3.5 解绑关联测试计划的 module_id
+        UpdateWrapper<TestPlan> planWrapper = new UpdateWrapper<>();
+        planWrapper.eq("module_id", id).set("module_id", null);
+        testPlanMapper.update(null, planWrapper);
+
         // 4. 子模块变为根模块
         UpdateWrapper<QaModule> childWrapper = new UpdateWrapper<>();
         childWrapper.eq("parent_id", id).set("parent_id", 0);
@@ -202,7 +294,7 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
             return SaResult.error("不能将模块移动到自身内部");
         }
         // 也不能把模块拖到它的子模块下
-        if (isDescendant(moduleId, targetParentId, projectId)) {
+        if (isDescendant(moduleId, targetParentId, projectId, module.getModuleType())) {
             return SaResult.error("不能将模块移动到其子模块下");
         }
 
@@ -210,6 +302,7 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         QueryWrapper<QaModule> wrapper = new QueryWrapper<>();
         wrapper.eq("project_id", projectId)
                 .eq("parent_id", targetParentId)
+                .eq("module_type", module.getModuleType())
                 .ne("id", moduleId)
                 .orderByAsc("sort", "id");
         List<QaModule> siblings = list(wrapper);
@@ -240,12 +333,12 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
     /**
      * 判断 targetId 是否是 moduleId 的后代节点
      */
-    private boolean isDescendant(Integer moduleId, Integer targetId, Integer projectId) {
+    private boolean isDescendant(Integer moduleId, Integer targetId, Integer projectId, String moduleType) {
         if (targetId == null || targetId == 0) {
             return false;
         }
         QueryWrapper<QaModule> wrapper = new QueryWrapper<>();
-        wrapper.eq("project_id", projectId);
+        wrapper.eq("project_id", projectId).eq("module_type", moduleType);
         List<QaModule> all = list(wrapper);
         Map<Integer, Integer> parentMap = new HashMap<>();
         for (QaModule m : all) {

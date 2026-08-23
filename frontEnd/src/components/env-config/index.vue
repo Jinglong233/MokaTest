@@ -1561,10 +1561,20 @@
 
     .env-manager-layout {
       height: 100%;
+      gap: 12px;
 
       // 与接口测试其它页面（API 测试/API 场景/数据模板）左侧树宽度统一为 a-col span=3
       .left-menu {
         width: 12.5%;
+        background-color: var(--color-bg-2);
+        border-radius: 4px;
+        border: 1px solid var(--color-border-2);
+      }
+
+      .right-content {
+        background-color: var(--color-bg-2);
+        border-radius: 4px;
+        border: 1px solid var(--color-border-2);
       }
     }
   }

@@ -46,10 +46,9 @@
       <a-scrollbar :disable-horizontal="true" :outer-style="{ height: '100%' }" style="height: 100%; overflow-x: hidden; overflow-y: auto;">
         <a-tree
           :data="treeData"
-          style="margin-top: 10px; padding-right: 0"
+          style="margin-top: 4px"
           :selected-keys="[selectedApi]"
           block-node
-          show-line
           ref="apiTreeRef"
           :draggable="hasApiUpdatePermission"
           @drop="onDrop"
@@ -620,7 +619,7 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
     flex-direction: column;
 
     :deep(.arco-card-body) {
-      padding: 16px 0 16px 16px; /* 右侧无内边距，滚动条贴边 */
+      padding: 16px 0; /* 上下保留，左右由内部元素各自控制 */
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -697,7 +696,7 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
   .api-list-scrollbar :deep(.arco-scrollbar-container) {
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    padding-right: 12px; /* 给滚动条和更多按钮之间留出间隙 */
+    padding: 0 16px;
   }
 
   /* 让标题文本区和更多操作在同一行自适应，避免标题过长把更多按钮挤出容器。

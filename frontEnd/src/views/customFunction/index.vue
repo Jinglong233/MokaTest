@@ -408,7 +408,7 @@ watch(() => projectStore.getProjectId, async () => {
 }
 
 .side-col {
-  width: 300px;
+  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

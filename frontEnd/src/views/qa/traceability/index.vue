@@ -141,7 +141,7 @@ const lastResultColor = (result: string) => {
 };
 
 const lastResultText = (result: string) => {
-  const map: Record<string, string> = { PASS: '通过', FAIL: '失败', BLOCK: '阻塞', NA: '不适用' };
+  const map: Record<string, string> = { PASS: '成功', FAIL: '失败', BLOCK: '阻塞', NA: '不适用' };
   return map[result] || result;
 };
 

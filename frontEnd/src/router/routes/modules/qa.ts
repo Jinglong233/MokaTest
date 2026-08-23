@@ -105,6 +105,84 @@ const QA: AppRouteRecordRaw = {
             },
         },
         {
+            path: 'testPlan/execute/:planId',
+            name: 'TestPlanExecute',
+            component: () => import('@/views/qa/testPlan/execute.vue'),
+            meta: {
+                locale: 'menu.qa.testPlanExecute',
+                requiresAuth: false,
+                hideInMenu: true,
+                permission: 'qa:testplan:execute',
+            },
+        },
+        {
+            path: 'testPlan/report/:id',
+            name: 'TestPlanReportDetail',
+            component: () => import('@/views/qa/testPlan/reportDetail.vue'),
+            meta: {
+                locale: 'menu.qa.testPlanReportDetail',
+                requiresAuth: false,
+                hideInMenu: true,
+                permission: 'qa:testplan:view',
+            },
+        },
+        {
+            path: 'review',
+            name: 'qaReview',
+            component: () => import('@/views/qa/review/index.vue'),
+            meta: {
+                locale: 'menu.qa.review',
+                requiresAuth: false,
+                // 评审已并入「用例管理」tab，菜单不再展示，保留路由避免旧链接失效
+                hideInMenu: true,
+                activeMenu: 'TestCase',
+            },
+        },
+        {
+            path: 'review/detail/:id',
+            name: 'qaReviewDetail',
+            component: () => import('@/views/qa/review/detail.vue'),
+            meta: {
+                locale: 'menu.qa.reviewDetail',
+                requiresAuth: false,
+                hideInMenu: true,
+                activeMenu: 'TestCase',
+            },
+        },
+        {
+            path: 'review/workbench',
+            name: 'qaReviewWorkbench',
+            component: () => import('@/views/qa/review/workbench.vue'),
+            meta: {
+                locale: 'menu.qa.reviewWorkbench',
+                requiresAuth: false,
+                hideInMenu: true,
+                activeMenu: 'TestCase',
+            },
+        },
+        {
+            path: 'review/create',
+            name: 'qaReviewCreate',
+            component: () => import('@/views/qa/review/create.vue'),
+            meta: {
+                locale: 'menu.qa.reviewCreate',
+                requiresAuth: false,
+                hideInMenu: true,
+                activeMenu: 'TestCase',
+            },
+        },
+        {
+            path: 'review/edit/:id',
+            name: 'qaReviewEdit',
+            component: () => import('@/views/qa/review/create.vue'),
+            meta: {
+                locale: 'menu.qa.reviewEdit',
+                requiresAuth: false,
+                hideInMenu: true,
+                activeMenu: 'TestCase',
+            },
+        },
+        {
             path: 'traceability',
             name: 'Traceability',
             component: () => import('@/views/qa/traceability/index.vue'),

@@ -3,6 +3,7 @@ package com.mokatest.platform.demos.qa.message.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -79,13 +80,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     }
 
     @Override
-    public SaResult listMyMessages(Integer page, Integer pageSize, Integer isRead) {
+    public SaResult listMyMessages(Integer page, Integer pageSize, Integer isRead, String bizType, Boolean isMention) {
         Integer userId = StpUtil.getLoginIdAsInt();
         QueryWrapper<Message> wrapper = new QueryWrapper<>();
         wrapper.eq("receiver_id", userId)
                 .eq("is_deleted", 0);
         if (isRead != null) {
             wrapper.eq("is_read", isRead);
+        }
+        if (bizType != null && !bizType.isEmpty()) {
+            // ponytail: bizType=qa maps to bug+requirement; add more biz types if modules grow
+            if ("qa".equals(bizType)) {
+                wrapper.in("biz_type", "bug", "requirement");
+            } else {
+                wrapper.eq("biz_type", bizType);
+            }
+        }
+        if (Boolean.TRUE.equals(isMention)) {
+            wrapper.like("event_type", "MENTION");
         }
         wrapper.orderByDesc("create_time");
         IPage<Message> pageParam = new Page<>(page != null ? page : 1, pageSize != null ? pageSize : 20);
@@ -131,9 +143,10 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         if (message == null || !userId.equals(message.getReceiverId())) {
             return SaResult.error("消息不存在或无权删除");
         }
-        message.setIsDeleted(1);
-        message.setDeletedAt(new Date());
-        updateById(message);
+        update(new LambdaUpdateWrapper<Message>()
+                .eq(Message::getId, messageId)
+                .set(Message::getIsDeleted, 1)
+                .set(Message::getDeletedAt, new Date()));
         return SaResult.ok();
     }
 

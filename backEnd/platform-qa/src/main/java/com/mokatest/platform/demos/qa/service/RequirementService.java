@@ -19,6 +19,12 @@ public interface RequirementService extends IService<Requirement> {
 
     SaResult batchDeleteRequirement(List<Integer> ids);
 
+    /** 取消需求与用例的关联（清 requirement_id + 从 requirement_ids 多需求串中移除） */
+    SaResult unbindCase(Integer requirementId, Integer caseId);
+
+    /** 取消需求与BUG的关联（清 requirement_id + 解除其与该需求下用例的 bug_case 绑定） */
+    SaResult unbindBug(Integer requirementId, Integer bugId);
+
     SaResult getDetail(Integer id);
 
     SaResult transitionStatus(Integer requirementId, String targetStatus);

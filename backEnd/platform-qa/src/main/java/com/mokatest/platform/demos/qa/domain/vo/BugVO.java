@@ -34,11 +34,6 @@ public class BugVO {
     /** 关联需求标题（后端关联查询） */
     private String requirementTitle;
 
-    private Integer testCaseId;
-
-    /** 关联用例名称（后端关联查询） */
-    private String caseName;
-
     private Integer reporterId;
 
     /** 报告人名称（后端关联查询） */
@@ -83,4 +78,7 @@ public class BugVO {
 
     /** 发现计划名称（后端关联查询） */
     private String planName;
+
+    /** 发现来源的计划用例ID */
+    private Integer planCaseId;
 }

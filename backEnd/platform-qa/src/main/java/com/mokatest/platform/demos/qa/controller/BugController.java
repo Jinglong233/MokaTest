@@ -48,9 +48,10 @@ public class BugController {
                          @RequestParam(required = false) String environment,
                          @RequestParam(required = false) String reproduceRate,
                          @RequestParam(required = false) String closeReason,
+                         @RequestParam(required = false) Integer requirementScopeId,
                          @RequestParam(defaultValue = "1") Integer page,
                          @RequestParam(defaultValue = "10") Integer pageSize) {
-        return bugService.listByProject(projectId, keyword, status, severity, priority, requirementId, testCaseId, moduleId, environment, reproduceRate, closeReason, page, pageSize);
+        return bugService.listByProject(projectId, keyword, status, severity, priority, requirementId, testCaseId, moduleId, environment, reproduceRate, closeReason, requirementScopeId, page, pageSize);
     }
 
     /**
@@ -126,5 +127,78 @@ public class BugController {
     @PostMapping("/transition")
     public SaResult transition(@RequestParam Integer bugId, @RequestParam String targetStatus) {
         return bugService.transitionStatus(bugId, targetStatus);
+    }
+
+    /**
+     * 从 BUG 生成回归用例
+     * 权限：qa:bug:update
+     */
+    @SaCheckPermission("qa:bug:update")
+    @OperationLog(module = "qa", type = OperateType.CREATE, targetType = "testCase",
+            description = "'从BUG（#' + #body.bugId + '）生成回归用例'")
+    @PostMapping("/generateRegressionCase")
+    public SaResult generateRegressionCase(@RequestBody java.util.Map<String, Integer> body) {
+        return bugService.generateRegressionCase(body.get("bugId"), body.get("folderId"));
+    }
+
+    /**
+     * 关联/解绑用例（testCaseId 传 null 表示解绑）
+     * 权限：qa:bug:update
+     */
+    @SaCheckPermission("qa:bug:update")
+    @OperationLog(module = "qa", type = OperateType.UPDATE, targetType = "bug", targetId = "#bugId")
+    @PostMapping("/bindCase")
+    public SaResult bindCase(@RequestParam Integer bugId,
+                             @RequestParam(required = false) Integer testCaseId) {
+        return bugService.bindTestCase(bugId, testCaseId);
+    }
+
+    /**
+     * 批量关联用例
+     */
+    @SaCheckPermission("qa:bug:update")
+    @PostMapping("/bindCases")
+    public SaResult bindCases(@RequestParam Integer bugId, @RequestBody java.util.List<Integer> testCaseIds) {
+        return bugService.bindCases(bugId, testCaseIds);
+    }
+
+    /**
+     * 解绑单个用例
+     */
+    @SaCheckPermission("qa:bug:update")
+    @PostMapping("/unbindCase")
+    public SaResult unbindCase(@RequestParam Integer bugId, @RequestParam Integer testCaseId) {
+        return bugService.unbindCase(bugId, testCaseId);
+    }
+
+    /**
+     * 关联/解绑计划用例（planCaseId 不传表示解绑）
+     * 权限：qa:bug:update
+     */
+    @SaCheckPermission("qa:bug:update")
+    @OperationLog(module = "qa", type = OperateType.UPDATE, targetType = "bug", targetId = "#bugId")
+    @PostMapping("/bindPlanCase")
+    public SaResult bindPlanCase(@RequestParam Integer bugId,
+                                 @RequestParam(required = false) Integer planCaseId) {
+        return bugService.bindPlanCase(bugId, planCaseId);
+    }
+
+    /**
+     * 查询 BUG 关联的用例列表
+     */
+    @SaCheckPermission("qa:bug:view")
+    @GetMapping("/linkedCases")
+    public SaResult linkedCases(@RequestParam Integer bugId) {
+        return bugService.listLinkedCases(bugId);
+    }
+
+    /**
+     * 查询测试计划执行中关联该用例的 BUG
+     * 权限：qa:bug:view
+     */
+    @SaCheckPermission("qa:bug:view")
+    @GetMapping("/listByPlanCase")
+    public SaResult listByPlanCase(@RequestParam Integer testCaseId) {
+        return bugService.listPlanCaseBugs(testCaseId);
     }
 }

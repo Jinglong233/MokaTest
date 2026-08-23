@@ -36,8 +36,9 @@ public class QaModuleController {
      */
     @SaCheckPermission("qa:module:view")
     @GetMapping("/list")
-    public SaResult list(@RequestParam Integer projectId) {
-        return qaModuleService.listByProject(projectId);
+    public SaResult list(@RequestParam Integer projectId,
+                         @RequestParam(required = false, defaultValue = "CASE") String moduleType) {
+        return qaModuleService.listByProject(projectId, moduleType);
     }
 
     /**
@@ -46,8 +47,9 @@ public class QaModuleController {
      */
     @SaCheckPermission("qa:module:view")
     @GetMapping("/tree")
-    public SaResult tree(@RequestParam Integer projectId) {
-        return qaModuleService.tree(projectId);
+    public SaResult tree(@RequestParam Integer projectId,
+                        @RequestParam(required = false, defaultValue = "CASE") String moduleType) {
+        return qaModuleService.tree(projectId, moduleType);
     }
 
     /**

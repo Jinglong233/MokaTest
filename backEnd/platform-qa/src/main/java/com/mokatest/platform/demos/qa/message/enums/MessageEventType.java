@@ -62,6 +62,21 @@ public enum MessageEventType {
     BUG_COMMENT_MENTION("BUG_COMMENT_MENTION"),
 
     /**
+     * 用例评论中 @ 我 / 回复我
+     */
+    CASE_COMMENT_MENTION("CASE_COMMENT_MENTION"),
+
+    /**
+     * BUG 评论回复
+     */
+    BUG_COMMENT_REPLY("BUG_COMMENT_REPLY"),
+
+    /**
+     * 用例评论回复
+     */
+    CASE_COMMENT_REPLY("CASE_COMMENT_REPLY"),
+
+    /**
      * 用例创建（预留，暂未连接触发）
      */
     CASE_CREATED("CASE_CREATED"),
@@ -69,7 +84,42 @@ public enum MessageEventType {
     /**
      * 用例状态变更（预留，暂未连接触发）
      */
-    CASE_STATUS_CHANGED("CASE_STATUS_CHANGED");
+    CASE_STATUS_CHANGED("CASE_STATUS_CHANGED"),
+
+    /**
+     * 用例信息更新
+     */
+    CASE_UPDATED("CASE_UPDATED"),
+
+    /**
+     * 用例被删除
+     */
+    CASE_DELETED("CASE_DELETED"),
+
+    /**
+     * 计划用例执行分配
+     */
+    EXECUTION_ASSIGNED("EXECUTION_ASSIGNED"),
+
+    /**
+     * 自动化计划执行完成
+     */
+    PLAN_EXECUTION_FINISHED("PLAN_EXECUTION_FINISHED"),
+
+    /**
+     * 测试报告生成
+     */
+    REPORT_GENERATED("REPORT_GENERATED"),
+
+    /**
+     * 用例评审邀请
+     */
+    REVIEW_INVITED("REVIEW_INVITED"),
+
+    /**
+     * 用例评审完成
+     */
+    REVIEW_COMPLETED("REVIEW_COMPLETED");
 
     @EnumValue
     private final String value;

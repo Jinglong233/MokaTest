@@ -1,16 +1,6 @@
 <template>
   <div class="env-config-page">
-    <a-card
-      v-if="localTeamId"
-      class="env-card"
-      :bordered="false"
-      title="环境管理"
-    >
-      <template #extra>
-        <a-tag color="arcoblue">团队维度</a-tag>
-      </template>
-      <EnvConfig :team-id="localTeamId" inline />
-    </a-card>
+    <EnvConfig v-if="localTeamId" :team-id="localTeamId" inline />
     <a-empty v-else description="请先选择团队" />
   </div>
 </template>
@@ -33,22 +23,8 @@
   .env-config-page {
     width: 100%;
     height: 100%;
-    padding: 16px;
+    padding: 12px;
     overflow: hidden;
-    background-color: var(--color-fill-2);
     box-sizing: border-box;
-  }
-
-  .env-card {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-
-    :deep(.arco-card-body) {
-      flex: 1;
-      overflow: hidden;
-      padding: 0;
-    }
   }
 </style>

@@ -1,18 +1,19 @@
 <template>
   <div class="test-case-edit-page" v-if="projectStore.hasProjectSelected">
     <Breadcrumb :items="['menu.qa', 'menu.qa.testCase', isEdit ? '编辑用例' : '新建用例']"/>
-    <a-card class="edit-card" :title="isEdit ? '编辑用例' : '新建用例'">
+    <a-card class="edit-card" :bordered="false" :title="isEdit ? '编辑用例' : '新建用例'">
+      <template #extra>
+        <a-space>
+          <a-button @click="handleCancel">取消</a-button>
+          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">保存继续创建</a-button>
+          <a-button type="primary" :loading="saving" @click="handleSave">保存</a-button>
+        </a-space>
+      </template>
       <TestCaseForm
           ref="formRef"
           :id="editId"
           @saved="handleSaved"
       />
-      <div class="footer-actions">
-        <a-space>
-          <a-button size="large" @click="handleCancel">取消</a-button>
-          <a-button type="primary" size="large" :loading="saving" @click="handleSave">保存</a-button>
-        </a-space>
-      </div>
     </a-card>
   </div>
   <NoProjectPlaceholder v-else />
@@ -38,6 +39,8 @@ const projectStore = useProjectStore();
 
 const formRef = ref();
 const saving = ref(false);
+const savingContinue = ref(false);
+let isContinueCreate = false;
 
 useDirtyGuard(() => formRef.value?.isDirty?.() ?? false);
 
@@ -60,14 +63,30 @@ const handleSave = async () => {
 };
 
 const handleSaved = () => {
+  if (isContinueCreate) {
+    isContinueCreate = false;
+    return;
+  }
   router.push({name: 'TestCase'});
 };
 
-const handleCancel = () => {
-  if (formRef.value?.isDirty?.()) {
-    const leave = confirm('您有未保存的更改，确定要离开吗？');
-    if (!leave) return;
+const handleSaveAndContinue = async () => {
+  isContinueCreate = true;
+  savingContinue.value = true;
+  try {
+    const success = await formRef.value?.save();
+    if (success) {
+      // 重置表单，继续新建
+      await formRef.value?.initForm();
+    } else {
+      isContinueCreate = false;
+    }
+  } finally {
+    savingContinue.value = false;
   }
+};
+
+const handleCancel = () => {
   router.back();
 };
 </script>
@@ -96,17 +115,5 @@ const handleCancel = () => {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  padding-bottom: 0;
-}
-
-.footer-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 200;
-  background: var(--color-bg-2);
-  padding: 16px 0;
-  border-top: 1px solid var(--color-border-2);
-  margin-top: 16px;
-  text-align: right;
 }
 </style>

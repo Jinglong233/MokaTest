@@ -36,6 +36,12 @@ public class TestCaseVO {
     /** 关联需求标题（后端关联查询） */
     private String requirementTitle;
 
+    /** 关联需求ID列表（逗号分隔，多需求关联） */
+    private String requirementIds;
+
+    /** 关联需求标题列表（顿号分隔，后端关联查询） */
+    private String requirementTitles;
+
     /** 关联BUG数量（后端统计） */
     private Long bugCount;
 
@@ -43,6 +49,11 @@ public class TestCaseVO {
 
     /** 创建人名称（后端关联查询） */
     private String createUserName;
+
+    private Integer updateUserId;
+
+    /** 更新人名称（后端关联查询） */
+    private String updateUserName;
 
     private Integer moduleId;
 

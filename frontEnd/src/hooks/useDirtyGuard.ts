@@ -1,12 +1,13 @@
 import {onBeforeRouteLeave} from 'vue-router';
 import {onMounted, onUnmounted} from 'vue';
+import {Modal} from '@arco-design/web-vue';
 
 /**
  * 未保存内容离开拦截
  *
  * 同时处理：
- * 1. 浏览器关闭/刷新前的 beforeunload 提示
- * 2. Vue Router 路由离开前的 confirm 提示
+ * 1. 浏览器关闭/刷新前的 beforeunload 提示（浏览器原生，文案不可自定义）
+ * 2. Vue Router 路由离开前的弹窗提示（Arco Modal）
  *
  * @param isDirty 返回当前是否有未保存更改
  * @param message 确认提示文案
@@ -32,7 +33,16 @@ export function useDirtyGuard(
 
     onBeforeRouteLeave(() => {
         if (isDirty()) {
-            return confirm(message);
+            return new Promise<boolean>((resolve) => {
+                Modal.confirm({
+                    title: '有未保存的修改',
+                    content: message,
+                    okText: '离开',
+                    cancelText: '留在当前页',
+                    onOk: () => resolve(true),
+                    onCancel: () => resolve(false),
+                });
+            });
         }
         return true;
     });

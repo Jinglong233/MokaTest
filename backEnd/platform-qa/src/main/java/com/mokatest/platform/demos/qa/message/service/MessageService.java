@@ -25,7 +25,7 @@ public interface MessageService extends IService<Message> {
     /**
      * 查询我的消息列表
      */
-    SaResult listMyMessages(Integer page, Integer pageSize, Integer isRead);
+    SaResult listMyMessages(Integer page, Integer pageSize, Integer isRead, String bizType, Boolean isMention);
 
     /**
      * 获取未读消息数

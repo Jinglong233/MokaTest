@@ -77,33 +77,6 @@ public class NotifyDispatchService {
         VALUE_ZH.put("PROD", "生产");
     }
 
-    public static final String CONFIG_TYPE_FIELD_VISIBLE = "FIELD_VISIBLE";
-
-    /**
-     * 消息变量 → 字段显隐配置中的字段 key。
-     * 项目把某字段配置为隐藏后，对应消息变量发送时同样置空（显隐语义在通知上保持一致）。
-     */
-    private static final Map<String, String> VAR_FIELD_MAP = new HashMap<>();
-
-    /**
-     * 业务对象 → FIELD_VISIBLE config_key
-     */
-    private static final Map<String, String> BIZ_CONFIG_KEY = new HashMap<>();
-
-    static {
-        VAR_FIELD_MAP.put("moduleName", "moduleId");
-        VAR_FIELD_MAP.put("priority", "priority");
-        VAR_FIELD_MAP.put("severity", "severity");
-        VAR_FIELD_MAP.put("environment", "environment");
-        VAR_FIELD_MAP.put("deadline", "deadline");
-        VAR_FIELD_MAP.put("foundVersion", "foundVersion");
-        VAR_FIELD_MAP.put("fixedVersion", "fixedVersion");
-
-        BIZ_CONFIG_KEY.put("bug", "bug");
-        BIZ_CONFIG_KEY.put("requirement", "requirement");
-        BIZ_CONFIG_KEY.put("testCase", "test_case");
-    }
-
     /**
      * 场景是否启用（供业务侧判断触发分支，如「创建时发 CREATED 还是 ASSIGNED」）
      */
@@ -140,13 +113,52 @@ public class NotifyDispatchService {
 
     /**
      * 按决策链构建待发送消息（跳过的不返回）
+     * 先展开项目配置中的指定具体人员（specificUserIds），再统一过滤。
      */
     public List<Message> buildMessages(List<MessageContext> contexts) {
         List<Message> messages = new ArrayList<>();
-        if (contexts == null) {
+        if (contexts == null || contexts.isEmpty()) {
             return messages;
         }
-        for (MessageContext context : contexts) {
+        // 展开指定具体人员
+        List<MessageContext> expanded = new ArrayList<>(contexts);
+        Set<Integer> existingReceivers = new HashSet<>();
+        for (MessageContext ctx : contexts) {
+            if (ctx.getReceiverId() != null) {
+                existingReceivers.add(ctx.getReceiverId());
+            }
+        }
+        for (MessageContext ctx : contexts) {
+            JSONObject rule = loadRule(ctx.getProjectId(), ctx.getEventType());
+            if (rule == null) continue;
+            Object specificObj = rule.get("specificUserIds");
+            if (specificObj == null) continue;
+            try {
+                List<Integer> specificIds = JSONUtil.toList(JSONUtil.parseArray(specificObj), Integer.class);
+                for (Integer userId : specificIds) {
+                    if (userId != null && !existingReceivers.contains(userId)
+                            && !userId.equals(ctx.getSenderId())) {
+                        existingReceivers.add(userId);
+                        expanded.add(MessageContext.builder()
+                                .eventType(ctx.getEventType())
+                                .senderId(ctx.getSenderId())
+                                .receiverId(userId)
+                                .receiverRole(null)
+                                .projectId(ctx.getProjectId())
+                                .teamId(ctx.getTeamId())
+                                .bizType(ctx.getBizType())
+                                .bizId(ctx.getBizId())
+                                .params(ctx.getParams())
+                                .snapshot(ctx.getSnapshot())
+                                .commentId(ctx.getCommentId())
+                                .build());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("指定人员解析失败，eventType={}", ctx.getEventType(), e);
+            }
+        }
+        for (MessageContext context : expanded) {
             Message message = buildMessage(context);
             if (message != null) {
                 messages.add(message);
@@ -203,24 +215,26 @@ public class NotifyDispatchService {
                 contentTemplate = customContent;
             }
         }
-        // 4. 渲染（白名单字面替换；字段显隐中被隐藏的字段对应变量置空）
-        Set<String> hiddenFields = loadHiddenFields(context.getProjectId(), scenario.getBizType());
+        // 4. 渲染（白名单字面替换）
         Message message = new Message();
         message.setReceiverId(context.getReceiverId());
         message.setSenderId(context.getSenderId());
         message.setEventType(context.getEventType());
         message.setTemplateCode(context.getEventType().name());
-        message.setTitle(render(titleTemplate, context.getParams(), scenario, hiddenFields));
-        message.setContent(render(contentTemplate, context.getParams(), scenario, hiddenFields));
+        message.setTitle(render(titleTemplate, context.getParams(), scenario));
+        message.setContent(render(contentTemplate, context.getParams(), scenario));
         message.setBizType(context.getBizType());
         message.setBizId(context.getBizId());
         message.setTeamId(context.getTeamId());
         message.setProjectId(context.getProjectId());
-        if (context.getSnapshot() != null && !context.getSnapshot().isEmpty()) {
-            message.setExtraData(JSONUtil.toJsonStr(context.getSnapshot()));
-        }
         message.setIsRead(0);
         message.setCreateTime(new Date());
+        // 存评论ID到 extra_data，前端跳转具体评论用
+        if (context.getCommentId() != null) {
+            Map<String, Object> extra = new HashMap<>();
+            extra.put("commentId", context.getCommentId());
+            message.setExtraData(JSONUtil.toJsonStr(extra));
+        }
         return message;
     }
 
@@ -240,41 +254,12 @@ public class NotifyDispatchService {
         }
     }
 
-    /**
-     * 读取项目某业务对象被隐藏的字段集合（FIELD_VISIBLE 差量，无记录 = 无隐藏）
-     */
-    private Set<String> loadHiddenFields(Integer projectId, String bizType) {
-        Set<String> hidden = new HashSet<>();
-        if (projectId == null || bizType == null) {
-            return hidden;
-        }
-        String configKey = BIZ_CONFIG_KEY.get(bizType);
-        String json = projectConfigService.getConfigValue(projectId, CONFIG_TYPE_FIELD_VISIBLE, configKey);
-        if (json == null || json.isEmpty()) {
-            return hidden;
-        }
-        try {
-            JSONObject obj = JSONUtil.parseObj(json);
-            Object arr = obj.get("hiddenFields");
-            if (arr instanceof Iterable) {
-                for (Object item : (Iterable<?>) arr) {
-                    if (item != null) {
-                        hidden.add(item.toString());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("字段显隐配置解析失败，按无隐藏处理，projectId={}，bizType={}", projectId, bizType, e);
-        }
-        return hidden;
-    }
 
     /**
      * 模板渲染：${key} 字面替换，仅替换场景白名单内的 key，未识别变量置空。
-     * oldStatus/newStatus/severity/priority 等枚举值渲染为中文；
-     * 命中字段显隐隐藏名单的变量（如 moduleName←moduleId）置空。
+     * oldStatus/newStatus/severity/priority 等枚举值渲染为中文。
      */
-    private String render(String template, Map<String, Object> params, NotifyScenario scenario, Set<String> hiddenFields) {
+    private String render(String template, Map<String, Object> params, NotifyScenario scenario) {
         if (template == null) {
             return "";
         }
@@ -283,9 +268,7 @@ public class NotifyDispatchService {
         while (matcher.find()) {
             String key = matcher.group(1);
             String replacement = "";
-            String mappedField = VAR_FIELD_MAP.get(key);
-            boolean fieldHidden = mappedField != null && hiddenFields != null && hiddenFields.contains(mappedField);
-            if (!fieldHidden && scenario.getVariables().contains(key) && params != null) {
+            if (scenario.getVariables().contains(key) && params != null) {
                 Object value = params.get(key);
                 if (value != null) {
                     String text = value.toString();

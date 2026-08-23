@@ -63,4 +63,9 @@ public class MessageContext {
      * 来源对象快照（用于消息详情直接展示，无需切换项目）
      */
     private Map<String, Object> snapshot;
+
+    /**
+     * 评论ID（用于前端跳转到具体评论，存入 extra_data）
+     */
+    private Integer commentId;
 }

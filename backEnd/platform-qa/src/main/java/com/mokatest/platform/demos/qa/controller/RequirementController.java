@@ -92,6 +92,26 @@ public class RequirementController {
     }
 
     /**
+     * 取消需求与用例的关联（清 requirement_id + 从 requirement_ids 多需求串中移除）
+     * 权限：qa:requirement:update
+     */
+    @SaCheckPermission("qa:requirement:update")
+    @PostMapping("/unbindCase")
+    public SaResult unbindCase(@RequestParam Integer requirementId, @RequestParam Integer caseId) {
+        return requirementService.unbindCase(requirementId, caseId);
+    }
+
+    /**
+     * 取消需求与BUG的关联（清 requirement_id + 解除其与该需求下用例的 bug_case 绑定）
+     * 权限：qa:requirement:update
+     */
+    @SaCheckPermission("qa:requirement:update")
+    @PostMapping("/unbindBug")
+    public SaResult unbindBug(@RequestParam Integer requirementId, @RequestParam Integer bugId) {
+        return requirementService.unbindBug(requirementId, bugId);
+    }
+
+    /**
      * 批量删除需求
      * 权限：qa:requirement:delete
      */

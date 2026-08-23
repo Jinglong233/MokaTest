@@ -52,8 +52,9 @@ public class TestCaseController {
                          @RequestParam(required = false) String lastResult,
                          @RequestParam(defaultValue = "1") Integer page,
                          @RequestParam(defaultValue = "10") Integer pageSize,
-                         @RequestParam(required = false) Integer excludePlanId) {
-        return testCaseService.listByProject(projectId, moduleId, setId, requirementId, keyword, lastResult, page, pageSize, excludePlanId);
+                         @RequestParam(required = false) Integer excludePlanId,
+                         @RequestParam(required = false) String status) {
+        return testCaseService.listByProject(projectId, moduleId, setId, requirementId, keyword, lastResult, page, pageSize, excludePlanId, status);
     }
 
     /**
@@ -108,6 +109,26 @@ public class TestCaseController {
     @PostMapping("/batchDelete")
     public SaResult batchDelete(@RequestBody List<Integer> ids) {
         return testCaseService.batchDeleteCase(ids);
+    }
+
+    /**
+     * 批量移动用例到指定模块
+     * 权限：qa:testcase:update
+     */
+    @SaCheckPermission("qa:testcase:update")
+    @PostMapping("/batchMove")
+    public SaResult batchMove(@RequestParam List<Integer> ids, @RequestParam Integer moduleId) {
+        return testCaseService.batchMoveModule(ids, moduleId);
+    }
+
+    /**
+     * 批量排序：按传入 id 顺序重排 sort 值（脑图兄弟节点顺序持久化）
+     * 权限：qa:testcase:update
+     */
+    @SaCheckPermission("qa:testcase:update")
+    @PostMapping("/sort")
+    public SaResult sort(@RequestBody List<Integer> ids) {
+        return testCaseService.sortCases(ids);
     }
 
     /**
@@ -175,8 +196,10 @@ public class TestCaseController {
     @SaCheckPermission("qa:testcase:update")
     @OperationLog(module = "qa", type = OperateType.TRANSITION, targetType = "testCase", targetId = "#testCaseId", compareClass = TestCase.class)
     @PostMapping("/transition")
-    public SaResult transition(@RequestParam Integer testCaseId, @RequestParam String targetStatus) {
-        return testCaseService.transitionStatus(testCaseId, targetStatus);
+    public SaResult transition(@RequestParam Integer testCaseId,
+                               @RequestParam String targetStatus,
+                               @RequestParam(required = false) String comment) {
+        return testCaseService.transitionStatus(testCaseId, targetStatus, comment);
     }
 
     /**

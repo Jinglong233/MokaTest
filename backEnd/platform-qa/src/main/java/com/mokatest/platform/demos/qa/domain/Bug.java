@@ -55,9 +55,12 @@ public class Bug {
 
     private Integer requirementId;
 
-    private Integer testCaseId;
-
     private Integer planCaseId;
+
+    /**
+     * 沉淀的回归用例ID
+     */
+    private Integer regressionCaseId;
 
     private Integer reporterId;
 

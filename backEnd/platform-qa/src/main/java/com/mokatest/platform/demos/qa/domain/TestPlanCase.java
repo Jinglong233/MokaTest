@@ -24,9 +24,14 @@ public class TestPlanCase {
 
     private Integer sort;
 
+    private Integer testPointId;
+
     private String executeResult;
 
     private String executeRemark;
+
+    /** 步骤执行明细（JSON数组：[{actualResult, stepResult}]） */
+    private String stepResults;
 
     private Integer executeUserId;
 

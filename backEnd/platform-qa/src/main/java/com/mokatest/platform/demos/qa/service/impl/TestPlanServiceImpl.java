@@ -10,6 +10,7 @@ import com.mokatest.platform.demos.qa.mapper.*;
 import com.mokatest.platform.demos.qa.service.TestPlanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,38 +27,152 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     private final TestCaseExecutionMapper testCaseExecutionMapper;
     private final TestCaseMapper testCaseMapper;
     private final BugMapper bugMapper;
+    private final com.mokatest.platform.demos.qa.mapper.BugCaseMapper bugCaseMapper;
     private final com.mokatest.platform.demos.mapper.UserMapper userMapper;
     private final com.mokatest.platform.demos.qa.service.BugService bugService;
+    private final PlanTestPointMapper planTestPointMapper;
     private final QaModuleMapper qaModuleMapper;
     private final RequirementMapper requirementMapper;
+    private final com.mokatest.platform.demos.qa.service.TestPlanReportService testPlanReportService;
 
     @Override
-    public SaResult listByProject(Integer projectId, String keyword, String status, Integer page, Integer pageSize) {
+    public SaResult listByProject(Integer projectId, String keyword, String status, Integer moduleId, Integer page, Integer pageSize) {
         QueryWrapper<TestPlan> wrapper = new QueryWrapper<>();
         wrapper.eq("project_id", projectId);
         if (keyword != null && !keyword.isEmpty()) {
-            wrapper.like("plan_name", keyword);
+            wrapper.and(w -> w.like("plan_name", keyword).or().like("plan_code", keyword));
         }
         if (status != null && !status.isEmpty()) {
             wrapper.eq("status", status);
         }
+        if (moduleId != null) {
+            wrapper.eq("module_id", moduleId);
+        }
         wrapper.orderByDesc("create_time");
         Page<TestPlan> pageParam = new Page<>(page, pageSize);
         Page<TestPlan> result = testPlanMapper.selectPage(pageParam, wrapper);
-        return SaResult.ok().setData(result);
+        List<TestPlan> records = result.getRecords();
+        if (records.isEmpty()) {
+            return SaResult.ok().setData(result);
+        }
+
+        // 聚合：用例数/通过数/执行结果汇总（按计划分组）
+        List<Integer> planIds = records.stream().map(TestPlan::getId).collect(Collectors.toList());
+        QueryWrapper<TestPlanCase> pcW = new QueryWrapper<>();
+        pcW.in("plan_id", planIds);
+        List<TestPlanCase> allCases = testPlanCaseMapper.selectList(pcW);
+        Map<Integer, List<TestPlanCase>> caseMap = allCases.stream().collect(Collectors.groupingBy(TestPlanCase::getPlanId));
+
+        // 创建人/模块名称
+        Set<Integer> userIds = records.stream().map(TestPlan::getCreateUserId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Integer, String> userNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (com.mokatest.platform.demos.domain.ui.User u : userMapper.selectBatchIds(userIds)) {
+                userNameMap.put(u.getId().intValue(), u.getUsername());
+            }
+        }
+        Set<Integer> modIds = records.stream().map(TestPlan::getModuleId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Integer, String> modNameMap = new HashMap<>();
+        if (!modIds.isEmpty()) {
+            for (QaModule m : qaModuleMapper.selectBatchIds(modIds)) {
+                modNameMap.put(m.getId(), m.getModuleName());
+            }
+        }
+
+        Page<TestPlanListVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        List<TestPlanListVO> voList = records.stream().map(p -> {
+            TestPlanListVO vo = new TestPlanListVO();
+            BeanUtils.copyProperties(p, vo);
+            vo.setCreateUserName(userNameMap.get(p.getCreateUserId()));
+            vo.setModuleName(modNameMap.get(p.getModuleId()));
+            List<TestPlanCase> pcs = caseMap.getOrDefault(p.getId(), List.of());
+            int total = pcs.size();
+            long pass = pcs.stream().filter(c -> "PASS".equals(c.getExecuteResult())).count();
+            long fail = pcs.stream().filter(c -> "FAIL".equals(c.getExecuteResult())).count();
+            long block = pcs.stream().filter(c -> "BLOCK".equals(c.getExecuteResult())).count();
+            long unexec = total - pass - fail - block - pcs.stream().filter(c -> "NA".equals(c.getExecuteResult())).count();
+            vo.setCaseCount(total);
+            vo.setPassRate(total > 0 ? Math.round(pass * 100f / total) : 0);
+            // 执行结果汇总：无用例或全部未执行 → NONE；全部通过 → ALL_PASS；其余 → NOT_PASS
+            String execResult;
+            if (total == 0 || unexec == total) execResult = "NONE";
+            else if (pass == total) execResult = "ALL_PASS";
+            else execResult = "NOT_PASS";
+            vo.setExecResult(execResult);
+            return vo;
+        }).collect(Collectors.toList());
+        voPage.setRecords(voList);
+        return SaResult.ok().setData(voPage);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult saveOrUpdatePlan(TestPlan plan, Integer loginUserId) {
+        // 记录旧状态，用于「完成时自动生成报告」
+        TestPlan oldPlan = plan.getId() != null ? getById(plan.getId()) : null;
+        String oldStatus = oldPlan != null ? oldPlan.getStatus() : null;
         if (plan.getId() == null) {
             plan.setCreateUserId(loginUserId);
             plan.setStatus("DRAFT");
             plan.setCreateTime(new Date());
+            // 先占临时唯一值，插入拿到自增 id 后改成 TP-{id}
+            plan.setPlanCode("TMP-" + System.nanoTime());
         }
         plan.setUpdateTime(new Date());
         boolean success = saveOrUpdate(plan);
-        return success ? SaResult.ok("保存成功").setData(plan) : SaResult.error("保存失败");
+        if (!success) {
+            return SaResult.error("保存失败");
+        }
+        if (plan.getPlanCode() != null && plan.getPlanCode().startsWith("TMP-")) {
+            plan.setPlanCode("TP-" + plan.getId());
+            updateById(plan);
+        }
+        // 状态流转为已完成时自动生成报告
+        if ("COMPLETED".equals(plan.getStatus()) && !"COMPLETED".equals(oldStatus)) {
+            generatePlanReport(plan.getId(), "AUTO", loginUserId);
+        }
+        return SaResult.ok("保存成功").setData(plan);
+    }
+
+    /**
+     * 生成计划报告：实时计算完整报告数据并作为快照固化到 content（之后报告内容不再随源数据变化）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SaResult generatePlanReport(Integer planId, String triggerType, Integer loginUserId) {
+        TestPlan plan = getById(planId);
+        if (plan == null) {
+            return SaResult.error("计划不存在");
+        }
+        SaResult reportRes = getPlanReport(planId);
+        if (reportRes.getCode() != 200 || reportRes.getData() == null) {
+            return SaResult.error("报告数据生成失败");
+        }
+        PlanReportVO vo = (PlanReportVO) reportRes.getData();
+        String contentJson;
+        try {
+            contentJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(vo);
+        } catch (Exception e) {
+            return SaResult.error("报告序列化失败");
+        }
+        // 列表页展示用的快照指标随报告固化
+        int passRateSnap = vo.getTotal() > 0 ? Math.round(vo.getPass() * 100f / vo.getTotal()) : 0;
+        String execResultSnap;
+        if (vo.getTotal() == 0 || vo.getUnexec() == vo.getTotal()) execResultSnap = "NONE";
+        else if (vo.getPass() == vo.getTotal()) execResultSnap = "ALL_PASS";
+        else execResultSnap = "NOT_PASS";
+        TestPlanReport report = new TestPlanReport();
+        report.setReportName(plan.getPlanName() + "-报告-" + new java.text.SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+        report.setReportType("PLAN");
+        report.setPlanId(plan.getId());
+        report.setProjectId(plan.getProjectId());
+        report.setTriggerType(triggerType);
+        report.setContent(contentJson);
+        report.setPassRate(passRateSnap);
+        report.setExecResult(execResultSnap);
+        report.setCreateUserId(loginUserId);
+        report.setCreateTime(new Date());
+        return testPlanReportService.createReport(report);
     }
 
     @Override
@@ -97,10 +212,61 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
             QueryWrapper<Bug> bugWrapper = new QueryWrapper<>();
             bugWrapper.in("plan_case_id", planCaseIds);
             List<Bug> bugs = bugMapper.selectList(bugWrapper);
+            // 补充报告人/处理人昵称
+            Set<Integer> bugUserIds = new HashSet<>();
+            for (Bug b : bugs) {
+                if (b.getReporterId() != null) bugUserIds.add(b.getReporterId());
+                if (b.getAssigneeId() != null) bugUserIds.add(b.getAssigneeId());
+            }
+            Map<Integer, String> bugUserNameMap = new HashMap<>();
+            if (!bugUserIds.isEmpty()) {
+                for (com.mokatest.platform.demos.domain.ui.User u : userMapper.selectBatchIds(bugUserIds)) {
+                    bugUserNameMap.put(u.getId().intValue(), u.getUsername());
+                }
+            }
+            final Map<Integer, String> nameMap = bugUserNameMap;
+            // 统计每个 BUG 的关联用例数（bug_case 绑定数 + 来源计划用例）
+            Map<Integer, Long> bugCaseCount = new HashMap<>();
+            if (!bugs.isEmpty()) {
+                QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcW = new QueryWrapper<>();
+                bcW.in("bug_id", bugs.stream().map(Bug::getId).collect(Collectors.toList()));
+                bugCaseCount = bugCaseMapper.selectList(bcW).stream()
+                        .collect(Collectors.groupingBy(com.mokatest.platform.demos.qa.domain.BugCase::getBugId, Collectors.counting()));
+            }
+            final Map<Integer, Long> ccMap = bugCaseCount;
             bugMap.putAll(bugs.stream()
                     .collect(Collectors.groupingBy(Bug::getPlanCaseId,
-                            Collectors.mapping(b -> new BugMiniVO(b.getId(), b.getBugCode(), b.getTitle(), b.getStatus()),
+                            Collectors.mapping(b -> new BugMiniVO(b.getId(), b.getBugCode(), b.getTitle(), b.getStatus(),
+                                            nameMap.getOrDefault(b.getReporterId(), ""), nameMap.getOrDefault(b.getAssigneeId(), ""),
+                                            (int) (ccMap.getOrDefault(b.getId(), 0L) + (b.getPlanCaseId() != null ? 1 : 0)),
+                                            b.getCreateTime()),
                                     Collectors.toList()))));
+        }
+        // 查询测试点名称
+        Set<Integer> tpIds = planCases.stream().map(TestPlanCase::getTestPointId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Integer, String> tpNameMap = new HashMap<>();
+        if (!tpIds.isEmpty()) {
+            for (PlanTestPoint tp : planTestPointMapper.selectBatchIds(tpIds)) {
+                tpNameMap.put(tp.getId(), tp.getName());
+            }
+        }
+        // 查询模块名称
+        Set<Integer> modIds = cases.stream().map(TestCase::getModuleId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Integer, String> modNameMap = new HashMap<>();
+        if (!modIds.isEmpty()) {
+            for (QaModule m : qaModuleMapper.selectBatchIds(modIds)) {
+                modNameMap.put(m.getId(), m.getModuleName());
+            }
+        }
+        // 查询用户名称（创建人+执行人）
+        Set<Integer> userIds = new HashSet<>();
+        for (TestCase c : cases) { if (c.getCreateUserId() != null) userIds.add(c.getCreateUserId()); }
+        for (TestPlanCase p0 : planCases) { if (p0.getExecuteUserId() != null) userIds.add(p0.getExecuteUserId()); }
+        Map<Integer, String> userNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (com.mokatest.platform.demos.domain.ui.User u : userMapper.selectBatchIds(userIds)) {
+                userNameMap.put(u.getId().intValue(), u.getUsername());
+            }
         }
         // 组装结果
         List<TestPlanCaseVO> voList = planCases.stream().map(pc -> {
@@ -111,8 +277,12 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
             vo.setSort(pc.getSort());
             vo.setExecuteResult(pc.getExecuteResult());
             vo.setExecuteRemark(pc.getExecuteRemark());
+            vo.setStepResults(pc.getStepResults());
             vo.setExecuteUserId(pc.getExecuteUserId());
             vo.setExecuteTime(pc.getExecuteTime());
+            vo.setExecuteUserName(userNameMap.get(pc.getExecuteUserId()));
+            vo.setTestPointId(pc.getTestPointId());
+            vo.setTestPointName(tpNameMap.get(pc.getTestPointId()));
             // 填充用例信息
             TestCase tc = cases.stream().filter(c -> c.getId().equals(pc.getTestCaseId())).findFirst().orElse(null);
             if (tc != null) {
@@ -122,6 +292,12 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
                 vo.setPriority(tc.getPriority());
                 vo.setPreCondition(tc.getPreCondition());
                 vo.setTestSteps(tc.getTestSteps());
+                vo.setTags(tc.getTags());
+                vo.setModuleId(tc.getModuleId());
+                vo.setModuleName(modNameMap.get(tc.getModuleId()));
+                vo.setCreateUserName(userNameMap.get(tc.getCreateUserId()));
+                vo.setCreateTime(tc.getCreateTime());
+                vo.setUpdateTime(tc.getUpdateTime());
             }
             // 填充关联BUG列表
             vo.setBugList(bugMap.getOrDefault(pc.getId(), List.of()));
@@ -165,7 +341,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SaResult executeCase(Integer planCaseId, String result, String remark, Integer executeUserId) {
+    public SaResult executeCase(Integer planCaseId, String result, String remark, String stepResults, Integer executeUserId) {
         TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
         if (pc == null) {
             return SaResult.error("计划用例不存在");
@@ -173,6 +349,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         // 更新计划用例执行结果
         pc.setExecuteResult(result);
         pc.setExecuteRemark(remark);
+        pc.setStepResults(stepResults);
         pc.setExecuteUserId(executeUserId);
         pc.setExecuteTime(new Date());
         testPlanCaseMapper.updateById(pc);
@@ -250,7 +427,6 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         }
         // 自动填充关联字段（用户填写的表单中不会传这些）
         bug.setProjectId(testCase.getProjectId());
-        bug.setTestCaseId(testCase.getId());
         bug.setPlanCaseId(planCaseId);
         bug.setRequirementId(testCase.getRequirementId());
         bug.setReporterId(createUserId);
@@ -270,6 +446,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (result.getCode() != 200) {
             return result;
         }
+        // 关联 BUG 到当前用例（通过 bug_case 关联表）
+        bugService.bindCases(bug.getId(), java.util.Collections.singletonList(testCase.getId()));
         // 回填计划用例的bug_id（记录最近一次）
         pc.setBugId(bug.getId());
         testPlanCaseMapper.updateById(pc);
@@ -519,6 +697,55 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         }
 
         // 组装报告
+        // 缺陷列表快照：编号/名称/状态/处理人/用例数（bug_case 直接关联 + plan_case_id 计划关联去重计数）
+        Set<Integer> bugAssigneeIds = bugs.stream().map(Bug::getAssigneeId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (!bugAssigneeIds.isEmpty()) {
+            List<com.mokatest.platform.demos.domain.ui.User> assignees = userMapper.selectBatchIds(bugAssigneeIds);
+            for (com.mokatest.platform.demos.domain.ui.User u : assignees) {
+                userNameMap.put(u.getId().intValue(), u.getUsername());
+            }
+        }
+        Map<Integer, Long> bugDirectCaseCount = new HashMap<>();
+        if (!bugs.isEmpty()) {
+            QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> bcW = new QueryWrapper<>();
+            bcW.in("bug_id", bugs.stream().map(Bug::getId).collect(Collectors.toList()));
+            bugDirectCaseCount = bugCaseMapper.selectList(bcW).stream()
+                    .collect(Collectors.groupingBy(com.mokatest.platform.demos.qa.domain.BugCase::getBugId, Collectors.counting()));
+        }
+        Map<Integer, Long> finalBugDirectCaseCount = bugDirectCaseCount;
+        List<Map<String, Object>> bugList = bugs.stream().map(b -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("bugId", b.getId());
+            m.put("bugCode", b.getBugCode());
+            m.put("title", b.getTitle());
+            m.put("status", b.getStatus());
+            m.put("assigneeName", userNameMap.getOrDefault(b.getAssigneeId(), ""));
+            long cnt = finalBugDirectCaseCount.getOrDefault(b.getId(), 0L) + (b.getPlanCaseId() != null ? 1 : 0);
+            m.put("caseCount", cnt);
+            return m;
+        }).collect(Collectors.toList());
+
+        // 用例明细快照：编号/名称/执行结果/等级/模块/执行人/缺陷数
+        Map<Integer, Long> planCaseBugCount = bugs.stream()
+                .filter(b -> b.getPlanCaseId() != null)
+                .collect(Collectors.groupingBy(Bug::getPlanCaseId, Collectors.counting()));
+        List<Map<String, Object>> caseDetails = new ArrayList<>();
+        for (TestPlanCase pc : planCases) {
+            TestCase tc = caseMap.get(pc.getTestCaseId());
+            if (tc == null) continue;
+            Map<String, Object> m = new HashMap<>();
+            m.put("planCaseId", pc.getId());
+            m.put("testCaseId", tc.getId());
+            m.put("caseCode", tc.getCaseCode());
+            m.put("caseName", tc.getCaseName());
+            m.put("executeResult", pc.getExecuteResult());
+            m.put("priority", tc.getPriority());
+            m.put("moduleName", moduleMap.getOrDefault(tc.getModuleId(), ""));
+            m.put("executorName", userNameMap.getOrDefault(pc.getExecuteUserId(), ""));
+            m.put("bugCount", planCaseBugCount.getOrDefault(pc.getId(), 0L));
+            caseDetails.add(m);
+        }
+
         PlanReportVO report = new PlanReportVO();
         report.setPlanId(plan.getId());
         report.setPlanName(plan.getPlanName());
@@ -547,6 +774,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         report.setRequirements(reqList);
         report.setExecutors(executorList);
         report.setExecutionTrend(trendList);
+        report.setBugList(bugList);
+        report.setCaseDetails(caseDetails);
 
         return SaResult.ok().setData(report);
     }
@@ -560,6 +789,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         private Integer sort;
         private String executeResult;
         private String executeRemark;
+        private String stepResults;
         private Integer executeUserId;
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
         private Date executeTime;
@@ -572,6 +802,18 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         private java.util.List<com.mokatest.platform.demos.qa.domain.TestCase.TestStepItem> testSteps;
         // 关联BUG列表（一对多）
         private List<BugMiniVO> bugList;
+        // 列表页扩展字段：测试点/模块/标签/人员/时间
+        private Integer testPointId;
+        private String testPointName;
+        private String tags;
+        private Integer moduleId;
+        private String moduleName;
+        private String createUserName;
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+        private Date createTime;
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+        private Date updateTime;
+        private String executeUserName;
     }
 
     @lombok.Data
@@ -581,6 +823,22 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         private String bugCode;
         private String title;
         private String status;
+        private String reporterName;
+        private String assigneeName;
+        // 关联用例数（bug_case 绑定数 + 来源计划用例）
+        private Integer caseCount;
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+        private Date createTime;
+    }
+
+    @lombok.Data
+    public static class TestPlanListVO extends TestPlan {
+        private String createUserName;
+        private String moduleName;
+        private Integer caseCount;
+        private Integer passRate;
+        /** 执行结果汇总：NONE（无用例/全部未执行）/ALL_PASS/NOT_PASS */
+        private String execResult;
     }
 
     @lombok.Data
@@ -623,6 +881,10 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         private List<Map<String, Object>> requirements;
         private List<Map<String, Object>> executors;
         private List<Map<String, Object>> executionTrend;
+        // 缺陷列表快照（编号/名称/状态/处理人/用例数）
+        private List<Map<String, Object>> bugList;
+        // 用例明细快照（编号/名称/执行结果/等级/模块/执行人/缺陷数）
+        private List<Map<String, Object>> caseDetails;
     }
 
     @lombok.Data
@@ -646,5 +908,135 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         map.put("completed", baseMapper.selectCount(new QueryWrapper<TestPlan>().eq("project_id", projectId).eq("status", "COMPLETED")));
         map.put("draft", baseMapper.selectCount(new QueryWrapper<TestPlan>().eq("project_id", projectId).eq("status", "DRAFT")));
         return SaResult.data(map);
+    }
+
+    @Override
+    public SaResult getTestPoints(Integer planId) {
+        // 查测试点
+        List<PlanTestPoint> tps = planTestPointMapper.selectList(
+                new QueryWrapper<PlanTestPoint>().eq("plan_id", planId).orderByAsc("sort_order"));
+        // 查计划用例（含 test_point_id）
+        List<TestPlanCase> planCases = testPlanCaseMapper.selectList(
+                new QueryWrapper<TestPlanCase>().eq("plan_id", planId));
+        // 按 test_point_id 分组
+        Map<Integer, List<Map<String, Object>>> caseGroup = new HashMap<>();
+        List<Map<String, Object>> unassigned = new ArrayList<>();
+        for (TestPlanCase pc : planCases) {
+            Map<String, Object> caseInfo = new HashMap<>();
+            caseInfo.put("planCaseId", pc.getId());
+            caseInfo.put("testCaseId", pc.getTestCaseId());
+            caseInfo.put("executeResult", pc.getExecuteResult());
+            caseInfo.put("executeRemark", pc.getExecuteRemark());
+            caseInfo.put("stepResults", pc.getStepResults());
+            // 补用例名称
+            TestCase tc = testCaseMapper.selectById(pc.getTestCaseId());
+            caseInfo.put("caseName", tc != null ? tc.getCaseName() : "已删除");
+            caseInfo.put("priority", tc != null ? tc.getPriority() : null);
+            if (pc.getTestPointId() != null) {
+                caseGroup.computeIfAbsent(pc.getTestPointId(), k -> new ArrayList<>()).add(caseInfo);
+            } else {
+                unassigned.add(caseInfo);
+            }
+        }
+        // 组装结果
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (PlanTestPoint tp : tps) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", tp.getId());
+            m.put("name", tp.getName());
+            m.put("sortOrder", tp.getSortOrder());
+            m.put("cases", caseGroup.getOrDefault(tp.getId(), Collections.emptyList()));
+            result.add(m);
+        }
+        // 未分配用例单独返回
+        Map<String, Object> data = new HashMap<>();
+        data.put("testPoints", result);
+        data.put("unassignedCases", unassigned);
+        return SaResult.data(data);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SaResult saveTestPoints(Integer planId, List<Map<String, Object>> testPoints) {
+        // 查现有测试点
+        List<PlanTestPoint> existing = planTestPointMapper.selectList(
+                new QueryWrapper<PlanTestPoint>().eq("plan_id", planId));
+        Set<Integer> existingIds = existing.stream().map(PlanTestPoint::getId).collect(Collectors.toSet());
+        Set<Integer> incomingIds = new HashSet<>();
+
+        for (int i = 0; i < testPoints.size(); i++) {
+            Map<String, Object> tp = testPoints.get(i);
+            Integer id = tp.get("id") != null ? ((Number) tp.get("id")).intValue() : null;
+            String name = (String) tp.get("name");
+            @SuppressWarnings("unchecked")
+            List<Number> caseIdNums = tp.get("caseIds") != null ? (List<Number>) tp.get("caseIds") : Collections.emptyList();
+            List<Integer> caseIds = caseIdNums.stream().map(n -> n != null ? n.intValue() : null).collect(Collectors.toList());
+
+            if (id != null && existingIds.contains(id)) {
+                // 更新
+                PlanTestPoint update = new PlanTestPoint();
+                update.setId(id);
+                update.setName(name);
+                update.setSortOrder(i);
+                planTestPointMapper.updateById(update);
+                incomingIds.add(id);
+                // 更新用例关联
+                updateCaseTestPoint(planId, id, caseIds);
+            } else {
+                // 新增
+                PlanTestPoint newTp = new PlanTestPoint();
+                newTp.setPlanId(planId);
+                newTp.setName(name);
+                newTp.setSortOrder(i);
+                newTp.setCreateTime(new Date());
+                planTestPointMapper.insert(newTp);
+                updateCaseTestPoint(planId, newTp.getId(), caseIds);
+            }
+        }
+
+        // 删除：现有但不在传入列表中的
+        for (PlanTestPoint tp : existing) {
+            if (!incomingIds.contains(tp.getId())) {
+                planTestPointMapper.deleteById(tp.getId());
+                // 解除用例关联
+                List<TestPlanCase> cases = testPlanCaseMapper.selectList(
+                        new QueryWrapper<TestPlanCase>().eq("plan_id", planId).eq("test_point_id", tp.getId()));
+                for (TestPlanCase pc : cases) {
+                    pc.setTestPointId(null);
+                    testPlanCaseMapper.updateById(pc);
+                }
+            }
+        }
+        return SaResult.ok("保存成功");
+    }
+
+    @Override
+    public SaResult updateCaseTestPoint(Integer planId, Integer planCaseId, Integer testPointId) {
+        TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
+        if (pc == null || !planId.equals(pc.getPlanId())) {
+            return SaResult.error("用例不存在");
+        }
+        pc.setTestPointId(testPointId); // null = 取消关联
+        testPlanCaseMapper.updateById(pc);
+        return SaResult.ok("操作成功");
+    }
+
+    private void updateCaseTestPoint(Integer planId, Integer testPointId, List<Integer> caseIds) {
+        // 先解除旧关联
+        List<TestPlanCase> oldCases = testPlanCaseMapper.selectList(
+                new QueryWrapper<TestPlanCase>().eq("plan_id", planId).eq("test_point_id", testPointId));
+        for (TestPlanCase pc : oldCases) {
+            pc.setTestPointId(null);
+            testPlanCaseMapper.updateById(pc);
+        }
+        // 建立新关联：按 testCaseId 匹配 plan_case
+        for (Integer testCaseId : caseIds) {
+            TestPlanCase pc = testPlanCaseMapper.selectOne(
+                    new QueryWrapper<TestPlanCase>().eq("plan_id", planId).eq("test_case_id", testCaseId));
+            if (pc != null) {
+                pc.setTestPointId(testPointId);
+                testPlanCaseMapper.updateById(pc);
+            }
+        }
     }
 }

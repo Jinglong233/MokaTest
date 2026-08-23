@@ -1,207 +1,212 @@
 <template>
   <div class="test-case-page" v-if="projectStore.hasProjectSelected">
     <Breadcrumb :items="['menu.qa', 'menu.qa.testCase']" />
-    <div class="main-row">
-      <!-- 左侧模块树 -->
-      <div class="col side-col" :style="sideColStyle">
-        <a-card class="tree-card" size="small" title="业务模块">
-          <div class="tree-scroll-wrapper">
-            <ModuleTreeManager
-              ref="moduleTreeRef"
-              :show-search="false"
-              :show-virtual-root="true"
-              :selected-keys="[searchModuleId ?? 0]"
-              default-expand-all
-              @select="handleTreeSelect"
-              @changed="handleModuleChanged"
-            />
+    <a-tabs
+      v-model:active-key="activeMainTab"
+      class="case-main-tabs"
+      :lazy-load="true"
+    >
+      <a-tab-pane key="case" :title="$t('qa.testCase.tab.case')">
+        <div class="case-view-wrap">
+          <!-- 列表/脑图 视图切换 -->
+          <div class="case-view-toggle">
+            <a-radio-group :model-value="caseViewMode" type="button" size="small" @change="handleViewModeChange">
+              <a-radio value="list"><icon-list /> 列表</a-radio>
+              <a-radio value="mindmap"><icon-mind-mapping /> 脑图</a-radio>
+            </a-radio-group>
           </div>
-        </a-card>
-      </div>
-      <div
-        class="main-resizer"
-        :class="{ 'is-collapsed': isSidebarCollapsed }"
-        @mousedown="startResizeSidebar"
-      >
-        <div v-if="isSidebarCollapsed" class="sidebar-expand-btn">
-          <icon-right class="sidebar-expand-icon" />
-        </div>
-        <span v-else class="resizer-line" />
-      </div>
-      <!-- 右侧列表 -->
-      <div class="col content-col">
-        <a-card class="list-card" :title="$t('qa.testCase.title')">
-          <!-- 工具栏 -->
-          <a-row
-            class="list-toolbar"
-            justify="space-between"
-            align="center"
-            style="margin-bottom: 12px"
+        <div class="main-row">
+          <!-- 左侧模块树 -->
+          <div class="col side-col" :style="sideColStyle">
+            <a-card class="tree-card" size="small" :bordered="false">
+              <div class="tree-scroll-wrapper">
+                <ModuleTreeManager
+                  ref="moduleTreeRef"
+                  :show-search="true"
+                  :show-virtual-root="true"
+                  :selected-keys="[searchModuleId ?? 0]"
+                  default-expand-all
+                  @select="handleTreeSelect"
+                  @changed="handleModuleChanged"
+                >
+                  <template #search-extra>
+                    <a-button
+                      v-permission="'qa:testcase:create'"
+                      type="primary"
+                      size="small"
+                      @click="handleAdd"
+                    >
+                      新建
+                    </a-button>
+                  </template>
+                </ModuleTreeManager>
+              </div>
+            </a-card>
+          </div>
+          <div
+            class="main-resizer"
+            :class="{ 'is-collapsed': isSidebarCollapsed }"
+            @mousedown="startResizeSidebar"
           >
-            <div class="search-items">
-              <div class="search-item">
-                <span class="search-label">用例名称</span>
-                <a-input-search
-                  v-model="searchKeyword"
-                  :placeholder="$t('qa.testCase.name')"
-                  allow-clear
-                  class="search-control"
-                  @search="handleSearch"
-                  @clear="handleSearch"
-                />
-              </div>
-              <div class="search-item">
-                <span class="search-label">所属测试集</span>
-                <a-select
-                  v-model="searchSetId"
-                  placeholder="请选择"
-                  allow-clear
-                  class="search-control"
-                  @change="handleSearch"
-                >
-                  <a-option
-                    v-for="set in setOptions"
-                    :key="set.id"
-                    :value="set.id"
-                    >{{ set.setName }}</a-option
-                  >
-                </a-select>
-              </div>
-              <div class="search-item">
-                <span class="search-label">最近结果</span>
-                <a-select
-                  v-model="searchLastResult"
-                  placeholder="请选择"
-                  allow-clear
-                  class="search-control"
-                  @change="handleSearch"
-                >
-                  <a-option value="PASS">通过</a-option>
-                  <a-option value="FAIL">失败</a-option>
-                  <a-option value="BLOCK">阻塞</a-option>
-                  <a-option value="NA">不适用</a-option>
-                </a-select>
-              </div>
+            <div v-if="isSidebarCollapsed" class="sidebar-expand-btn">
+              <icon-right class="sidebar-expand-icon" />
             </div>
-            <a-space>
-              <a-tooltip content="新建用例">
-                <a-button
-                  v-permission="'qa:testcase:create'"
-                  type="primary"
-                  @click="handleAdd"
-                >
-                  <template #icon><icon-plus /></template>
-                </a-button>
-              </a-tooltip>
-              <a-tooltip content="导出">
-                <a-button @click="handleExport">
-                  <template #icon><icon-download /></template>
-                </a-button>
-              </a-tooltip>
-              <a-tooltip content="测试集管理">
-                <a-button @click="handleOpenSetModal">
-                  <template #icon><icon-list /></template>
-                </a-button>
-              </a-tooltip>
-            </a-space>
-          </a-row>
+            <span v-else class="resizer-line" />
+          </div>
+          <!-- 右侧列表 -->
+          <div class="col content-col">
+            <a-card v-show="caseViewMode === 'list'" class="list-card" :bordered="false">
+              <!-- 工具栏 -->
+              <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
+                <a-col flex="280px">
+                  <div class="filter-field">
+                    <label class="filter-label">用例名称</label>
+                    <a-input v-model="searchKeyword" :placeholder="$t('qa.testCase.name')" allow-clear />
+                  </div>
+                </a-col>
+                <a-col flex="280px">
+                  <div class="filter-field">
+                    <label class="filter-label">状态</label>
+                    <a-select v-model="searchStatus" placeholder="请选择" allow-clear>
+                      <a-option value="DRAFT">草稿</a-option>
+                      <a-option value="REVIEWING">评审中</a-option>
+                      <a-option value="REVIEWED">已评审</a-option>
+                      <a-option value="DEPRECATED">已废弃</a-option>
+                    </a-select>
+                  </div>
+                </a-col>
+                <a-col flex="280px">
+                  <div class="filter-field">
+                    <label class="filter-label">最近结果</label>
+                    <a-select v-model="searchLastResult" placeholder="请选择" allow-clear>
+                      <a-option value="PASS">成功</a-option>
+                      <a-option value="FAIL">失败</a-option>
+                      <a-option value="BLOCK">阻塞</a-option>
+                    </a-select>
+                  </div>
+                </a-col>
+                <a-col flex="auto">
+                  <div class="filter-actions">
+                    <a-button type="primary" :loading="loading" @click="handleSearch">搜索</a-button>
+                    <a-button @click="handleReset">重置</a-button>
+                  </div>
+                </a-col>
+              </a-row>
 
-          <!-- 统计卡片 -->
-          <a-row class="stats-row" :gutter="[12, 12]" style="margin-bottom: 12px">
-            <a-col :xs="12" :md="6">
-              <div class="stat-card stat-total" @click="handleReset">
-                <div class="stat-number">{{ stats.total }}</div>
-                <div class="stat-label">总用例</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <div
-                class="stat-card stat-pass"
-                @click="
-                  searchLastResult = 'PASS';
-                  handleSearch();
-                "
-              >
-                <div class="stat-number">{{ stats.pass }}</div>
-                <div class="stat-label">通过</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <div
-                class="stat-card stat-fail"
-                @click="
-                  searchLastResult = 'FAIL';
-                  handleSearch();
-                "
-              >
-                <div class="stat-number">{{ stats.fail }}</div>
-                <div class="stat-label">失败</div>
-              </div>
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <div class="stat-card stat-unexec">
-                <div class="stat-number">{{ stats.unexec }}</div>
-                <div class="stat-label">未执行</div>
-              </div>
-            </a-col>
-          </a-row>
-
-          <div class="table-wrapper">
-            <a-skeleton v-if="loading" :animation="true" class="table-skeleton">
-              <a-skeleton-line :rows="10" :widths="['100%']" />
-            </a-skeleton>
-            <a-table
-              v-show="!loading"
-              :data="testCaseList"
-              :pagination="pagination"
-              :bordered="{ cell: true }"
-              row-key="id"
-              :sticky-header="true"
-              :scroll="{ x: 1160 }"
-              @page-change="handlePageChange"
-              @page-size-change="handlePageSizeChange"
-            >
-              <template #columns>
-                <a-table-column
-                  title="用例编号"
-                  data-index="caseCode"
-                  :width="120"
-                />
-                <a-table-column
-                  title="用例名称"
-                  data-index="caseName"
-                  :width="280"
-                  :ellipsis="true"
+              <div class="table-wrapper">
+                <!-- 批量操作工具栏：常驻显示，无选中时置灰 -->
+                <div class="batch-bar">
+                  <span class="batch-count"
+                    >已选 {{ selectedIds.length }} 条</span
+                  >
+                  <a-dropdown-button
+                    size="small"
+                    type="outline"
+                    :disabled="!selectedIds.length"
+                  >
+                    批量操作
+                    <template #icon><icon-more /></template>
+                    <template #content>
+                      <a-doption
+                        v-permission="'qa:testcase:update'"
+                        :disabled="!selectedIds.length"
+                        @click="
+                          moveModalVisible = true;
+                          loadMoveModuleTree();
+                        "
+                      >
+                        <template #icon><icon-to-right /></template>
+                        移动到模块
+                      </a-doption>
+                      <a-doption
+                        v-permission="'qa:testcase:delete'"
+                        :disabled="!selectedIds.length"
+                        @click="handleBatchDeleteClick"
+                      >
+                        <template #icon><icon-delete /></template>
+                        <span style="color: #f53f3f">批量删除</span>
+                      </a-doption>
+                    </template>
+                  </a-dropdown-button>
+                </div>
+                <a-table
+                  :data="testCaseList"
+                  :loading="loading"
+                  :pagination="pagination"
+                  row-key="id"
+                  :selected-keys="selectedIds"
+                  :row-selection="{
+                    type: 'checkbox',
+                    showCheckedAll: true,
+                    onlyCurrent: true,
+                  }"
+                  :sticky-header="true"
+                  :scroll="{
+                    x: '125%',
+                    y: '100%',
+                  }"
+                  @page-change="handlePageChange"
+                  @page-size-change="handlePageSizeChange"
+                  @selection-change="onSelectionChange"
+                  :columns="columns"
                 >
-                  <template #cell="{ record }">
-                    <a-tooltip :content="record.caseName" position="top">
-                      <span class="case-name-link" @click="handlePreview(record)">
+                  <template #caseCode="{ record }">
+                    <span
+                      class="case-name-link"
+                      @click="handlePreview(record)"
+                    >
+                      {{ record.caseCode }}
+                    </span>
+                  </template>
+                  <template #caseName="{ record }">
+                    <a-input
+                      v-if="isEditing(record, 'caseName')"
+                      v-model="draftValue"
+                      size="small"
+                      autofocus
+                      :max-length="100"
+                      @press-enter="commitEdit(record, 'caseName')"
+                      @blur="onNameBlur(record)"
+                      @keydown.esc.stop="cancelEdit"
+                    />
+                    <a-tooltip
+                      v-else
+                      :content="record.caseName"
+                      position="top"
+                    >
+                      <span
+                        class="cell-display"
+                        :class="{ 'inline-editable': canInlineEdit }"
+                        @click="startEdit(record, 'caseName')"
+                      >
                         {{ record.caseName }}
                       </span>
                     </a-tooltip>
                   </template>
-                </a-table-column>
-                <a-table-column
-                  v-if="fieldVis('priority')"
-                  title="优先级"
-                  data-index="priority"
-                  :width="70"
-                >
-                  <template #cell="{ record }">
+                  <template #priority="{ record }">
+                    <a-select
+                      v-if="isEditing(record, 'priority')"
+                      v-model="draftValue"
+                      size="small"
+                      style="width: 90px"
+                      default-popup-visible
+                      @change="commitEdit(record, 'priority')"
+                      @popup-visible-change="onEditPopupClose"
+                    >
+                      <a-option value="P0">P0</a-option>
+                      <a-option value="P1">P1</a-option>
+                      <a-option value="P2">P2</a-option>
+                    </a-select>
                     <a-tag
+                      v-else
                       :color="priorityColor(record.priority)"
                       size="small"
+                      :class="{ 'inline-editable': canInlineEdit }"
+                      @click="startEdit(record, 'priority')"
                       >{{ record.priority }}</a-tag
                     >
                   </template>
-                </a-table-column>
-                <a-table-column
-                  v-if="fieldVis('lastResult')"
-                  title="最近结果"
-                  data-index="lastResult"
-                  :width="100"
-                >
-                  <template #cell="{ record }">
+                  <template #lastResult="{ record }">
                     <a-tooltip
                       v-if="record.lastResult"
                       :content="
@@ -218,934 +223,177 @@
                     </a-tooltip>
                     <span v-else style="color: #86909c">-</span>
                   </template>
-                </a-table-column>
-                <a-table-column
-                  v-if="fieldVis('tags')"
-                  title="标签"
-                  data-index="tags"
-                  :width="120"
-                  :ellipsis="true"
-                >
-                  <template #cell="{ record }">
-                    <a-tooltip
-                      v-if="record.tags"
-                      :content="record.tags"
-                      position="top"
-                    >
-                      <span>{{ record.tags }}</span>
-                    </a-tooltip>
-                    <span v-else style="color: #86909c">-</span>
-                  </template>
-                </a-table-column>
-                <a-table-column
-                  v-if="fieldVis('requirementId')"
-                  title="关联需求"
-                  data-index="requirementTitle"
-                  :width="180"
-                  :ellipsis="true"
-                >
-                  <template #cell="{ record }">
-                    <a-tooltip
-                      v-if="record.requirementTitle"
-                      :content="record.requirementTitle"
-                      position="top"
-                    >
-                      <span>{{ record.requirementTitle }}</span>
-                    </a-tooltip>
-                    <span v-else style="color: #86909c">-</span>
-                  </template>
-                </a-table-column>
-                <a-table-column
-                  title="关联BUG"
-                  data-index="bugCount"
-                  :width="90"
-                >
-                  <template #cell="{ record }">
+                  <template #status="{ record }">
                     <a-tag
-                      v-if="record.bugCount > 0"
-                      color="red"
+                      :color="statusColor(record.status)"
                       size="small"
-                      >{{ record.bugCount }}</a-tag
+                      >{{ statusText(record.status) }}</a-tag
                     >
+                  </template>
+                  <template #moduleName="{ record }">
+                    <a-tree-select
+                      v-if="isEditing(record, 'moduleId')"
+                      v-model="draftValue"
+                      :data="inlineModuleTree"
+                      :field-names="{ key: 'id', title: 'moduleName' }"
+                      placeholder="请选择所属模块"
+                      allow-clear
+                      size="small"
+                      style="width: 100%"
+                      default-popup-visible
+                      @change="commitEdit(record, 'moduleId')"
+                      @popup-visible-change="onEditPopupClose"
+                    />
+                    <span
+                      v-else
+                      class="cell-display"
+                      :class="{ 'inline-editable': canInlineEdit }"
+                      @click="startEdit(record, 'moduleId')"
+                    >
+                      <span v-if="record.moduleName">{{
+                        record.moduleName
+                      }}</span>
+                      <span v-else style="color: #86909c">-</span>
+                    </span>
+                  </template>
+                  <template #tags="{ record }">
+                    <a-input-tag
+                      v-if="isEditing(record, 'tags')"
+                      v-model="draftValue"
+                      placeholder="输入标签后按回车"
+                      allow-clear
+                      size="small"
+                      style="width: 100%"
+                      @change="commitTags(record)"
+                      @blur="cancelEdit"
+                      @keydown.esc.stop="cancelEdit"
+                    />
+                    <span
+                      v-else
+                      class="cell-display"
+                      :class="{ 'inline-editable': canInlineEdit }"
+                      @click="startEdit(record, 'tags')"
+                    >
+                      <a-tooltip
+                        v-if="record.tags"
+                        :content="record.tags"
+                        position="top"
+                      >
+                        <span>{{ record.tags }}</span>
+                      </a-tooltip>
+                      <span v-else style="color: #86909c">-</span>
+                    </span>
+                  </template>
+                  <template #updateUserName="{ record }">
+                    <span v-if="record.updateUserName">{{
+                      record.updateUserName
+                    }}</span>
                     <span v-else style="color: #86909c">-</span>
                   </template>
-                </a-table-column>
-                <a-table-column title="操作" :width="120" fixed="right">
-                  <template #cell="{ record }">
-                    <a-space>
-                      <a-tooltip content="编辑">
-                        <a-button
-                          v-permission="'qa:testcase:update'"
-                          type="text"
-                          size="small"
-                          @click="handleEdit(record)"
-                        >
-                          <icon-edit />
+                  <template #createUserName="{ record }">
+                    <span v-if="record.createUserName">{{
+                      record.createUserName
+                    }}</span>
+                    <span v-else style="color: #86909c">-</span>
+                  </template>
+                  <template #operations="{ record }">
+                    <a-space :size="0">
+                      <a-button
+                        v-for="op in visibleOps(record)"
+                        :key="op.key"
+                        v-permission="op.permission"
+                        type="text"
+                        size="small"
+                        :status="op.danger ? 'danger' : undefined"
+                        :disabled="op.disabled"
+                        @click="op.handler(record)"
+                      >
+                        {{ op.label }}
+                      </a-button>
+                      <a-dropdown
+                        v-if="overflowOps(record).length"
+                        trigger="click"
+                      >
+                        <a-button type="text" size="small">
+                          ...
                         </a-button>
-                      </a-tooltip>
-                      <a-tooltip content="删除">
-                        <a-popconfirm
-                          content="确认删除该用例吗？"
-                          type="warning"
-                          @ok="handleDelete(record.id)"
-                        >
-                          <a-button
-                            v-permission="'qa:testcase:delete'"
-                            type="text"
-                            size="small"
-                            status="danger"
-                            @click.stop
-                          >
-                            <icon-delete />
-                          </a-button>
-                        </a-popconfirm>
-                      </a-tooltip>
-                      <a-dropdown position="bottom">
-                        <a-button type="text" size="small" @click.stop
-                          ><icon-more /></a-button
-                        >
                         <template #content>
                           <a-doption
-                            v-permission="'qa:testcase:update'"
-                            @click="openTransitionModal(record)"
+                            v-for="op in overflowOps(record)"
+                            :key="op.key"
+                            v-permission="op.permission"
+                            :disabled="op.disabled"
+                            @click="guardAndRun(op, record)"
                           >
-                            <icon-swap /> 状态流转
+                            <span
+                              :style="
+                                op.danger
+                                  ? 'color: rgb(var(--danger-6))'
+                                  : ''
+                              "
+                              >{{ op.label }}</span
+                            >
                           </a-doption>
-                          <a-doption @click="handleShowHistory(record)"
-                            ><icon-history /> 执行历史</a-doption
-                          >
-                          <a-doption
-                            v-permission="'qa:testcase:update'"
-                            @click="handleBindAuto(record)"
-                          >
-                            <icon-link /> 关联自动化
-                          </a-doption>
-                          <a-doption @click="handleViewBugs(record)"
-                            ><icon-bug /> 关联BUG</a-doption
-                          >
                         </template>
                       </a-dropdown>
                     </a-space>
                   </template>
-                </a-table-column>
-              </template>
-            </a-table>
-          </div>
-        </a-card>
-      </div>
-    </div>
-
-    <!-- 新增/编辑弹窗（仅抽屉/预览中使用） -->
-    <a-modal
-      class="qa-edit-modal"
-      v-model:visible="modalVisible"
-      :title="modalTitle"
-      :width="modalWidth"
-      @ok="handleSave"
-      @cancel="modalVisible = false"
-      :mask-closable="false"
-    >
-      <div class="modal-scroll-body">
-        <TestCaseForm ref="testCaseFormRef" :initial-data="formData" />
-      </div>
-    </a-modal>
-
-    <!-- 关联自动化弹窗 -->
-    <a-modal
-      v-model:visible="bindModalVisible"
-      title="关联自动化"
-      @ok="handleBindSave"
-      @cancel="bindModalVisible = false"
-      :mask-closable="false"
-    >
-      <a-form :model="bindForm" layout="vertical">
-        <a-form-item label="自动化类型" required>
-          <a-select v-model="bindForm.autoType" @change="handleAutoTypeChange">
-            <a-option value="UI_SCENE">UI场景</a-option>
-            <a-option value="API_CASE">API用例</a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="选择自动化用例" required>
-          <a-select v-model="bindForm.autoId" :loading="autoOptionsLoading">
-            <a-option
-              v-for="opt in autoOptions"
-              :key="opt.id"
-              :value="opt.id"
-              >{{ opt.name }}</a-option
-            >
-          </a-select>
-        </a-form-item>
-        <a-form-item label="绑定说明">
-          <a-textarea
-            v-model="bindForm.bindRemark"
-            :auto-size="{ minRows: 2 }"
-            placeholder="可选：填写绑定说明"
-          />
-        </a-form-item>
-      </a-form>
-
-      <!-- 已绑定列表 -->
-      <a-divider>已绑定自动化</a-divider>
-      <a-table :data="bindList" :pagination="false" size="small">
-        <template #columns>
-          <a-table-column title="类型" data-index="autoType" :width="100">
-            <template #cell="{ record }">
-              <a-tag>{{
-                record.autoType === 'UI_SCENE' ? 'UI场景' : 'API用例'
-              }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="名称" data-index="autoName" />
-          <a-table-column title="操作" :width="80">
-            <template #cell="{ record }">
-              <a-button
-                v-permission="'qa:testcase:update'"
-                type="text"
-                size="small"
-                status="danger"
-                @click="handleUnbind(record.id)"
-                >解绑</a-button
-              >
-            </template>
-          </a-table-column>
-        </template>
-      </a-table>
-    </a-modal>
-    <!-- 执行历史抽屉 -->
-    <a-drawer
-      v-model:visible="historyVisible"
-      title="执行历史"
-      width="560px"
-      :mask-closable="true"
-      :footer="false"
-    >
-      <a-timeline v-if="executionHistoryList.length > 0">
-        <a-timeline-item v-for="item in executionHistoryList" :key="item.id">
-          <div style="color: #86909c; font-size: 12px; margin-bottom: 4px">{{
-            item.executeTime
-          }}</div>
-          <div>
-            <a-tag :color="lastResultColor(item.result)">{{
-              lastResultText(item.result)
-            }}</a-tag>
-            <span v-if="item.planName" style="margin-left: 8px; color: #86909c"
-              >计划：{{ item.planName }}</span
-            >
-            <span
-              v-if="item.executeUserName || item.executeUserId"
-              style="margin-left: 8px; color: #86909c"
-              >执行人：{{
-                item.executeUserName || '用户' + item.executeUserId
-              }}</span
-            >
-          </div>
-          <div v-if="item.remark" style="margin-top: 4px; color: #666">{{
-            item.remark
-          }}</div>
-        </a-timeline-item>
-      </a-timeline>
-      <a-empty v-else description="暂无执行记录" />
-    </a-drawer>
-
-    <!-- 关联BUG抽屉 -->
-    <a-drawer
-      v-model:visible="bugDrawerVisible"
-      :title="bugDrawerTitle"
-      width="900px"
-      :mask-closable="true"
-      :footer="false"
-    >
-      <a-row justify="space-between" style="margin-bottom: 16px">
-        <a-button
-          v-permission="'qa:bug:create'"
-          type="primary"
-          size="small"
-          @click="handleAddBug"
-        >
-          <template #icon><icon-plus /></template>
-          新增BUG
-        </a-button>
-      </a-row>
-      <div class="drawer-table-wrapper">
-        <a-table
-          :data="drawerBugList"
-          :loading="bugDrawerLoading"
-          :pagination="bugDrawerPagination"
-          row-key="id"
-          :sticky-header="true"
-          :scroll="{ x: 'max-content' }"
-          @page-change="handleBugDrawerPageChange"
-          @page-size-change="handleBugDrawerPageSizeChange"
-        >
-          <template #columns>
-            <a-table-column title="BUG编号" data-index="bugCode" :width="100">
-              <template #cell="{ record }">
-                <a-tooltip :content="record.bugCode" mini>
-                  <span class="text-ellipsis-inline">{{ record.bugCode }}</span>
-                </a-tooltip>
-              </template>
-            </a-table-column>
-            <a-table-column title="BUG标题" data-index="title">
-              <template #cell="{ record }">
-                <a-tooltip :content="record.title" mini>
-                  <span class="text-ellipsis-inline">{{ record.title }}</span>
-                </a-tooltip>
-              </template>
-            </a-table-column>
-            <a-table-column title="严重程度" data-index="severity" :width="80">
-              <template #cell="{ record }">
-                <a-tag :color="severityColor(record.severity)" size="small">{{
-                  severityText(record.severity)
-                }}</a-tag>
-              </template>
-            </a-table-column>
-            <a-table-column title="状态" data-index="status" :width="80">
-              <template #cell="{ record }">
-                <a-tag :color="bugStatusColor(record.status)" size="small">{{
-                  bugStatusText(record.status)
-                }}</a-tag>
-              </template>
-            </a-table-column>
-            <a-table-column
-              title="关联需求"
-              data-index="requirementTitle"
-              :width="120"
-            >
-              <template #cell="{ record }">
-                <span
-                  v-if="record.requirementTitle"
-                  class="text-ellipsis-inline"
-                  :title="record.requirementTitle"
-                  >{{ record.requirementTitle }}</span
-                >
-                <span v-else style="color: #86909c">-</span>
-              </template>
-            </a-table-column>
-            <a-table-column title="操作" :width="90">
-              <template #cell="{ record }">
-                <a-space size="mini">
-                  <a-button
-                    v-permission="'qa:bug:update'"
-                    type="text"
-                    size="small"
-                    @click="handleEditBug(record)"
-                    >编辑</a-button
-                  >
-                  <a-popconfirm
-                    content="确认删除该BUG吗？"
-                    type="warning"
-                    @ok="handleDeleteBug(record.id)"
-                  >
-                    <a-button
-                      v-permission="'qa:bug:delete'"
-                      type="text"
-                      size="small"
-                      status="danger"
-                      >删除</a-button
-                    >
-                  </a-popconfirm>
-                </a-space>
-              </template>
-            </a-table-column>
-          </template>
-          <template #empty>
-            <a-empty description="暂无关联BUG" />
-          </template>
-        </a-table>
-      </div>
-    </a-drawer>
-
-    <!-- BUG 新增/编辑弹窗 -->
-    <a-modal
-      class="qa-edit-modal"
-      v-model:visible="bugModalVisible"
-      :title="bugModalTitle"
-      :width="modalWidth"
-      @ok="handleSaveBug"
-      @cancel="bugModalVisible = false"
-      :mask-closable="false"
-    >
-      <div class="modal-scroll-body">
-        <a-form :model="bugFormData" layout="vertical">
-          <a-divider orientation="left" style="margin-top: 0">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >基本信息</span
-            >
-          </a-divider>
-          <a-form-item label="BUG标题" required>
-            <a-input
-              v-model="bugFormData.title"
-              placeholder="请输入BUG标题"
-              size="large"
-            />
-          </a-form-item>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >严重程度</span
-            >
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="严重程度">
-                <a-select v-model="bugFormData.severity">
-                  <a-option value="FATAL">致命</a-option>
-                  <a-option value="SERIOUS">严重</a-option>
-                  <a-option value="NORMAL">一般</a-option>
-                  <a-option value="TIPS">提示</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="优先级">
-                <a-select v-model="bugFormData.priority">
-                  <a-option value="URGENT">紧急</a-option>
-                  <a-option value="HIGH">高</a-option>
-                  <a-option value="MEDIUM">中</a-option>
-                  <a-option value="LOW">低</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="状态">
-                <a-select v-model="bugFormData.status">
-                  <a-option value="NEW">新建</a-option>
-                  <a-option value="CONFIRMED">已确认</a-option>
-                  <a-option value="FIXING">修复中</a-option>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="VERIFIED">已验证</a-option>
-                  <a-option value="CLOSED">已关闭</a-option>
-                  <a-option value="REJECTED">已驳回</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >环境信息</span
-            >
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="所属模块">
-                <a-select
-                  v-model="bugFormData.moduleId"
-                  allow-clear
-                  placeholder="请选择所属模块"
-                >
-                  <a-option
-                    v-for="mod in moduleOptions"
-                    :key="mod.id"
-                    :value="mod.id"
-                    >{{ mod.moduleName }}</a-option
-                  >
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="环境">
-                <a-select
-                  v-model="bugFormData.environment"
-                  placeholder="请选择环境"
-                  allow-clear
-                >
-                  <a-option value="TEST">测试环境</a-option>
-                  <a-option value="STAGING">预发环境</a-option>
-                  <a-option value="PROD">生产环境</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="截止日期">
-                <a-date-picker
-                  v-model="bugFormData.deadline"
-                  value-format="YYYY-MM-DD"
-                  placeholder="请选择截止日期"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >版本与复现</span
-            >
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="发现版本">
-                <a-input
-                  v-model="bugFormData.foundVersion"
-                  placeholder="如 v1.0.0"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="修复版本">
-                <a-input
-                  v-model="bugFormData.fixedVersion"
-                  placeholder="如 v1.0.1"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="重现概率">
-                <a-select
-                  v-model="bugFormData.reproduceRate"
-                  placeholder="请选择重现概率"
-                  allow-clear
-                >
-                  <a-option value="ALWAYS">必现</a-option>
-                  <a-option value="OFTEN">高概率</a-option>
-                  <a-option value="SOMETIMES">偶现</a-option>
-                  <a-option value="RARE">难现</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >详细描述</span
-            >
-          </a-divider>
-          <a-form-item label="BUG描述">
-            <RichEditor
-              v-model="bugFormData.description"
-              placeholder="请输入BUG描述"
-              @uploaded="handleUploadedBugFile"
-            />
-          </a-form-item>
-          <a-form-item label="复现步骤">
-            <RichEditor
-              v-model="bugFormData.reproduceSteps"
-              placeholder="请输入复现步骤"
-              @uploaded="handleUploadedBugFile"
-            />
-          </a-form-item>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >关联关系</span
-            >
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <a-form-item label="关联需求">
-                <a-select
-                  v-model="bugFormData.requirementId"
-                  allow-clear
-                  allow-search
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索需求"
-                  @search="handleSearchBugRequirement"
-                  @dropdown-visible-change="
-                    handleBugRequirementDropdownVisibleChange
-                  "
-                  @dropdown-reach-bottom="loadMoreBugRequirement"
-                >
-                  <a-option
-                    v-for="req in bugRequirementOptions"
-                    :key="req.id"
-                    :value="req.id"
-                    >{{ req.reqCode }} - {{ req.title }}</a-option
-                  >
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div
-                        v-if="bugRequirementPage.hasMore"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        滚动加载更多...
-                      </div>
-                      <div
-                        v-else-if="bugRequirementOptions.length > 0"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="关联用例">
-                <a-select
-                  v-model="bugFormData.testCaseId"
-                  allow-clear
-                  allow-search
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索用例"
-                  @search="handleSearchBugTestCase"
-                  @dropdown-visible-change="
-                    handleBugTestCaseDropdownVisibleChange
-                  "
-                  @dropdown-reach-bottom="loadMoreBugTestCase"
-                >
-                  <a-option
-                    v-for="tc in bugTestCaseOptions"
-                    :key="tc.id"
-                    :value="tc.id"
-                    >{{ tc.caseCode }} - {{ tc.caseName }}</a-option
-                  >
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div
-                        v-if="bugTestCasePage.hasMore"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        滚动加载更多...
-                      </div>
-                      <div
-                        v-else-if="bugTestCaseOptions.length > 0"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <a-divider orientation="left">
-            <span
-              style="
-                font-size: 14px;
-                font-weight: 600;
-                color: rgb(var(--primary-6));
-              "
-              >其他</span
-            >
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <a-form-item label="标签">
-                <a-input-tag
-                  v-model="bugFormData.tags"
-                  placeholder="输入标签后按回车"
-                  allow-clear
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item
-                v-if="bugFormData.status === 'CLOSED'"
-                label="关闭原因"
-              >
-                <a-select
-                  v-model="bugFormData.closeReason"
-                  placeholder="请选择关闭原因"
-                  allow-clear
-                >
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="DUPLICATE">重复</a-option>
-                  <a-option value="NOT_BUG">不是BUG</a-option>
-                  <a-option value="CANNOT_REPRODUCE">无法复现</a-option>
-                  <a-option value="WONT_FIX">暂不处理</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <a-form-item label="指派人">
-                <a-select
-                  v-model="bugFormData.assigneeId"
-                  allow-clear
-                  allow-search
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索用户"
-                  @search="handleSearchUser"
-                  @dropdown-visible-change="handleUserDropdownVisibleChange"
-                  @dropdown-reach-bottom="loadMoreUser"
-                >
-                  <a-option
-                    v-for="u in userOptions"
-                    :key="u.id"
-                    :value="u.id"
-                    >{{ u.nickname || u.username }}</a-option
-                  >
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div
-                        v-if="userPage.hasMore"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        滚动加载更多...
-                      </div>
-                      <div
-                        v-else-if="userOptions.length > 0"
-                        style="padding: 8px; text-align: center; color: #86909c"
-                      >
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-form>
-      </div>
-    </a-modal>
-
-    <!-- 状态流转弹窗 -->
-    <a-modal
-      v-model:visible="transitionModalVisible"
-      title="状态流转"
-      width="400px"
-      @ok="handleConfirmTransition"
-      @cancel="transitionModalVisible = false"
-      :mask-closable="false"
-    >
-      <a-form :model="transitionForm" layout="vertical">
-        <a-form-item label="当前状态">
-          <a-tag :color="statusColor(transitionForm.currentStatus)">{{
-            statusText(transitionForm.currentStatus)
-          }}</a-tag>
-        </a-form-item>
-        <a-form-item label="目标状态" required>
-          <a-select
-            v-model="transitionForm.targetStatus"
-            placeholder="请选择目标状态"
-          >
-            <a-option value="DRAFT">草稿</a-option>
-            <a-option value="REVIEWING">评审中</a-option>
-            <a-option value="REVIEWED">已评审</a-option>
-            <a-option value="DEPRECATED">已废弃</a-option>
-          </a-select>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 预览抽屉 -->
-    <a-drawer
-      v-model:visible="previewVisible"
-      :title="null"
-      width="640px"
-      :mask-closable="true"
-      class="case-preview-drawer"
-    >
-      <template #default>
-        <div class="drawer-body">
-          <!-- 头部：标题与状态胶囊 -->
-          <div class="preview-header">
-            <h3 class="preview-case-name">{{ previewData.caseName }}</h3>
-            <div class="preview-badges">
-              <a-tag v-if="fieldVis('priority')" :color="priorityColor(previewData.priority)" size="small">{{ previewData.priority }}</a-tag>
-              <a-tag :color="statusColor(previewData.status)" size="small">{{ statusText(previewData.status) }}</a-tag>
-              <a-tag v-if="fieldVis('caseType')" color="arcoblue" size="small">{{ caseTypeText(previewData.caseType) }}</a-tag>
-            </div>
-          </div>
-
-          <!-- 基础信息卡片 -->
-          <a-card class="preview-card meta-card" size="small">
-            <a-descriptions
-              :data="[
-                { label: '用例编号', value: previewData.caseCode },
-                { label: '创建人', value: previewData.createUserName || '-' },
-                ...(fieldVis('moduleId')
-                  ? [{ label: '所属模块', value: previewData.moduleName || '-' }]
-                  : []),
-                { label: '创建时间', value: previewData.createTime },
-              ]"
-              layout="inline-vertical"
-              :column="2"
-            />
-          </a-card>
-
-          <!-- 前置条件卡片 -->
-          <a-card v-if="fieldVis('preCondition')" class="preview-card precondition-card" size="small" title="前置条件">
-            <div class="rich-text-preview" v-html="renderHtml(previewData.preCondition, '无')"></div>
-          </a-card>
-
-          <!-- 测试步骤 -->
-          <div class="preview-section">
-            <div class="preview-section-title">测试步骤</div>
-            <div v-if="previewData.testSteps && previewData.testSteps.length" class="steps-timeline">
-              <div
-                v-for="(step, index) in previewData.testSteps"
-                :key="index"
-                class="step-timeline-item"
-              >
-                <div class="step-timeline-marker">
-                  <div class="step-number-badge">{{ String(index + 1).padStart(2, '0') }}</div>
-                  <div v-if="index < previewData.testSteps.length - 1" class="step-timeline-line"></div>
-                </div>
-                <a-card class="preview-card step-content-card" size="small">
-                  <a-row :gutter="16">
-                    <a-col :span="24" :md="12">
-                      <div class="step-subtitle">步骤</div>
-                      <div class="rich-text-preview" v-html="renderHtml(step.step, '-')"></div>
-                    </a-col>
-                    <a-col :span="24" :md="12">
-                      <div class="step-subtitle expected">预期结果</div>
-                      <div class="rich-text-preview" v-html="renderHtml(step.expected, '-')"></div>
-                    </a-col>
-                  </a-row>
-                </a-card>
+                </a-table>
               </div>
-            </div>
-            <a-empty v-else description="暂无测试步骤" />
+            </a-card>
+            <!-- 脑图视图：根节点跟随左侧模块选中状态；双击节点编辑 -->
+            <CaseLibMindMap
+              v-if="caseViewMode === 'mindmap'"
+              ref="caseMindmapRef"
+              :project-id="projectStore.getProjectId"
+              :selected-module-id="searchModuleId"
+              class="case-mindmap-fill"
+              @open-detail="handleMindmapOpenDetail"
+            />
           </div>
         </div>
-      </template>
-
-      <template #footer>
-        <div class="drawer-footer">
-          <a-space>
-            <a-button @click="previewVisible = false">关闭</a-button>
-            <a-button
-              v-permission="'qa:testcase:update'"
-              type="primary"
-              @click="handleEditFromPreview"
-            >编辑</a-button>
-          </a-space>
         </div>
-      </template>
-    </a-drawer>
-    <!-- 测试集管理弹窗 -->
-    <a-modal
-      v-model:visible="setModalVisible"
-      title="测试集管理"
-      width="600px"
-      :footer="false"
-      :mask-closable="false"
-    >
-      <a-space style="margin-bottom: 12px"
-        >
-        <a-button
-          v-permission="'qa:testcase:create'"
-          type="primary"
-          @click="handleAddSet"
-        >
-          <template #icon><icon-plus /></template>
-          新建测试集
-        </a-button>
-      </a-space>
-      <a-table
-        :data="setList"
-        :loading="setModalLoading"
-        :pagination="false"
-        row-key="id"
-        size="small"
-      >
-        <template #columns>
-          <a-table-column title="测试集名称" data-index="setName" />
-          <a-table-column title="描述" data-index="description">
-            <template #cell="{ record }">
-              <span
-                v-if="record.description"
-                class="text-ellipsis"
-                :title="record.description"
-                >{{ record.description }}</span
-              >
-              <span v-else style="color: #86909c">-</span>
-            </template>
-          </a-table-column>
-          <a-table-column title="操作" :width="120">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button
-                  v-permission="'qa:testcase:update'"
-                  type="text"
-                  size="small"
-                  @click="handleEditSet(record)"
-                >
-                  <template #icon><icon-edit /></template>
-                </a-button>
-                <a-popconfirm
-                  content="确认删除该测试集吗？"
-                  type="warning"
-                  @ok="handleDeleteSet(record.id)"
-                >
-                  <a-button
-                    v-permission="'qa:testcase:delete'"
-                    type="text"
-                    size="small"
-                    status="danger"
-                    @click.stop
-                  >
-                    <template #icon><icon-delete /></template>
-                  </a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table-column>
-        </template>
-      </a-table>
+      </a-tab-pane>
+      <a-tab-pane key="review" :title="$t('qa.testCase.tab.review')">
+        <div class="review-tab-body">
+          <ReviewList embedded />
+        </div>
+      </a-tab-pane>
+    </a-tabs>
 
-      <!-- 测试集新建/编辑弹窗 -->
-      <a-modal
-        v-model:visible="setFormVisible"
-        :title="setFormTitle"
-        width="400px"
-        @ok="handleSaveSet"
-        @cancel="setFormVisible = false"
-        :mask-closable="false"
-      >
-        <a-form :model="setForm" layout="vertical">
-          <a-form-item label="测试集名称" required>
-            <a-input
-              v-model="setForm.setName"
-              placeholder="请输入测试集名称"
-            />
-          </a-form-item>
-          <a-form-item label="描述">
-            <a-textarea
-              v-model="setForm.description"
-              :auto-size="{ minRows: 2 }"
-              placeholder="请输入描述"
-            />
-          </a-form-item>
-          <a-form-item label="排序">
-            <a-input-number
-              v-model="setForm.sort"
-              :min="0"
-              placeholder="排序"
-              style="width: 100%"
-            />
-          </a-form-item>
-        </a-form>
-      </a-modal>
+    <!-- 用例详情抽屉（MS v3：详情/关联需求/关联用例/关联缺陷/执行历史/操作日志/变更历史/评论） -->
+    <CaseDetailDrawer
+      v-model:visible="previewVisible"
+      :case-id="previewData.id || null"
+      :active-tab="activeDetailTab"
+      :highlight-comment-id="highlightCommentId"
+      @refresh="loadData"
+    />
+
+    <!-- 批量移动模块弹窗 -->
+    <a-modal
+      v-model:visible="moveModalVisible"
+      title="移动到模块"
+      :width="480"
+      :ok-loading="moveLoading"
+      @ok="handleBatchMove"
+    >
+      <div style="padding: 4px 0">
+        <div class="move-label"
+          >目标模块 <span style="color: #f53f3f">*</span></div
+        >
+        <a-tree-select
+          v-model="moveTargetModuleId"
+          :data="moveModuleTree"
+          :field-names="{ key: 'id', title: 'moduleName' }"
+          placeholder="请选择目标模块"
+          allow-clear
+          style="width: 100%; margin-bottom: 12px"
+        />
+        <p style="color: var(--color-text-3); font-size: 13px">
+          将把已选的 {{ selectedIds.length }} 条用例移动到目标模块下。
+        </p>
+      </div>
     </a-modal>
   </div>
   <NoProjectPlaceholder v-else />
@@ -1157,64 +405,61 @@
 </script>
 
 <script setup lang="ts">
-  import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
-  import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
-  import { Message } from '@arco-design/web-vue';
+  import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
+  import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
+  import { Message, Modal } from '@arco-design/web-vue';
   import {
     IconPlus,
-    IconEdit,
     IconDelete,
-    IconDownload,
-    IconHistory,
-    IconLink,
-    IconBug,
-    IconSwap,
+    IconDown,
     IconRight,
-    IconList,
-    IconMore,
+    IconToRight,
   } from '@arco-design/web-vue/es/icon';
   import Breadcrumb from '@/components/breadcrumb/index.vue';
   import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue';
-  import RichEditor from '@/components/rich-editor/index.vue';
-  import TestCaseForm from './components/TestCaseForm.vue';
+  import CaseDetailDrawer from './components/CaseDetailDrawer.vue';
+  import ReviewList from '@/views/qa/review/ReviewList.vue';
   import ModuleTreeManager from '@/views/qa/components/ModuleTreeManager.vue';
+  import CaseLibMindMap from './CaseLibMindMap.vue';
   import { useProjectStore } from '@/store';
   import useProjectConfigStore from '@/store/modules/projectConfig';
   import {
     getTestCaseList,
-    getTestCaseStats,
     deleteTestCase,
-    bindAuto,
-    unbindAuto,
-    getBindAutoList,
-    getAutoOptions,
-    getTestCaseSetOptions,
-    getRequirementList,
-    getRequirementDetail,
-    exportTestCase,
+    batchDeleteTestCase,
+    batchMoveTestCase,
+    updateTestCase,
     getQaModuleList,
-    getTestCaseExecutionHistory,
-    getBugList,
-    saveBug,
-    updateBug,
-    deleteBug,
-    transitionTestCaseStatus,
+    getQaModuleTree,
     getTestCaseDetail,
-    getTestCaseSetList,
-    saveTestCaseSet,
-    updateTestCaseSet,
-    deleteTestCaseSet,
+    saveTestCase,
   } from '@/api/MyApi/qa';
-  import { getUserListByPage } from '@/api/MyApi/user';
-  import { deleteRichTextImages } from '@/api/MyApi/fileUpload';
+  import { usePermissionStore } from '@/store';
 
-  const { t } = useI18n();
+  const permissionStore = usePermissionStore();
+  const hasPerm = (code: string) => permissionStore.hasPermission(code);
+
   const projectStore = useProjectStore();
   const router = useRouter();
+  const route = useRoute();
   const projectConfigStore = useProjectConfigStore();
   const fieldVis = (key: string) =>
     projectConfigStore.isFieldVisible('testCase', key);
+
+  // 主表列定义
+  const columns = [
+    { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true, slotName: 'caseCode' },
+    { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true, slotName: 'caseName' },
+    { title: '用例等级', dataIndex: 'priority', width: 80, slotName: 'priority' },
+    { title: '最近结果', dataIndex: 'lastResult', width: 100, slotName: 'lastResult' },
+    { title: '状态', dataIndex: 'status', width: 90, slotName: 'status' },
+    { title: '所属模块', dataIndex: 'moduleName', ellipsis: true, tooltip: true, slotName: 'moduleName' },
+    { title: '标签', dataIndex: 'tags', width: 120, ellipsis: true, tooltip: true, slotName: 'tags' },
+    { title: '更新人', dataIndex: 'updateUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'updateUserName' },
+    { title: '创建人', dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'createUserName' },
+    { title: '更新时间', dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true },
+    { title: '操作', width: 200, fixed: 'right' as const, slotName: 'operations' },
+  ];
 
   // 浏览器窗口宽度（弹窗宽度、侧栏最大宽度等都跟随它自适应）
   const windowWidth = ref(window.innerWidth);
@@ -1222,7 +467,14 @@
     windowWidth.value = window.innerWidth;
   };
   onMounted(() => window.addEventListener('resize', handleWindowResize));
-  onBeforeUnmount(() => window.removeEventListener('resize', handleWindowResize));
+  onBeforeUnmount(() =>
+    window.removeEventListener('resize', handleWindowResize)
+  );
+
+  // 浏览器刷新/关闭时的未保存拦截（beforeunload 只能触发原生确认框）
+  // 注意：handler 在下方 onBeforeRouteLeave 旁定义，这里只负责挂载/卸载
+  onMounted(() => window.addEventListener('beforeunload', handleBeforeUnload));
+  onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload));
 
   // ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏 =====
   const SIDEBAR_DEFAULT_WIDTH = 240;
@@ -1237,7 +489,10 @@
 
   // 侧栏最大宽度跟随浏览器窗口：不超过窗口的 40%，避免小屏下树把列表挤没
   const sidebarMaxWidth = computed(() =>
-    Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, Math.round(windowWidth.value * 0.4)))
+    Math.max(
+      SIDEBAR_MIN_WIDTH,
+      Math.min(SIDEBAR_MAX_WIDTH, Math.round(windowWidth.value * 0.4))
+    )
   );
 
   const sideColStyle = computed(() => ({
@@ -1283,7 +538,10 @@
         isSidebarCollapsed.value = false;
       }
       const newWidth = startWidth + ev.clientX - startX;
-      sidebarWidth.value = Math.min(Math.max(newWidth, 0), sidebarMaxWidth.value);
+      sidebarWidth.value = Math.min(
+        Math.max(newWidth, 0),
+        sidebarMaxWidth.value
+      );
     };
 
     const onUp = () => {
@@ -1317,12 +575,128 @@
   };
 
   const loading = ref(false);
+  const activeMainTab = ref((route.query.tab as string) || 'case');
+  // 用例列表：列表/脑图 视图切换
+  const caseViewMode = ref<'list' | 'mindmap'>('list');
+  const caseMindmapRef = ref<any>(null);
+  // 未保存拦截：脑图有未保存修改时，切回列表需确认（脑图组件会被销毁，修改丢失）
+  const handleViewModeChange = (mode: 'list' | 'mindmap') => {
+    if (mode === 'list' && caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
+      Modal.confirm({
+        title: '有未保存的修改',
+        content: '脑图中有未保存的修改，切换到列表将丢失这些修改，确认切换？',
+        okText: '放弃并切换',
+        cancelText: '继续编辑',
+        onOk: () => {
+          caseViewMode.value = 'list';
+        },
+      });
+      return;
+    }
+    caseViewMode.value = mode;
+  };
+  // 脑图切回列表时刷新列表和模块树（脑图里的增删改/排序已落库，列表需同步）
+  watch(caseViewMode, (mode) => {
+    if (mode === 'list') {
+      Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
+    }
+  });
+  // 离开页面前的全局拦截：脑图有未保存修改时需确认
+  onBeforeRouteLeave((_to, _from, next) => {
+    if (caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
+      Modal.confirm({
+        title: '有未保存的修改',
+        content: '脑图中有未保存的修改，离开将丢失这些修改，确认离开？',
+        okText: '放弃并离开',
+        cancelText: '继续编辑',
+        onOk: () => next(),
+        onCancel: () => next(false),
+      });
+      return;
+    }
+    next();
+  });
+  // 浏览器刷新/关闭的兜底拦截（此场景只能用原生确认框，自定义弹窗无效）
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  };
   const testCaseList = ref<any[]>([]);
+  const selectedIds = ref<number[]>([]);
+  const onSelectionChange = (keys: (string | number)[]) => {
+    selectedIds.value = keys as number[];
+  };
+  const moveModalVisible = ref(false);
+  const moveTargetModuleId = ref<number | undefined>(undefined);
+  const moveLoading = ref(false);
+  const moveModuleTree = ref<any[]>([]);
+
+  const loadMoveModuleTree = async () => {
+    const pid = projectStore.getProjectId as number;
+    if (!pid) return;
+    try {
+      const res: any = await getQaModuleTree(pid, 'CASE');
+      moveModuleTree.value = res.data || [];
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleBatchDeleteClick = () => {
+    Modal.warning({
+      title: '批量删除',
+      content: `确认删除选中的 ${selectedIds.value.length} 条用例？`,
+      hideCancel: false,
+      okText: '删除',
+      onOk: handleBatchDelete,
+    });
+  };
+
+  const handleBatchDelete = async () => {
+    try {
+      const res: any = await batchDeleteTestCase(selectedIds.value);
+      if (res.code === 200) {
+        Message.success(`已删除 ${selectedIds.value.length} 条用例`);
+        selectedIds.value = [];
+        await loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleBatchMove = async () => {
+    if (moveTargetModuleId.value === undefined) {
+      Message.warning('请选择目标模块');
+      return;
+    }
+    moveLoading.value = true;
+    try {
+      const res: any = await batchMoveTestCase(
+        selectedIds.value,
+        moveTargetModuleId.value
+      );
+      if (res.code === 200) {
+        Message.success(`已移动 ${selectedIds.value.length} 条用例`);
+        selectedIds.value = [];
+        moveModalVisible.value = false;
+        moveTargetModuleId.value = undefined;
+        // 后台刷新，不阻塞 UI
+        Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      moveLoading.value = false;
+    }
+  };
   const searchKeyword = ref('');
   const searchModuleId = ref<number | undefined>(undefined);
-  const searchSetId = ref<number | undefined>(undefined);
   const searchLastResult = ref<string | undefined>(undefined);
-  const setOptions = ref<any[]>([]);
+  const searchStatus = ref<string | undefined>(undefined);
+
   const pagination = ref({
     current: 1,
     pageSize: 10,
@@ -1332,141 +706,20 @@
     pageSizeOptions: [10, 20, 50, 100],
   });
 
-  const modalVisible = ref(false);
-
-  // 编辑弹窗宽度跟随浏览器窗口自适应：最宽 1200px，窄屏留 3vw 边距
-  const modalWidth = computed(() => Math.min(1200, Math.max(360, windowWidth.value * 0.94)));
-  const modalTitle = ref('');
-  const formData = ref<any>({});
-  const testCaseFormRef = ref<any>(null);
   const moduleTreeRef = ref<any>(null);
 
-  const bindModalVisible = ref(false);
-  const bindForm = ref<any>({
-    autoType: 'UI_SCENE',
-    autoId: undefined,
-    bindRemark: '',
-  });
-  const autoOptions = ref<any[]>([]);
-  const autoOptionsLoading = ref(false);
-  const bindList = ref<any[]>([]);
-  const currentCaseId = ref<number | null>(null);
-
-  const requirementOptions = ref<any[]>([]);
-  const requirementPage = ref({
-    current: 1,
-    pageSize: 20,
-    hasMore: true,
-    keyword: '',
-    loading: false,
-  });
-
-  // 统计卡片：后端全项目口径聚合，不再只数当前页
-  const stats = ref({ total: 0, pass: 0, fail: 0, unexec: 0 });
-  const loadStats = async () => {
-    if (!projectStore.getProjectId) return;
-    try {
-      const res: any = await getTestCaseStats(projectStore.getProjectId);
-      if (res.code === 200 && res.data) {
-        stats.value = { total: 0, pass: 0, fail: 0, unexec: 0, ...res.data };
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
   const moduleOptions = ref<any[]>([]);
-
-  // 执行历史
-  const historyVisible = ref(false);
-  const executionHistoryList = ref<any[]>([]);
 
   const previewVisible = ref(false);
   const previewData = ref<any>({});
-
-  const transitionModalVisible = ref(false);
-  const transitionForm = ref<any>({});
-
-  // BUG 抽屉
-  const bugDrawerVisible = ref(false);
-  const bugDrawerTitle = ref('');
-  const drawerBugList = ref<any[]>([]);
-  const bugDrawerLoading = ref(false);
-  const bugDrawerPagination = ref({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-    showTotal: true,
-    showPageSize: true,
-    pageSizeOptions: [10, 20, 50, 100],
-  });
-  const currentCaseIdForBug = ref<number | null>(null);
-  const currentCaseRecord = ref<any>({});
-
-  // BUG 弹窗
-  const bugModalVisible = ref(false);
-  const bugModalTitle = ref('');
-  const bugFormData = ref<any>({});
-  const isEditBug = ref(false);
-  const initialBugFileIds = ref<Set<string>>(new Set());
-  const uploadedBugFileIds = ref<Set<string>>(new Set());
-  const bugRequirementOptions = ref<any[]>([]);
-  const bugRequirementPage = ref({
-    current: 1,
-    pageSize: 20,
-    hasMore: true,
-    keyword: '',
-    loading: false,
-  });
-  const bugTestCaseOptions = ref<any[]>([]);
-  const bugTestCasePage = ref({
-    current: 1,
-    pageSize: 20,
-    hasMore: true,
-    keyword: '',
-    loading: false,
-  });
-
-  // 测试集管理弹窗
-  const setModalVisible = ref(false);
-  const setModalLoading = ref(false);
-  const setList = ref<any[]>([]);
-  const setFormVisible = ref(false);
-  const setFormTitle = ref('');
-  const setForm = ref<any>({ setName: '', description: '', sort: 0 });
-  const isEditSet = ref(false);
-
-  // 富文本图片 fileId 提取
-  const extractFileIds = (html?: string): Set<string> => {
-    if (!html) return new Set();
-    const regex = /\/api\/file\/download\?fileId=([^"'\s&)]+)/g;
-    const result = new Set<string>();
-    let match;
-    while ((match = regex.exec(html)) !== null) {
-      result.add(decodeURIComponent(match[1]));
-    }
-    return result;
+  const activeDetailTab = ref<string>('');
+  const highlightCommentId = ref<number | undefined>(undefined);
+  // 脑图节点「详情」按钮 → 打开用例详情抽屉
+  const handleMindmapOpenDetail = (caseId: number) => {
+    previewData.value = { id: caseId };
+    activeDetailTab.value = '';
+    previewVisible.value = true;
   };
-
-  const collectBugFileIds = (): Set<string> => {
-    const set = new Set<string>();
-    extractFileIds(bugFormData.value.description).forEach((id) => set.add(id));
-    extractFileIds(bugFormData.value.reproduceSteps).forEach((id) =>
-      set.add(id)
-    );
-    return set;
-  };
-
-  const handleUploadedBugFile = (fileId: string) => {
-    uploadedBugFileIds.value.add(fileId);
-  };
-  const userOptions = ref<any[]>([]);
-  const userPage = ref({
-    current: 1,
-    pageSize: 20,
-    hasMore: true,
-    keyword: '',
-    loading: false,
-  });
 
   const loadData = async () => {
     if (!projectStore.getProjectId) return;
@@ -1475,12 +728,14 @@
       const res: any = await getTestCaseList(
         projectStore.getProjectId,
         searchModuleId.value,
-        searchSetId.value,
+        undefined,
         undefined,
         searchKeyword.value || undefined,
         searchLastResult.value,
         pagination.value.current,
-        pagination.value.pageSize
+        pagination.value.pageSize,
+        undefined,
+        searchStatus.value
       );
       if (res.data && res.data.records) {
         testCaseList.value = res.data.records;
@@ -1488,7 +743,8 @@
       } else {
         testCaseList.value = res.data || [];
       }
-      loadStats();
+      // 消息通知跳转：高亮并打开指定用例预览
+      await checkHighlightCase();
     } catch (e) {
       console.error(e);
     } finally {
@@ -1504,38 +760,29 @@
   const handleReset = () => {
     searchKeyword.value = '';
     searchModuleId.value = undefined;
-    searchSetId.value = undefined;
     searchLastResult.value = undefined;
+    searchStatus.value = undefined;
     pagination.value.current = 1;
     loadData();
   };
 
   const handlePageChange = (current: number) => {
+    selectedIds.value = [];
     pagination.value.current = current;
     loadData();
   };
 
   const handlePageSizeChange = (pageSize: number) => {
+    selectedIds.value = [];
     pagination.value.pageSize = pageSize;
     pagination.value.current = 1;
     loadData();
   };
 
   const handleTreeSelect = (selectedKeys: any) => {
-    searchModuleId.value =
-      selectedKeys[0] === 0 ? undefined : selectedKeys[0];
+    searchModuleId.value = selectedKeys[0] === 0 ? undefined : selectedKeys[0];
     pagination.value.current = 1;
     loadData();
-  };
-
-  const loadSetOptions = async () => {
-    if (!projectStore.getProjectId) return;
-    try {
-      const res: any = await getTestCaseSetOptions(projectStore.getProjectId);
-      setOptions.value = res.data || [];
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const loadModuleOptions = async () => {
@@ -1556,163 +803,227 @@
     router.push({ name: 'TestCaseEdit', params: { id: record.id } });
   };
 
-  // 抽屉/预览里继续用弹窗编辑
-  const handleEditInModal = (record: any) => {
-    modalTitle.value = t('qa.testCase.edit');
-    formData.value = { ...record };
-    if (formData.value.tags && typeof formData.value.tags === 'string') {
-      formData.value.tags = formData.value.tags
-        .split(',')
-        .filter((t: string) => t.trim());
-    } else if (!formData.value.tags) {
-      formData.value.tags = [];
-    }
-    modalVisible.value = true;
-  };
-
-  const handleEditFromPreview = () => {
-    previewVisible.value = false;
-    nextTick(() => {
-      handleEditInModal(previewData.value);
-    });
-  };
-
-  const handlePreview = (record: any) => {
+  const handlePreview = (record: any, tab?: string, commentId?: number) => {
     previewData.value = { ...record };
+    activeDetailTab.value = tab || '';
+    highlightCommentId.value = commentId;
     previewVisible.value = true;
   };
 
-  const openTransitionModal = (record: any) => {
-    transitionForm.value = {
-      testCaseId: record.id,
-      currentStatus: record.status,
-      targetStatus: '',
-    };
-    transitionModalVisible.value = true;
+  /**
+   * 检查是否有消息通知跳转过来的高亮用例
+   */
+  const checkHighlightCase = async () => {
+    const highlightId = route.query.highlight;
+    if (!highlightId) return;
+    const caseId = Number(highlightId);
+    if (isNaN(caseId)) return;
+
+    const tab = route.query.detailTab as string | undefined;
+    const commentId = route.query.commentId
+      ? Number(route.query.commentId)
+      : undefined;
+    const record = testCaseList.value.find((item: any) => item.id === caseId);
+    if (record) {
+      handlePreview(record, tab, commentId);
+    } else {
+      // 当前页没有，尝试查详情打开预览
+      try {
+        const res: any = await getTestCaseDetail(caseId);
+        if (res.code === 200 && res.data) {
+          handlePreview(res.data, tab, commentId);
+        }
+      } catch (e) {
+        console.error('加载高亮用例失败', e);
+      }
+    }
   };
 
-  const handleConfirmTransition = async () => {
-    if (!transitionForm.value.targetStatus) {
-      Message.warning('请选择目标状态');
+  // 路由 query 变化时重新检查高亮（同页面消息跳转）
+  watch(() => route.query.highlight, (val) => {
+    if (val) checkHighlightCase();
+  });
+
+  // ===== 列表行内编辑（名称/用例等级/所属模块/便签，点击进入编辑态，回车/失焦保存，Esc 取消） =====
+  const canInlineEdit = computed(() => hasPerm('qa:testcase:update'));
+  const inlineSaving = ref(false);
+  const inlineModuleTree = ref<any[]>([]);
+  // 当前正在编辑的单元格（行 id + 字段名）及编辑草稿值
+  const editingCell = ref<{ id: number; field: string } | null>(null);
+  const draftValue = ref<any>(null);
+
+  const isEditing = (record: any, field: string) =>
+    canInlineEdit.value &&
+    editingCell.value?.id === record.id &&
+    editingCell.value?.field === field;
+
+  const startEdit = (record: any, field: string) => {
+    if (!canInlineEdit.value || inlineSaving.value) return;
+    if (field === 'tags') {
+      draftValue.value = parseTags(record.tags);
+    } else if (field === 'moduleId') {
+      draftValue.value = record.moduleId || undefined;
+    } else {
+      draftValue.value = record[field];
+    }
+    editingCell.value = { id: record.id, field };
+  };
+
+  const cancelEdit = () => {
+    if (inlineSaving.value) return;
+    editingCell.value = null;
+    draftValue.value = null;
+  };
+
+  // 提交当前编辑中的单元格；值未变化时直接退出编辑态，不调接口
+  const commitEdit = async (record: any, field: string) => {
+    if (!isEditing(record, field)) return;
+    let value = draftValue.value;
+    if (field === 'caseName') {
+      value = (value || '').trim();
+      if (!value) {
+        Message.warning('用例名称不能为空');
+        cancelEdit();
+        return;
+      }
+      if (value === record.caseName) {
+        cancelEdit();
+        return;
+      }
+    } else if (field === 'priority') {
+      if (value === record.priority) {
+        cancelEdit();
+        return;
+      }
+    } else if (field === 'moduleId') {
+      const v = value ?? null;
+      if (v === (record.moduleId ?? null)) {
+        cancelEdit();
+        return;
+      }
+      value = v;
+    } else if (field === 'tags') {
+      const joined = Array.isArray(value) ? value.join(',') : value;
+      if ((joined || '') === (record.tags || '')) {
+        cancelEdit();
+        return;
+      }
+    }
+    editingCell.value = null;
+    // 等待 DOM 更新完成（v-if 移除输入框），确保自动失焦
+    await nextTick();
+    await saveInline(record, field, value);
+    draftValue.value = null;
+  };
+
+  // 下拉弹层关闭时延迟退出编辑态：点击选项的瞬间弹层先关闭，若立即取消会把随后到达的
+  // change 事件漏掉（编辑态已清 → commitEdit 直接 return，表现为"修改不生效"）
+  const onEditPopupClose = (visible: boolean) => {
+    if (visible) return;
+    setTimeout(() => cancelEdit(), 150);
+  };
+
+  // 名称失焦：内容为空时静默取消（不弹提示），有内容才走保存
+  const onNameBlur = (record: any) => {
+    if (!isEditing(record, 'caseName')) return;
+    if (!(draftValue.value || '').trim()) {
+      cancelEdit();
       return;
     }
+    commitEdit(record, 'caseName');
+  };
+
+  // 便签比较特殊：每加/删一个标签就保存一次，但保持编辑态，失焦/Esc 才关闭
+  const commitTags = async (record: any) => {
+    if (!isEditing(record, 'tags')) return;
+    const joined = Array.isArray(draftValue.value)
+      ? draftValue.value.join(',')
+      : draftValue.value;
+    if ((joined || '') === (record.tags || '')) return;
+    await saveInline(record, 'tags', draftValue.value);
+  };
+
+  const parseTags = (tags: any): string[] => {
+    if (Array.isArray(tags)) return tags;
+    if (typeof tags === 'string' && tags.trim())
+      return tags.split(',').filter((t: string) => t.trim());
+    return [];
+  };
+
+  const loadInlineModuleTree = async () => {
+    if (inlineModuleTree.value.length > 0 || !projectStore.getProjectId) return;
     try {
-      const res: any = await transitionTestCaseStatus(
-        transitionForm.value.testCaseId,
-        transitionForm.value.targetStatus
-      );
-      if (res.code === 200) {
-        Message.success('状态已更新');
-        transitionModalVisible.value = false;
-        await loadData();
-      }
+      const res: any = await getQaModuleTree(projectStore.getProjectId);
+      inlineModuleTree.value = res.data || [];
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleShowHistory = async (record: any) => {
+  onMounted(loadInlineModuleTree);
+
+  const formatNow = () => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(
+      d.getHours()
+    )}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+
+  // 局部保存：只提交变更字段，成功后本地更新该行（模块同步名称，不整表刷新）
+  const saveInline = async (record: any, field: string, value: any) => {
+    if (field === 'moduleId' && !value) value = null;
+    const payload: any = {
+      id: record.id,
+      projectId: projectStore.getProjectId,
+    };
+    payload[field] =
+      field === 'tags'
+        ? Array.isArray(value)
+          ? value.join(',')
+          : value
+        : value;
+    inlineSaving.value = true;
     try {
-      const res: any = await getTestCaseExecutionHistory(record.id);
+      const res: any = await updateTestCase(payload);
       if (res.code === 200) {
-        executionHistoryList.value = res.data || [];
-        historyVisible.value = true;
+        Message.success('已保存');
+        if (field === 'caseName') record.caseName = value;
+        if (field === 'priority') record.priority = value;
+        if (field === 'tags') record.tags = payload.tags;
+        if (field === 'moduleId') {
+          record.moduleId = value;
+          record.moduleName = findModuleName(inlineModuleTree.value, value);
+        }
+        record.updateTime = formatNow();
+      } else {
+        Message.error(res.msg || '保存失败');
       }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleSave = async () => {
-    const success = await testCaseFormRef.value?.save();
-    if (success) {
-      modalVisible.value = false;
-      await loadData();
-      await moduleTreeRef.value?.loadData();
-    }
-  };
-
-  // 测试集管理
-  const handleOpenSetModal = async () => {
-    setModalVisible.value = true;
-    await loadSetList();
-  };
-
-  const loadSetList = async () => {
-    if (!projectStore.getProjectId) return;
-    setModalLoading.value = true;
-    try {
-      const res: any = await getTestCaseSetList(projectStore.getProjectId);
-      setList.value = res.data || [];
     } catch (e) {
       console.error(e);
     } finally {
-      setModalLoading.value = false;
+      inlineSaving.value = false;
     }
   };
 
-  const handleAddSet = () => {
-    isEditSet.value = false;
-    setFormTitle.value = '新建测试集';
-    setForm.value = {
-      projectId: projectStore.getProjectId,
-      setName: '',
-      description: '',
-      sort: 0,
-    };
-    setFormVisible.value = true;
-  };
-
-  const handleEditSet = (record: any) => {
-    isEditSet.value = true;
-    setFormTitle.value = '编辑测试集';
-    setForm.value = { ...record };
-    setFormVisible.value = true;
-  };
-
-  const handleSaveSet = async () => {
-    if (!setForm.value.setName || setForm.value.setName.trim() === '') {
-      Message.warning('请输入测试集名称');
-      return;
+  const findModuleName = (tree: any[], id: any): string => {
+    if (!id) return '';
+    for (const node of tree) {
+      if (node.id === id) return node.moduleName;
+      const found = findModuleName(node.children || [], id);
+      if (found) return found;
     }
-    try {
-      const api = isEditSet.value ? updateTestCaseSet : saveTestCaseSet;
-      const res: any = await api({
-        ...setForm.value,
-        projectId: projectStore.getProjectId,
-      });
-      if (res.code === 200) {
-        Message.success('保存成功');
-        setFormVisible.value = false;
-        await loadSetList();
-        await loadSetOptions();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteSet = async (id: number) => {
-    try {
-      const res: any = await deleteTestCaseSet(id);
-      if (res.code === 200) {
-        Message.success('删除成功');
-        await loadSetList();
-        await loadSetOptions();
-        if (searchSetId.value === id) {
-          searchSetId.value = undefined;
-          await loadData();
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    return '';
   };
 
   // 模块管理
   const handleModuleChanged = async (type: string, payload?: any) => {
     // 若当前筛选的模块被删除，重置为全部
-    if (type === 'delete' && payload?.id && searchModuleId.value === payload.id) {
+    if (
+      type === 'delete' &&
+      payload?.id &&
+      searchModuleId.value === payload.id
+    ) {
       searchModuleId.value = undefined;
     }
     // 刷新用例表单中的模块下拉
@@ -1726,484 +1037,105 @@
       const res: any = await deleteTestCase(id);
       if (res.code === 200) {
         Message.success('删除成功');
-        await loadData();
-        await moduleTreeRef.value?.loadData();
+        // 后台刷新，不阻塞 UI
+        Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleExport = async () => {
-    if (!projectStore.getProjectId) {
-      Message.warning('请先选择项目');
-      return;
-    }
+  // 复制用例：拉详情 → 去掉 id/编号 → 名称加「副本」→ 置草稿 → 走新建保存（编号由后端重新生成）
+  const handleCopy = async (record: any) => {
     try {
-      const res: any = await exportTestCase(
-        projectStore.getProjectId,
-        searchModuleId.value,
-        searchSetId.value
-      );
-      const blob =
-        res instanceof Blob
-          ? res
-          : new Blob([res], {
-              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `test_case_export_${new Date().getTime()}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      Message.success('导出成功');
-    } catch (e) {
-      console.error(e);
-      Message.error('导出失败');
-    }
-  };
-
-  // 关联自动化
-  const handleBindAuto = async (record: any) => {
-    currentCaseId.value = record.id;
-    bindForm.value = {
-      autoType: 'UI_SCENE',
-      autoId: undefined,
-      bindRemark: '',
-    };
-    bindModalVisible.value = true;
-    await loadBindList(record.id);
-    await loadAutoOptions('UI_SCENE');
-  };
-
-  const loadBindList = async (caseId: number) => {
-    try {
-      const res: any = await getBindAutoList(caseId);
-      bindList.value = res.data || [];
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const loadAutoOptions = async (autoType: string) => {
-    autoOptionsLoading.value = true;
-    try {
-      const res: any = await getAutoOptions(
-        autoType,
-        projectStore.getProjectId
-      );
-      autoOptions.value = res.data || [];
-    } catch (e) {
-      console.error(e);
-    } finally {
-      autoOptionsLoading.value = false;
-    }
-  };
-
-  const handleAutoTypeChange = (val: string) => {
-    bindForm.value.autoId = undefined;
-    loadAutoOptions(val);
-  };
-
-  const handleBindSave = async () => {
-    if (!currentCaseId.value || !bindForm.value.autoId) {
-      Message.warning('请选择自动化用例');
-      return;
-    }
-    try {
-      const res: any = await bindAuto(
-        currentCaseId.value,
-        bindForm.value.autoType,
-        bindForm.value.autoId,
-        bindForm.value.bindRemark
-      );
-      if (res.code === 200) {
-        Message.success('绑定成功');
-        bindForm.value.autoId = undefined;
-        await loadBindList(currentCaseId.value);
+      const res: any = await getTestCaseDetail(record.id);
+      if (res.code !== 200 || !res.data) {
+        Message.error('获取用例详情失败');
+        return;
       }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleUnbind = async (bindId: number) => {
-    try {
-      const res: any = await unbindAuto(bindId);
-      if (res.code === 200) {
-        Message.success('解绑成功');
-        if (currentCaseId.value) await loadBindList(currentCaseId.value);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // ==================== BUG 抽屉相关方法 ====================
-  const handleViewBugs = (record: any) => {
-    currentCaseIdForBug.value = record.id;
-    currentCaseRecord.value = record;
-    bugDrawerTitle.value = `「${record.caseName}」关联BUG`;
-    bugDrawerPagination.value = {
-      current: 1,
-      pageSize: 10,
-      total: 0,
-      showTotal: true,
-      showPageSize: true,
-      pageSizeOptions: [10, 20, 50, 100],
-    };
-    bugDrawerVisible.value = true;
-    loadDrawerBugs();
-  };
-
-  const loadDrawerBugs = async () => {
-    if (!currentCaseIdForBug.value || !projectStore.getProjectId) return;
-    bugDrawerLoading.value = true;
-    try {
-      const res: any = await getBugList(
-        projectStore.getProjectId,
-        undefined, // keyword
-        undefined, // status
-        undefined, // severity
-        undefined, // priority
-        undefined, // requirementId
-        currentCaseIdForBug.value, // testCaseId
-        undefined, // moduleId
-        undefined, // environment
-        undefined, // reproduceRate
-        undefined, // closeReason
-        bugDrawerPagination.value.current,
-        bugDrawerPagination.value.pageSize
-      );
-      if (res.data && res.data.records) {
-        drawerBugList.value = res.data.records;
-        bugDrawerPagination.value.total = res.data.total;
+      const src = res.data;
+      const copy: any = {
+        ...src,
+        id: undefined,
+        caseCode: undefined,
+        caseName: `${src.caseName} 副本`,
+        status: 'DRAFT',
+        lastResult: undefined,
+        lastExecuteTime: undefined,
+        createTime: undefined,
+        updateTime: undefined,
+        createUserId: undefined,
+        updateUserId: undefined,
+        projectId: projectStore.getProjectId,
+      };
+      const saveRes: any = await saveTestCase(copy);
+      if (saveRes.code === 200) {
+        Message.success('复制成功，已生成草稿态副本');
+        // 后台刷新，不阻塞 UI
+        Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
       } else {
-        drawerBugList.value = res.data || [];
+        Message.error(saveRes.msg || '复制失败');
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      bugDrawerLoading.value = false;
+      Message.error('复制失败');
     }
   };
 
-  const handleBugDrawerPageChange = (current: number) => {
-    bugDrawerPagination.value.current = current;
-    loadDrawerBugs();
+  // ===== 操作列：前2个常显（编辑、复制），第3个起放「更多」下拉 =====
+  interface CaseOp {
+    key: string;
+    label: string;
+    permission?: string;
+    danger?: boolean;
+    disabled?: boolean;
+    handler: (record: any) => void;
+  }
+  const confirmDelete = (record: any) => {
+    Modal.confirm({
+      title: '删除用例',
+      content: `确认删除用例「${record.caseName}」吗？该操作不可恢复。`,
+      okText: '确认删除',
+      okButtonProps: { status: 'danger' },
+      cancelText: '再想想',
+      hideCancel: false,
+      onOk: async () => {
+        await handleDelete(record.id);
+      },
+    });
   };
-
-  const handleBugDrawerPageSizeChange = (pageSize: number) => {
-    bugDrawerPagination.value.pageSize = pageSize;
-    bugDrawerPagination.value.current = 1;
-    loadDrawerBugs();
-  };
-
-  const handleAddBug = async () => {
-    if (!currentCaseIdForBug.value) {
-      Message.warning('当前用例信息缺失，请重新打开关联BUG抽屉');
-      return;
-    }
-    isEditBug.value = false;
-    bugModalTitle.value = '新增BUG';
-    bugFormData.value = {
-      severity: 'NORMAL',
-      priority: 'MEDIUM',
-      status: 'NEW',
-      projectId: projectStore.getProjectId,
-      testCaseId: currentCaseIdForBug.value,
-      moduleId: currentCaseRecord.value?.moduleId || undefined,
-      tags: [],
-    };
-    bugRequirementOptions.value = [];
-    bugTestCaseOptions.value = [];
-    initialBugFileIds.value = new Set();
-    uploadedBugFileIds.value = new Set();
-    await loadBugRequirementOptions();
-    await loadBugTestCaseOptions();
-    // 把当前用例插入关联用例选项首位，避免显示空白
-    const currentCase = currentCaseRecord.value;
-    if (
-      currentCase &&
-      !bugTestCaseOptions.value.find(
-        (tc: any) => tc.id === currentCaseIdForBug.value
-      )
-    ) {
-      bugTestCaseOptions.value.unshift({
-        id: currentCaseIdForBug.value,
-        caseCode: currentCase.caseCode,
-        caseName: currentCase.caseName,
-      });
-    }
-    bugModalVisible.value = true;
-  };
-
-  const handleEditBug = async (record: any) => {
-    isEditBug.value = true;
-    bugModalTitle.value = '编辑BUG';
-    bugFormData.value = { ...record };
-    if (bugFormData.value.tags && typeof bugFormData.value.tags === 'string') {
-      bugFormData.value.tags = bugFormData.value.tags
-        .split(',')
-        .filter((t: string) => t.trim());
-    }
-    initialBugFileIds.value = collectBugFileIds();
-    uploadedBugFileIds.value = new Set();
-    bugRequirementOptions.value = [];
-    bugTestCaseOptions.value = [];
-    await loadBugRequirementOptions();
-    if (
-      bugFormData.value.requirementId &&
-      !bugRequirementOptions.value.find(
-        (r: any) => r.id === bugFormData.value.requirementId
-      )
-    ) {
-      try {
-        const res: any = await getRequirementDetail(
-          bugFormData.value.requirementId
-        );
-        if (res.data)
-          bugRequirementOptions.value = [
-            res.data,
-            ...bugRequirementOptions.value,
-          ];
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    await loadBugTestCaseOptions();
-    if (
-      bugFormData.value.testCaseId &&
-      !bugTestCaseOptions.value.find(
-        (tc: any) => tc.id === bugFormData.value.testCaseId
-      )
-    ) {
-      try {
-        const res: any = await getTestCaseDetail(bugFormData.value.testCaseId);
-        if (res.data)
-          bugTestCaseOptions.value = [res.data, ...bugTestCaseOptions.value];
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    bugModalVisible.value = true;
-  };
-
-  const handleSaveBug = async () => {
-    if (!bugFormData.value.title) {
-      Message.warning('请输入BUG标题');
-      return;
-    }
-    try {
-      const payload = { ...bugFormData.value };
-      if (payload.tags && Array.isArray(payload.tags)) {
-        payload.tags = payload.tags.join(',');
-      }
-      const api = isEditBug.value ? updateBug : saveBug;
-      const res: any = await api(payload);
-      if (res.code === 200) {
-        Message.success('保存成功');
-        // 计算并删除被移除的富文本图片
-        const currentFileIds = collectBugFileIds();
-        const allSessionFileIds = new Set<string>([
-          ...initialBugFileIds.value,
-          ...uploadedBugFileIds.value,
-        ]);
-        const deletedFileIds = Array.from(allSessionFileIds).filter(
-          (id) => !currentFileIds.has(id)
-        );
-        uploadedBugFileIds.value.clear();
-        if (deletedFileIds.length > 0) {
-          deleteRichTextImages(deletedFileIds).catch(() => {
-            // 图片删除失败不影响业务保存
-          });
-        }
-        bugModalVisible.value = false;
-        bugDrawerPagination.value.current = 1;
-        await loadDrawerBugs();
-        await loadData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteBug = async (id: number) => {
-    try {
-      const res: any = await deleteBug(id);
-      if (res.code === 200) {
-        Message.success('删除成功');
-        await loadDrawerBugs();
-        await loadData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // BUG弹窗关联需求搜索
-  const loadBugRequirementOptions = async (
-    keyword?: string,
-    isLoadMore = false
-  ) => {
-    if (!projectStore.getProjectId) return;
-    if (!isLoadMore) {
-      bugRequirementPage.value.current = 1;
-      bugRequirementPage.value.keyword = keyword || '';
-      bugRequirementOptions.value = [];
-    }
-    try {
-      const res: any = await getRequirementList(
-        projectStore.getProjectId,
-        bugRequirementPage.value.keyword || undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        bugRequirementPage.value.current,
-        bugRequirementPage.value.pageSize
-      );
-      const records = res.data?.records || [];
-      if (isLoadMore) {
-        bugRequirementOptions.value.push(...records);
-      } else {
-        bugRequirementOptions.value = records;
-      }
-      bugRequirementPage.value.hasMore =
-        records.length >= bugRequirementPage.value.pageSize;
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const loadMoreBugRequirement = async () => {
-    if (!bugRequirementPage.value.hasMore || bugRequirementPage.value.loading)
-      return;
-    bugRequirementPage.value.loading = true;
-    try {
-      bugRequirementPage.value.current++;
-      await loadBugRequirementOptions(undefined, true);
-    } finally {
-      bugRequirementPage.value.loading = false;
-    }
-  };
-  const handleSearchBugRequirement = (keyword: string) => {
-    loadBugRequirementOptions(keyword);
-  };
-  const handleBugRequirementDropdownVisibleChange = (visible: boolean) => {
-    if (visible) {
-      loadBugRequirementOptions('');
-    }
-  };
-
-  // BUG弹窗关联用例搜索
-  const loadBugTestCaseOptions = async (
-    keyword?: string,
-    isLoadMore = false
-  ) => {
-    if (!projectStore.getProjectId) return;
-    if (!isLoadMore) {
-      bugTestCasePage.value.current = 1;
-      bugTestCasePage.value.keyword = keyword || '';
-      bugTestCaseOptions.value = [];
-    }
-    try {
-      const res: any = await getTestCaseList(
-        projectStore.getProjectId,
-        undefined,
-        undefined,
-        bugTestCasePage.value.keyword || undefined,
-        undefined,
-        undefined,
-        bugTestCasePage.value.current,
-        bugTestCasePage.value.pageSize
-      );
-      const records = res.data?.records || [];
-      if (isLoadMore) {
-        bugTestCaseOptions.value.push(...records);
-      } else {
-        bugTestCaseOptions.value = records;
-      }
-      bugTestCasePage.value.hasMore =
-        records.length >= bugTestCasePage.value.pageSize;
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const loadMoreBugTestCase = async () => {
-    if (!bugTestCasePage.value.hasMore || bugTestCasePage.value.loading) return;
-    bugTestCasePage.value.loading = true;
-    try {
-      bugTestCasePage.value.current++;
-      await loadBugTestCaseOptions(undefined, true);
-    } finally {
-      bugTestCasePage.value.loading = false;
-    }
-  };
-  const handleSearchBugTestCase = (keyword: string) => {
-    loadBugTestCaseOptions(keyword);
-  };
-  const handleBugTestCaseDropdownVisibleChange = (visible: boolean) => {
-    if (visible) {
-      loadBugTestCaseOptions('');
-    }
-  };
-
-  // 指派人搜索
-  const handleSearchUser = async (keyword?: string, isLoadMore = false) => {
-    if (!isLoadMore) {
-      userPage.value.current = 1;
-      userPage.value.keyword = keyword || '';
-      userOptions.value = [];
-    }
-    try {
-      const res: any = await getUserListByPage({
-        projectId: projectStore.getProjectId ?? undefined,
-        username: userPage.value.keyword || undefined,
-        pageNum: userPage.value.current,
-        pageSize: userPage.value.pageSize,
-      });
-      const records = res.data?.records || [];
-      if (isLoadMore) {
-        userOptions.value.push(...records);
-      } else {
-        userOptions.value = records;
-      }
-      userPage.value.hasMore = records.length >= userPage.value.pageSize;
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  const loadMoreUser = async () => {
-    if (!userPage.value.hasMore || userPage.value.loading) return;
-    userPage.value.loading = true;
-    try {
-      userPage.value.current++;
-      await handleSearchUser(undefined, true);
-    } finally {
-      userPage.value.loading = false;
-    }
-  };
-  const handleUserDropdownVisibleChange = (visible: boolean) => {
-    if (visible) {
-      handleSearchUser('');
-    }
+  const opsFor = (record: any): CaseOp[] => [
+    {
+      key: 'edit',
+      label: '编辑',
+      permission: 'qa:testcase:update',
+      handler: handleEdit,
+    },
+    {
+      key: 'copy',
+      label: '复制',
+      permission: 'qa:testcase:create',
+      handler: handleCopy,
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      permission: 'qa:testcase:delete',
+      danger: true,
+      handler: confirmDelete,
+    },
+  ];
+  // 平铺规则：前2个固定平铺，其余进「更多」
+  const visibleOps = (record: any) => opsFor(record).slice(0, 2);
+  const overflowOps = (record: any) => opsFor(record).slice(2);
+  const guardAndRun = (op: CaseOp, record: any) => {
+    if (op.disabled) return;
+    op.handler(record);
   };
 
   const priorityColor = (priority: string) => {
     const map: Record<string, string> = { P0: 'red', P1: 'orange', P2: 'blue' };
     return map[priority] || 'gray';
-  };
-  const caseTypeText = (type: string) => {
-    const map: Record<string, string> = {
-      FUNCTION: '功能',
-      API: '接口',
-      PERFORMANCE: '性能',
-      COMPATIBILITY: '兼容',
-      SMOKE: '冒烟',
-    };
-    return map[type] || type;
   };
   const renderHtml = (
     content: string | undefined,
@@ -2246,7 +1178,7 @@
   };
   const lastResultText = (result: string) => {
     const map: Record<string, string> = {
-      PASS: '通过',
+      PASS: '成功',
       FAIL: '失败',
       BLOCK: '阻塞',
       NA: '不适用',
@@ -2254,53 +1186,24 @@
     return map[result] || result;
   };
 
-  const severityColor = (severity: string) => {
-    const map: Record<string, string> = {
-      FATAL: 'red',
-      SERIOUS: 'orange',
-      NORMAL: 'blue',
-      TIPS: 'gray',
-    };
-    return map[severity] || 'gray';
-  };
-  const severityText = (severity: string) => {
-    const map: Record<string, string> = {
-      FATAL: '致命',
-      SERIOUS: '严重',
-      NORMAL: '一般',
-      TIPS: '提示',
-    };
-    return map[severity] || severity;
-  };
-  const bugStatusColor = (status: string) => {
-    const map: Record<string, string> = {
-      NEW: 'red',
-      CONFIRMED: 'orange',
-      FIXING: 'gold',
-      FIXED: 'blue',
-      VERIFIED: 'cyan',
-      CLOSED: 'green',
-      REJECTED: 'gray',
-    };
-    return map[status] || 'gray';
-  };
-  const bugStatusText = (status: string) => {
-    const map: Record<string, string> = {
-      NEW: '新建',
-      CONFIRMED: '已确认',
-      FIXING: '修复中',
-      FIXED: '已修复',
-      VERIFIED: '已验证',
-      CLOSED: '已关闭',
-      REJECTED: '已驳回',
-    };
-    return map[status] || status;
-  };
-
   onMounted(() => {
     loadData();
-    loadSetOptions();
+
     loadModuleOptions();
+
+    // 报告等外部页面跳转：?id= 打开用例详情抽屉（源数据已删除则提示）
+    const caseId = Number(route.query.id);
+    if (caseId && !isNaN(caseId)) {
+      getTestCaseDetail(caseId).then((res: any) => {
+        if (res.code === 200 && res.data) {
+          previewData.value = { ...res.data };
+          activeDetailTab.value = '';
+          previewVisible.value = true;
+        } else {
+          Message.warning('该用例不存在或已删除');
+        }
+      }).catch(() => Message.warning('该用例不存在或已删除'));
+    }
   });
 
   watch(
@@ -2308,7 +1211,6 @@
     (newId) => {
       if (newId) {
         loadData();
-        loadSetOptions();
         loadModuleOptions();
       }
     },
@@ -2328,6 +1230,62 @@
     display: flex;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  /* 用例列表：列表/脑图 视图切换容器 */
+  .case-view-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    position: relative;
+  }
+  .case-view-toggle {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 10;
+  }
+  .case-mindmap-fill {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* 顶部主 tab（用例 / 用例评审）填满剩余高度 */
+  .case-main-tabs {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .case-main-tabs :deep(.arco-tabs-content) {
+    flex: 1;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: hidden;
+  }
+
+  .case-main-tabs :deep(.arco-tabs-content-list),
+  .case-main-tabs :deep(.arco-tabs-pane) {
+    height: 100%;
+  }
+
+  .case-main-tabs :deep(.arco-tabs-pane) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .review-tab-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
@@ -2496,39 +1454,35 @@
     padding-top: 16px;
   }
 
-  .list-toolbar {
-    flex-wrap: wrap;
-  }
-
-  .search-items {
+  .filter-field {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .search-item {
-    display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
-    flex: 1 1 240px;
-    min-width: 220px;
-    max-width: 320px;
+
+    :deep(.arco-input-wrapper),
+    :deep(.arco-select-view) {
+      flex: 1;
+      min-width: 0;
+    }
   }
 
-  .search-label {
+  .filter-label {
+    width: 72px;
+    flex-shrink: 0;
+    font-size: 13px;
     color: var(--color-text-2);
-    font-size: 14px;
-    white-space: nowrap;
     text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .search-control {
-    width: 100%;
-    min-width: 0;
+  .filter-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    :deep(.arco-btn) {
+      min-width: 72px;
+    }
   }
 
   .list-card .stats-row {
@@ -2538,7 +1492,41 @@
   .table-wrapper {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 表格撑满容器，表体滚动，分页固定底部 */
+  .table-wrapper :deep(.arco-table) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .table-wrapper :deep(.arco-table-body) {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .table-wrapper :deep(.arco-table-pagination) {
+    flex-shrink: 0;
+  }
+
+  .batch-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: var(--color-fill-1);
+    border-radius: 4px;
+    border: 1px solid var(--color-border-2);
+  }
+
+  .batch-count {
+    font-size: 13px;
+    color: var(--color-text-2);
+    font-weight: 500;
   }
 
   .rich-text-preview {
@@ -2745,6 +1733,48 @@
     color: rgb(var(--link-color-hover));
   }
 
+  .adv-toggle {
+    align-self: center;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .inline-editable {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+
+  /* 行 hover 时，所有可编辑字段同时显示背景提示 */
+  :deep(.arco-table-tr):hover .inline-editable {
+    background: var(--color-fill-2);
+  }
+
+  /* 字段自身 hover 时，蓝色高亮 */
+  .inline-editable:hover {
+    background: rgb(var(--arcoblue-1));
+    box-shadow: 0 0 0 1px rgb(var(--arcoblue-3));
+  }
+
+  /* 行内编辑单元格：撑满宽度，hover 提示可编辑 */
+  .cell-display {
+    display: block;
+    width: 100%;
+    min-height: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .adv-panel {
+    background: var(--color-fill-1);
+    border-radius: 4px;
+    padding: 10px 12px 2px;
+    margin-bottom: 12px;
+  }
+
   .stat-card {
     padding: 10px 16px;
     border-radius: 8px;
@@ -2846,5 +1876,81 @@
     color: rgb(var(--primary-6));
     font-size: 13px;
     font-weight: 600;
+  }
+
+  /* 预览抽屉 tabs */
+  .preview-tabs :deep(.arco-tabs-content) {
+    padding-top: 4px;
+  }
+
+  .reject-alert {
+    margin-bottom: 16px;
+  }
+
+  .reject-comment {
+    margin-top: 4px;
+    color: var(--color-text-2);
+  }
+
+  .oplog-timeline {
+    margin-top: 8px;
+    padding-left: 4px;
+  }
+
+  .oplog-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .oplog-operator {
+    font-weight: 600;
+    color: var(--color-text-1);
+  }
+
+  .oplog-time {
+    color: var(--color-text-3);
+    font-size: 12px;
+  }
+
+  .oplog-change {
+    margin-top: 4px;
+    color: var(--color-text-2);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .oplog-field {
+    font-weight: 500;
+  }
+
+  .oplog-old {
+    color: var(--color-text-3);
+    text-decoration: line-through;
+  }
+
+  .oplog-new {
+    color: rgb(var(--primary-6));
+    font-weight: 500;
+  }
+
+  .oplog-arrow {
+    color: var(--color-text-3);
+    font-size: 12px;
+  }
+
+  .oplog-comment {
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: var(--color-fill-2);
+    border-left: 3px solid var(--color-border-3);
+    border-radius: 4px;
+    color: var(--color-text-2);
+    font-size: 13px;
+    white-space: pre-wrap;
   }
 </style>

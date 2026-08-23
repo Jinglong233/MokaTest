@@ -1,80 +1,47 @@
 <template>
   <div class="requirement-page" v-if="projectStore.hasProjectSelected">
     <Breadcrumb :items="['menu.qa', 'menu.qa.requirement']"/>
-    <a-card class="requirement-card general-card" :title="$t('qa.requirement.title')">
-      <!-- 顶部指标看板 -->
-      <a-row class="stats-row" :gutter="16" style="margin-bottom: 16px">
-        <a-col :xs="12" :sm="12" :md="6" :lg="6">
-          <div class="metric-card metric-total" @click="handleReset">
-            <div class="metric-content">
-              <div class="metric-number">{{ statsData.total }}</div>
-              <div class="metric-label">需求总数</div>
-            </div>
-            <div class="metric-icon" style="background: #e8f3ff; color: #165dff;">
-              <IconList :size="22" />
-            </div>
-          </div>
-        </a-col>
-        <a-col :xs="12" :sm="12" :md="6" :lg="6">
-          <div
-            class="metric-card metric-developing"
-            @click="
-              searchStatus = 'DEVELOPING';
-              handleSearch();
-            "
-          >
-            <div class="metric-content">
-              <div class="metric-number">{{ statsData.developing }}</div>
-              <div class="metric-label">开发中</div>
-            </div>
-            <div class="metric-icon" style="background: #fff7e8; color: #ff7d00;">
-              <IconTool :size="22" />
-            </div>
-          </div>
-        </a-col>
-        <a-col :xs="12" :sm="12" :md="6" :lg="6">
-          <div
-            class="metric-card metric-testing"
-            @click="
-              searchStatus = 'TESTING';
-              handleSearch();
-            "
-          >
-            <div class="metric-content">
-              <div class="metric-number">{{ statsData.testing }}</div>
-              <div class="metric-label">测试中</div>
-            </div>
-            <div class="metric-icon" style="background: #f5e8ff; color: #722ed1;">
-              <IconExperiment :size="22" />
-            </div>
-          </div>
-        </a-col>
-        <a-col :xs="12" :sm="12" :md="6" :lg="6">
-          <div
-            class="metric-card metric-closed"
-            @click="
-              searchStatus = 'CLOSED';
-              handleSearch();
-            "
-          >
-            <div class="metric-content">
-              <div class="metric-number">{{ statsData.closed }}</div>
-              <div class="metric-label">已关闭</div>
-            </div>
-            <div class="metric-icon" style="background: #e8ffea; color: #00b42a;">
-              <IconCheckCircle :size="22" />
-            </div>
-          </div>
-        </a-col>
-      </a-row>
 
-      <!-- 高效过滤搜索区 -->
+    <div class="main-row">
+      <!-- 左栏：模块树（复用 ModuleTreeManager，支持新增/编辑/删除/拖拽排序） -->
+      <div class="col side-col" :style="sideColStyle">
+        <a-card class="tree-card" size="small" :bordered="false">
+          <div class="req-tree-panel">
+            <ModuleTreeManager
+              ref="moduleTreeRef"
+              :show-search="true"
+              :show-virtual-root="true"
+              :selected-keys="[selectedModuleKey]"
+              root-name="全部需求"
+              default-expand-all
+              @select="onModuleTreeSelect"
+              @changed="handleModuleChanged"
+            >
+              <template #search-extra>
+                <a-button v-permission="QA_REQUIREMENT_CREATE" type="primary" size="small" @click="handleAdd">
+                  新建
+                </a-button>
+              </template>
+            </ModuleTreeManager>
+          </div>
+        </a-card>
+      </div>
+      <div
+          class="main-resizer"
+          :class="{ 'is-collapsed': isSidebarCollapsed }"
+          @mousedown="startResizeSidebar"
+      >
+        <div v-if="isSidebarCollapsed" class="sidebar-expand-btn">
+          <icon-right class="sidebar-expand-icon" />
+        </div>
+        <span v-else class="resizer-line" />
+      </div>
+      <!-- 右侧：需求列表 -->
+      <div class="col content-col">
+    <a-card class="requirement-card general-card" :bordered="false">
+      <!-- 主操作行 -->
       <div class="filter-toolbar">
         <div class="filter-left">
-          <a-button v-permission="QA_REQUIREMENT_CREATE" type="primary" class="add-btn" size="large" @click="handleAdd">
-            <template #icon><IconPlus /></template>
-            {{ $t('qa.requirement.add') }}
-          </a-button>
           <a-button
             v-permission="QA_REQUIREMENT_DELETE"
             v-if="selectedKeys.length > 0"
@@ -86,21 +53,19 @@
             批量删除({{ selectedKeys.length }})
           </a-button>
         </div>
-        <div class="filter-right">
-          <div class="filter-grid">
-            <a-input
-              v-model="searchKeyword"
-              :placeholder="$t('qa.requirement.name')"
-              allow-clear
-              class="filter-input"
-              @keydown.enter="handleSearch"
-            />
-            <a-select
-              v-model="searchStatus"
-              :placeholder="$t('qa.requirement.status')"
-              allow-clear
-              class="filter-select"
-            >
+      </div>
+      <!-- 筛选区 -->
+      <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
+        <a-col flex="280px">
+          <div class="filter-field">
+            <label class="filter-label">需求标题</label>
+            <a-input v-model="searchKeyword" placeholder="请输入需求标题" allow-clear />
+          </div>
+        </a-col>
+        <a-col flex="280px">
+          <div class="filter-field">
+            <label class="filter-label">状态</label>
+            <a-select v-model="searchStatus" placeholder="请选择" allow-clear>
               <a-option value="DRAFT">草稿</a-option>
               <a-option value="REVIEWING">评审中</a-option>
               <a-option value="CONFIRMED">已确认</a-option>
@@ -109,56 +74,53 @@
               <a-option value="RELEASED">已上线</a-option>
               <a-option value="CLOSED">已关闭</a-option>
             </a-select>
-            <a-select
-              v-model="searchModuleId"
-              placeholder="所属模块"
-              allow-clear
-              class="filter-select"
-            >
+          </div>
+        </a-col>
+        <a-col flex="280px">
+          <div class="filter-field">
+            <label class="filter-label">所属模块</label>
+            <a-select v-model="searchModuleId" placeholder="请选择" allow-clear>
               <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
             </a-select>
-            <a-select
-              v-model="searchReqType"
-              placeholder="需求类型"
-              allow-clear
-              class="filter-select"
-            >
+          </div>
+        </a-col>
+        <a-col flex="280px">
+          <div class="filter-field">
+            <label class="filter-label">需求类型</label>
+            <a-select v-model="searchReqType" placeholder="请选择" allow-clear>
               <a-option value="FEATURE">功能需求</a-option>
               <a-option value="BUGFIX">缺陷修复</a-option>
               <a-option value="OPTIMIZE">优化</a-option>
-              <a-option value="TECH_DEBT">技术债务</a-option>
-            </a-select>
-            <a-select
-              v-model="searchSource"
-              placeholder="来源"
-              allow-clear
-              class="filter-select"
-            >
+            <a-option value="TECH_DEBT">技术债务</a-option>
+          </a-select>
+          </div>
+        </a-col>
+        <a-col flex="280px">
+          <div class="filter-field">
+            <label class="filter-label">来源</label>
+            <a-select v-model="searchSource" placeholder="请选择" allow-clear>
               <a-option value="CLIENT">客户反馈</a-option>
               <a-option value="INTERNAL">内部规划</a-option>
               <a-option value="COMPETITOR">竞品分析</a-option>
               <a-option value="ONLINE">线上问题</a-option>
             </a-select>
           </div>
+        </a-col>
+        <a-col flex="auto">
           <div class="filter-actions">
-            <a-button size="large" @click="handleReset">重置</a-button>
-            <a-button type="primary" size="large" :loading="loading" @click="handleSearch">
-              <template #icon><IconSearch /></template>
-              {{ $t('qa.common.search') }}
-            </a-button>
+            <a-button type="primary" :loading="loading" @click="handleSearch">搜索</a-button>
+            <a-button @click="handleReset">重置</a-button>
           </div>
-        </div>
-      </div>
+        </a-col>
+      </a-row>
 
       <div class="table-wrapper">
-        <a-skeleton v-if="loading" :animation="true" class="table-skeleton">
-          <a-skeleton-line :rows="10" :widths="['100%']" />
-        </a-skeleton>
         <a-table
-            v-show="!loading"
             :data="requirementList"
+            :columns="columns"
+            :loading="loading"
             :pagination="pagination"
-            :bordered="{ cell: true }"
+            :bordered="{ wrapper: true, cell: false }"
             row-key="id"
             :sticky-header="true"
             :scroll="{ x: 1160 }"
@@ -166,263 +128,110 @@
             @page-change="handlePageChange"
             @page-size-change="handlePageSizeChange"
         >
-        <template #columns>
-          <a-table-column title="需求编号" data-index="reqCode" :width="120">
-            <template #cell="{ record }">
-              <span class="req-title-link" @click="handlePreview(record)">{{ record.reqCode }}</span>
-            </template>
-          </a-table-column>
-          <a-table-column title="需求标题" data-index="title" :width="280" :ellipsis="true">
-            <template #cell="{ record }">
-              <a-tooltip :content="record.title">
-                <span class="req-title-link" @click="handlePreview(record)">{{ record.title }}</span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column v-if="fieldVis('reqType')" title="需求类型" data-index="reqType" :width="90">
-            <template #cell="{ record }">
-              <a-tag size="small">{{ reqTypeText(record.reqType) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="优先级" data-index="priority" :width="80">
-            <template #cell="{ record }">
-              <span class="priority-dot" :class="record.priority?.toLowerCase()">
-                <span class="dot"></span>
-                <span>{{ record.priority }}</span>
+          <template #reqCode="{ record }">
+            <span class="req-title-link" @click="handlePreview(record)">{{ record.reqCode }}</span>
+          </template>
+          <template #title="{ record }">
+            <a-tooltip :content="record.title">
+              <span class="req-title-link" @click="handlePreview(record)">{{ record.title }}</span>
+            </a-tooltip>
+          </template>
+          <template #reqType="{ record }">
+            <a-tag size="small">{{ reqTypeText(record.reqType) }}</a-tag>
+          </template>
+          <template #priority="{ record }">
+            <span class="priority-dot" :class="record.priority?.toLowerCase()">
+              <span class="dot"></span>
+              <span>{{ record.priority }}</span>
+            </span>
+          </template>
+          <template #status="{ record }">
+            <a-tag :color="statusColor(record.status)" size="small" class="status-pill">{{ statusText(record.status) }}</a-tag>
+          </template>
+          <template #tags="{ record }">
+            <span
+              v-if="
+                !record.tags ||
+                (Array.isArray(record.tags) && record.tags.length === 0) ||
+                (typeof record.tags === 'string' && record.tags.trim() === '')
+              "
+              style="color: #86909c;"
+            >-</span>
+            <a-tooltip
+              v-else
+              :content="
+                typeof record.tags === 'string' ? record.tags : record.tags.join(', ')
+              "
+            >
+              <span>
+                {{ typeof record.tags === 'string' ? record.tags : record.tags.join(', ') }}
               </span>
-            </template>
-          </a-table-column>
-          <a-table-column title="状态" data-index="status" :width="90">
-            <template #cell="{ record }">
-              <a-tag :color="statusColor(record.status)" size="small" class="status-pill">{{ statusText(record.status) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column v-if="fieldVis('tags')" title="标签" data-index="tags" :width="120" :ellipsis="true">
-            <template #cell="{ record }">
-              <span
-                v-if="
-                  !record.tags ||
-                  (Array.isArray(record.tags) && record.tags.length === 0) ||
-                  (typeof record.tags === 'string' && record.tags.trim() === '')
-                "
-                style="color: #86909c;"
-              >-</span>
-              <a-tooltip
-                v-else
-                :content="
-                  typeof record.tags === 'string' ? record.tags : record.tags.join(', ')
-                "
+            </a-tooltip>
+          </template>
+          <template #caseCount="{ record }">
+            <a-tag color="blue" size="small">{{ record.caseCount || 0 }}</a-tag>
+          </template>
+          <template #bugCount="{ record }">
+            <a-tag :color="record.bugCount > 0 ? 'red' : 'green'" size="small">{{ record.bugCount || 0 }}</a-tag>
+          </template>
+          <template #actions="{ record }">
+            <a-space :size="0">
+              <a-button
+                  v-for="op in visibleOps(record)"
+                  :key="op.key"
+                  v-permission="op.permission"
+                  type="text"
+                  size="small"
+                  :status="op.danger ? 'danger' : undefined"
+                  @click="op.handler(record)"
               >
-                <span>
-                  {{ typeof record.tags === 'string' ? record.tags : record.tags.join(', ') }}
-                </span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column title="关联用例" data-index="caseCount" :width="90">
-            <template #cell="{ record }">
-              <a-tag color="blue" size="small">{{ record.caseCount || 0 }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="关联BUG" data-index="bugCount" :width="90">
-            <template #cell="{ record }">
-              <a-tag :color="record.bugCount > 0 ? 'red' : 'green'" size="small">{{ record.bugCount || 0 }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="操作" :width="120" fixed="right">
-            <template #cell="{ record }">
-              <a-space>
-                <a-tooltip content="编辑">
-                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" @click="handleEdit(record)">
-                    <template #icon><icon-edit /></template>
-                  </a-button>
-                </a-tooltip>
-                <a-tooltip content="删除">
-                  <a-popconfirm
-                      content="确认删除该需求吗？"
-                      type="warning"
-                      @ok="handleDelete(record.id)"
+                {{ op.label }}
+              </a-button>
+              <a-dropdown v-if="overflowOps(record).length" trigger="click">
+                <a-button type="text" size="small" @click.stop>
+                  ...
+                </a-button>
+                <template #content>
+                  <a-doption
+                      v-for="op in overflowOps(record)"
+                      :key="op.key"
+                      v-permission="op.permission"
+                      @click="op.handler(record)"
                   >
-                    <a-button v-permission="QA_REQUIREMENT_DELETE" type="text" size="small" status="danger" @click.stop
-                    >
-                      <template #icon><icon-delete /></template>
-                    </a-button>
-                  </a-popconfirm>
-                </a-tooltip>
-                <a-dropdown position="bottom">
-                  <a-button type="text" size="small" @click.stop>
-                    <icon-more />
-                  </a-button>
-                  <template #content>
-                    <a-doption @click="handleViewCases(record)"><icon-list /> 查看用例</a-doption>
-                    <a-doption @click="handleViewBugs(record)"><icon-bug /> 查看BUG</a-doption>
-                    <a-doption @click="handleShowTraceability(record)"><icon-branch /> 血缘追踪</a-doption>
-                    <a-doption v-permission="QA_TEST_CASE_CREATE" @click="handleAiGenerate(record)"><icon-robot /> AI 生成用例</a-doption>
-                    <a-doption v-permission="QA_REQUIREMENT_TRANSITION" @click="openTransitionModal(record)"><icon-swap /> 状态流转</a-doption>
-                  </template>
-                </a-dropdown>
-              </a-space>
-            </template>
-          </a-table-column>
-        </template>
-      </a-table>
+                    <span :style="op.danger ? 'color: rgb(var(--danger-6))' : ''">{{ op.label }}</span>
+                  </a-doption>
+                </template>
+              </a-dropdown>
+            </a-space>
+          </template>
+        </a-table>
       </div>
     </a-card>
-
-    <!-- 关联用例抽屉 -->
-    <a-drawer
-        v-model:visible="drawerVisible"
-        :title="drawerTitle"
-        width="700px"
-        :mask-closable="true"
-        :footer="false"
-    >
-      <a-row justify="space-between" style="margin-bottom: 16px;">
-        <a-button v-permission="QA_TEST_CASE_CREATE" type="primary" size="small" @click="handleAddCase">
-          <template #icon><icon-plus /></template>
-          新增用例
-        </a-button>
-      </a-row>
-      <div class="drawer-table-wrapper">
-        <a-table
-            :data="drawerCaseList"
-            :loading="drawerLoading"
-            :pagination="drawerPagination"
-            row-key="id"
-            :sticky-header="true"
-            :scroll="{ x: 780 }"
-            @page-change="handleDrawerPageChange"
-            @page-size-change="handleDrawerPageSizeChange"
-        >
-        <template #columns>
-          <a-table-column title="用例编号" data-index="caseCode" :width="140" />
-          <a-table-column title="用例名称" data-index="caseName" :width="250"/>
-          <a-table-column title="类型" data-index="caseType" :width=80>
-            <template #cell="{ record }">
-              <a-tag>{{ caseTypeText(record.caseType) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="优先级" data-index="priority" :width=80>
-            <template #cell="{ record }">
-              <a-tag :color="priorityColor(record.priority)">{{ record.priority }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="关联BUG" data-index="bugCount" :width=90>
-            <template #cell="{ record }">
-              <a-tag :color="(record.bugCount || 0) > 0 ? 'red' : 'green'">{{ record.bugCount || 0 }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="操作" :width=120 fixed="right">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button v-permission="QA_TEST_CASE_UPDATE" type="text" size="small" @click="handleEditCase(record)">编辑</a-button>
-                <a-popconfirm
-                    content="确认删除该用例吗？"
-                    type="warning"
-                    @ok="handleDeleteCase(record.id)"
-                >
-                  <a-button v-permission="QA_TEST_CASE_DELETE" type="text" size="small" status="danger">删除</a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table-column>
-        </template>
-        <template #empty>
-          <a-empty description="暂无关联用例"/>
-        </template>
-      </a-table>
       </div>
-    </a-drawer>
+    </div>
 
-    <!-- 关联BUG抽屉 -->
-    <a-drawer
-        v-model:visible="bugDrawerVisible"
-        :title="bugDrawerTitle"
-        width="1000px"
-        :mask-closable="true"
-        :footer="false"
+    <!-- 关联已有需求弹窗（子需求 tab） -->
+    <a-modal
+        v-model:visible="linkChildVisible"
+        title="关联已有需求"
+        :width="520"
+        :on-before-ok="handleLinkChildOk"
+        @cancel="linkChildVisible = false"
+        :mask-closable="false"
     >
-      <a-row justify="space-between" style="margin-bottom: 16px;">
-        <a-button v-permission="QA_BUG_CREATE" type="primary" size="small" @click="handleAddBug">
-          <template #icon><icon-plus /></template>
-          新增BUG
-        </a-button>
-      </a-row>
-      <div class="drawer-table-wrapper">
-        <a-table
-            :data="drawerBugList"
-            :loading="bugDrawerLoading"
-            :pagination="bugDrawerPagination"
-            row-key="id"
-            :sticky-header="true"
-            :scroll="{ x: 680 }"
-            @page-change="handleBugDrawerPageChange"
-            @page-size-change="handleBugDrawerPageSizeChange"
-        >
-        <template #columns>
-          <a-table-column title="BUG编号" data-index="bugCode" :width="95">
-            <template #cell="{ record }">
-              <a-tooltip :content="record.bugCode" mini>
-                <span class="text-ellipsis-inline">{{ record.bugCode }}</span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column title="BUG标题" data-index="title" :width="140">
-            <template #cell="{ record }">
-              <a-tooltip :content="record.title" mini>
-                <span class="text-ellipsis-inline">{{ record.title }}</span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column title="严重程度" data-index="severity" :width="65">
-            <template #cell="{ record }">
-              <a-tag :color="severityColor(record.severity)" size="small">{{ severityText(record.severity) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="状态" data-index="status" :width="65">
-            <template #cell="{ record }">
-              <a-tag :color="bugStatusColor(record.status)" size="small">{{ bugStatusText(record.status) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="发现计划" data-index="planName" :width="110">
-            <template #cell="{ record }">
-              <a-tooltip :content="record.planName || '-'" mini>
-                <span v-if="record.planName" class="text-ellipsis-inline">
-                  <a-tag color="arcoblue" size="small">{{ record.planName }}</a-tag>
-                </span>
-                <span v-else style="color: #86909c;">-</span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column title="关联用例" data-index="caseName" :width="100">
-            <template #cell="{ record }">
-              <a-tooltip :content="record.caseName || '-'" mini>
-                <span v-if="record.caseName" class="text-ellipsis-inline" style="color: rgb(var(--primary-6)); cursor: pointer;" @click="handlePreviewCaseFromBug(record.testCaseId)">{{ record.caseName }}</span>
-                <span v-else style="color: #86909c;">-</span>
-              </a-tooltip>
-            </template>
-          </a-table-column>
-          <a-table-column title="操作" :width="85">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button v-permission="QA_BUG_UPDATE" type="text" size="small" @click="handleEditBug(record)">编辑</a-button>
-                <a-popconfirm
-                    content="确认删除该BUG吗？"
-                    type="warning"
-                    @ok="handleDeleteBug(record.id)"
-                >
-                  <a-button v-permission="QA_BUG_DELETE" type="text" size="small" status="danger">删除</a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table-column>
-        </template>
-        <template #empty>
-          <a-empty description="暂无关联BUG"/>
-        </template>
-      </a-table>
-      </div>
-    </a-drawer>
+      <a-select
+          v-model="linkChildId"
+          placeholder="选择要挂到当前需求下的需求"
+          allow-search
+          allow-clear
+          style="width: 100%"
+      >
+        <a-option v-for="r in linkChildCandidates" :key="r.id" :value="r.id">
+          {{ r.reqCode }} {{ r.title }}
+        </a-option>
+      </a-select>
+      <p style="color: var(--color-text-3); font-size: 12px; margin-top: 8px;">已排除当前需求及其所有子孙需求，避免循环引用</p>
+    </a-modal>
 
     <!-- 新增/编辑弹窗（仅预览抽屉中使用） -->
     <a-modal
@@ -450,10 +259,10 @@
         @adopted="handleAiAdopted"
     />
 
-    <!-- 预览抽屉 -->
+    <!-- 预览抽屉（多 tab：基本信息 / 关联用例 / 关联BUG / 子需求） -->
     <a-drawer
         v-model:visible="previewVisible"
-        width="640px"
+        width="860px"
         :closable="false"
         :mask-closable="true"
         :esc-to-close="true"
@@ -474,91 +283,173 @@
       </template>
 
       <div class="preview-body">
-        <!-- 基础属性 -->
-        <a-card class="preview-section" :bordered="false" size="small">
-          <a-descriptions :bordered="true" :data="previewDescriptions" layout="horizontal" :column="2" :label-style="{ fontWeight: 'bold', width: '90px' }" :value-style="{ textAlign: 'right' }" />
-        </a-card>
+        <a-tabs v-model:active-key="previewTabKey" type="line" class="preview-tabs" @change="handlePreviewTabChange">
+          <!-- ========== 基本信息 ========== -->
+          <a-tab-pane key="info" title="基本信息">
+            <!-- 基础属性 -->
+            <a-card class="preview-section" :bordered="false" size="small">
+              <a-descriptions :bordered="true" :data="previewDescriptions" layout="horizontal" :column="2" :label-style="{ fontWeight: 'bold', width: '90px' }" :value-style="{ textAlign: 'right' }" />
+            </a-card>
 
-        <!-- 需求描述 -->
-        <a-card class="preview-section" title="需求描述" :bordered="false" size="small">
-          <div class="preview-description rich-text-preview" v-html="renderHtml(previewData.description, '暂无描述')"></div>
-        </a-card>
+            <!-- 需求描述 -->
+            <a-card class="preview-section" title="需求描述" :bordered="false" size="small">
+              <div class="preview-description rich-text-preview" v-html="renderHtml(previewData.description, '暂无描述')"></div>
+            </a-card>
+          </a-tab-pane>
 
-        <!-- 关联数据卡片 -->
-        <a-card class="preview-section" :bordered="false" size="small">
-          <div class="preview-stats">
-            <div class="preview-stat-card stat-case" @click="handlePreviewStatClick('case')">
-              <div class="stat-icon"><icon-file :size="22" /></div>
-              <div class="stat-info">
-                <div class="stat-value">{{ previewData.caseCount || 0 }}</div>
-                <div class="stat-name">关联用例</div>
-              </div>
-            </div>
-            <div class="preview-stat-card stat-bug" @click="handlePreviewStatClick('bug')">
-              <div class="stat-icon"><icon-bug :size="22" /></div>
-              <div class="stat-info">
-                <div class="stat-value">{{ previewData.bugCount || 0 }}</div>
-                <div class="stat-name">关联BUG</div>
-              </div>
-            </div>
-            <div class="preview-stat-card stat-open-bug" @click="handlePreviewStatClick('bug')">
-              <div class="stat-icon"><icon-exclamation-circle :size="22" /></div>
-              <div class="stat-info">
-                <div class="stat-value">{{ previewData.openBugCount || 0 }}</div>
-                <div class="stat-name">未关闭BUG</div>
-              </div>
-            </div>
-          </div>
-        </a-card>
+          <!-- ========== 关联用例 ========== -->
+          <a-tab-pane key="cases">
+            <template #title>关联用例 <span class="tab-count-badge">{{ previewData.caseCount || 0 }}</span></template>
+            <a-row justify="space-between" style="margin-bottom: 12px;">
+              <a-button v-permission="QA_TEST_CASE_CREATE" type="primary" size="small" @click="handleAddCase">
+                <template #icon><icon-plus /></template>
+                新增用例
+              </a-button>
+            </a-row>
+            <a-table
+                :data="drawerCaseList"
+                :columns="drawerCaseColumns"
+                :loading="drawerLoading"
+                :pagination="drawerPagination"
+                row-key="id"
+                :scroll="{ x: 780 }"
+                @page-change="handleDrawerPageChange"
+                @page-size-change="handleDrawerPageSizeChange"
+            >
+              <template #caseType="{ record }">
+                <a-tag>{{ caseTypeText(record.caseType) }}</a-tag>
+              </template>
+              <template #drawerCasePriority="{ record }">
+                <a-tag :color="priorityColor(record.priority)">{{ record.priority }}</a-tag>
+              </template>
+              <template #drawerCaseBugCount="{ record }">
+                <a-tag :color="(record.bugCount || 0) > 0 ? 'red' : 'green'">{{ record.bugCount || 0 }}</a-tag>
+              </template>
+              <template #drawerCaseActions="{ record }">
+                <a-popconfirm
+                    content="取消该用例与当前需求的关联？（用例本身保留）"
+                    type="warning"
+                    @ok="handleUnbindCase(record.id)"
+                >
+                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">取消关联</a-button>
+                </a-popconfirm>
+              </template>
+              <template #empty>
+                <a-empty description="暂无关联用例"/>
+              </template>
+            </a-table>
+          </a-tab-pane>
 
-        <!-- 评论与操作日志：后端接口未落地（见 loadPreviewComments TODO），暂时隐藏，避免"发表成功但不落库"的假反馈 -->
+          <!-- ========== 关联BUG ========== -->
+          <a-tab-pane key="bugs">
+            <template #title>关联BUG <span class="tab-count-badge">{{ previewData.bugCount || 0 }}</span></template>
+            <a-row justify="space-between" style="margin-bottom: 12px;">
+              <a-button v-permission="QA_BUG_CREATE" type="primary" size="small" @click="handleAddBug">
+                <template #icon><icon-plus /></template>
+                新增BUG
+              </a-button>
+            </a-row>
+            <a-table
+                :data="drawerBugList"
+                :columns="drawerBugColumns"
+                :loading="bugDrawerLoading"
+                :pagination="bugDrawerPagination"
+                row-key="id"
+                :scroll="{ x: 680 }"
+                @page-change="handleBugDrawerPageChange"
+                @page-size-change="handleBugDrawerPageSizeChange"
+            >
+              <template #bugCode="{ record }">
+                <a-tooltip :content="record.bugCode" mini>
+                  <span class="text-ellipsis-inline">{{ record.bugCode }}</span>
+                </a-tooltip>
+              </template>
+              <template #bugTitle="{ record }">
+                <a-tooltip :content="record.title" mini>
+                  <span class="text-ellipsis-inline">{{ record.title }}</span>
+                </a-tooltip>
+              </template>
+              <template #severity="{ record }">
+                <a-tag :color="severityColor(record.severity)" size="small">{{ severityText(record.severity) }}</a-tag>
+              </template>
+              <template #bugStatus="{ record }">
+                <a-tag :color="bugStatusColor(record.status)" size="small">{{ bugStatusText(record.status) }}</a-tag>
+              </template>
+              <template #planName="{ record }">
+                <a-tooltip :content="record.planName || '-'" mini>
+                  <span v-if="record.planName" class="text-ellipsis-inline">
+                    <a-tag color="arcoblue" size="small">{{ record.planName }}</a-tag>
+                  </span>
+                  <span v-else style="color: #86909c;">-</span>
+                </a-tooltip>
+              </template>
+              <template #bugCaseName="{ record }">
+                <a-tooltip :content="record.caseName || '-'" mini>
+                  <span v-if="record.caseName" class="text-ellipsis-inline" style="color: rgb(var(--primary-6)); cursor: pointer;" @click="handlePreviewCaseFromBug(record.testCaseId)">{{ record.caseName }}</span>
+                  <span v-else style="color: #86909c;">-</span>
+                </a-tooltip>
+              </template>
+              <template #drawerBugActions="{ record }">
+                <a-popconfirm
+                    content="取消该BUG与当前需求的关联？（BUG本身保留）"
+                    type="warning"
+                    @ok="handleUnbindBug(record.id)"
+                >
+                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">取消关联</a-button>
+                </a-popconfirm>
+              </template>
+              <template #empty>
+                <a-empty description="暂无关联BUG"/>
+              </template>
+            </a-table>
+          </a-tab-pane>
+
+          <!-- ========== 子需求 ========== -->
+          <a-tab-pane key="children">
+            <template #title>子需求 <span class="tab-count-badge">{{ childRequirements.length }}</span></template>
+            <a-row justify="space-between" style="margin-bottom: 12px;">
+              <a-space>
+                <a-button v-permission="QA_REQUIREMENT_CREATE" type="primary" size="small" @click="handleAddChildReq">
+                  <template #icon><icon-plus /></template>
+                  新增子需求
+                </a-button>
+                <a-button v-permission="QA_REQUIREMENT_UPDATE" size="small" @click="openLinkChild">关联已有需求</a-button>
+              </a-space>
+            </a-row>
+            <a-table :data="childRequirements" :columns="subReqColumns" row-key="id" :pagination="false">
+              <template #subReqCode="{ record }">
+                <span class="req-title-link" @click="handlePreview(record)">{{ record.reqCode }}</span>
+              </template>
+              <template #subReqTitle="{ record }">
+                <a-tooltip :content="record.title" mini>
+                  <span class="req-title-link" @click="handlePreview(record)">{{ record.title }}</span>
+                </a-tooltip>
+              </template>
+              <template #subReqPriority="{ record }">
+                <span class="priority-dot" :class="record.priority?.toLowerCase()">
+                  <span class="dot"></span>
+                  <span>{{ record.priority }}</span>
+                </span>
+              </template>
+              <template #subReqStatus="{ record }">
+                <a-tag :color="statusColor(record.status)" size="small" class="status-pill">{{ statusText(record.status) }}</a-tag>
+              </template>
+              <template #subReqOwner="{ record }">{{ record.ownerName || '-' }}</template>
+              <template #empty>
+                <a-empty description="暂无子需求"/>
+              </template>
+            </a-table>
+          </a-tab-pane>
+        </a-tabs>
+
+        <!-- 评论与操作日志：后端接口未落地（二期），暂时隐藏，避免"发表成功但不落库"的假反馈 -->
         <a-card v-if="false" class="preview-section preview-tabs-section" :bordered="false" size="small">
-          <a-tabs v-model:active-key="previewTabKey" type="line" class="preview-tabs">
+          <a-tabs type="line">
             <a-tab-pane key="comments" title="评论">
-              <div class="preview-comment-list">
-                <div v-if="previewComments.length === 0" style="padding: 16px 0;">
-                  <a-empty description="暂无评论" />
-                </div>
-                <div v-else>
-                  <a-comment
-                    v-for="comment in previewComments"
-                    :key="comment.id"
-                    :author="comment.userName"
-                    :content="comment.content"
-                    :datetime="comment.createTime"
-                  />
-                </div>
-              </div>
-              <div class="preview-comment-input" :class="{ focused: commentInputFocused }">
-                <a-textarea
-                  v-model="previewCommentInput"
-                  placeholder="输入评论内容..."
-                  :auto-size="{ minRows: 2, maxRows: 4 }"
-                  @focus="commentInputFocused = true"
-                  @blur="commentInputFocused = !!previewCommentInput.trim()"
-                />
-                <div v-show="commentInputFocused || previewCommentInput.trim()" class="preview-comment-actions">
-                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="primary" size="small" @mousedown.prevent @click="handleSavePreviewComment">发表评论</a-button>
-                </div>
-              </div>
+              <a-empty description="暂无评论" />
             </a-tab-pane>
             <a-tab-pane key="logs" title="操作日志">
-              <div class="preview-log-list">
-                <div v-if="previewLogs.length === 0" style="padding: 16px 0;">
-                  <a-empty description="暂无操作日志" />
-                </div>
-                <a-timeline v-else>
-                  <a-timeline-item
-                    v-for="log in previewLogs"
-                    :key="log.id"
-                    :label="log.createTime"
-                  >
-                    <span style="font-weight: 500;">{{ log.userName }}</span>
-                    <span style="color: var(--color-text-2); margin-left: 4px;">{{ log.action }}</span>
-                    <span v-if="log.detail" style="color: var(--color-text-3); margin-left: 4px;">({{ log.detail }})</span>
-                  </a-timeline-item>
-                </a-timeline>
-              </div>
+              <a-empty description="暂无操作日志" />
             </a-tab-pane>
           </a-tabs>
         </a-card>
@@ -574,496 +465,43 @@
         </div>
       </template>
     </a-drawer>
-
-    <!-- 状态流转弹窗 -->
-    <a-modal
-        v-model:visible="transitionModalVisible"
-        title="状态流转"
-        width="400px"
-        @ok="handleConfirmTransition"
-        @cancel="transitionModalVisible = false"
-        :mask-closable="false"
-    >
-      <a-form :model="transitionForm" layout="vertical">
-        <a-form-item label="当前状态">
-          <a-tag :color="statusColor(transitionForm.currentStatus)">{{ statusText(transitionForm.currentStatus) }}</a-tag>
-        </a-form-item>
-        <a-form-item label="目标状态" required>
-          <a-select v-model="transitionForm.targetStatus" placeholder="请选择目标状态">
-            <a-option value="DRAFT">草稿</a-option>
-            <a-option value="REVIEWING">评审中</a-option>
-            <a-option value="CONFIRMED">已确认</a-option>
-            <a-option value="DEVELOPING">开发中</a-option>
-            <a-option value="TESTING">测试中</a-option>
-            <a-option value="RELEASED">已上线</a-option>
-            <a-option value="CLOSED">已关闭</a-option>
-          </a-select>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 用例新增/编辑弹窗 -->
-    <a-modal
-        class="qa-edit-modal"
+    <!-- 用例新增/编辑抽屉（复用共享 TestCaseForm，同评审详情页） -->
+    <a-drawer
         v-model:visible="caseModalVisible"
         :title="caseModalTitle"
-        :width="modalWidth"
-        @ok="handleSaveCase"
+        :width="1200"
+        :mask-closable="true"
         @cancel="caseModalVisible = false"
-        :mask-closable="false"
     >
-      <div class="modal-scroll-body">
-        <a-form :model="caseFormData" layout="vertical">
-          <!-- 基本信息 -->
-          <a-divider orientation="left" style="margin-top: 0;">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">基本信息</span>
-          </a-divider>
-          <a-form-item label="用例名称" required>
-            <a-input v-model="caseFormData.caseName" placeholder="请输入用例名称" size="large"/>
-          </a-form-item>
-
-          <!-- 分类属性 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">分类属性</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="用例类型">
-                <a-select v-model="caseFormData.caseType">
-                  <a-option value="FUNCTION">功能</a-option>
-                  <a-option value="API">接口</a-option>
-                  <a-option value="PERFORMANCE">性能</a-option>
-                  <a-option value="COMPATIBILITY">兼容</a-option>
-                  <a-option value="SMOKE">冒烟</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="优先级">
-                <a-select v-model="caseFormData.priority">
-                  <a-option value="P0">P0</a-option>
-                  <a-option value="P1">P1</a-option>
-                  <a-option value="P2">P2</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="状态">
-                <a-select v-model="caseFormData.status">
-                  <a-option value="DRAFT">草稿</a-option>
-                  <a-option value="REVIEWING">评审中</a-option>
-                  <a-option value="REVIEWED">已评审</a-option>
-                  <a-option value="DEPRECATED">已废弃</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="所属模块">
-                <a-tree-select
-                    v-model="caseFormData.moduleId"
-                    :data="caseModuleTree"
-                    :fieldNames="{ key: 'id', title: 'moduleName' }"
-                    placeholder="请选择所属模块"
-                    allow-clear
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="所属测试集">
-                <a-select
-                    v-model="caseFormData.setIds"
-                    placeholder="请选择测试集"
-                    multiple
-                    allow-clear
-                    :max-tag-count="2"
-                >
-                  <a-option v-for="set in caseSetOptions" :key="set.id" :value="set.id">{{ set.setName }}</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="预期执行时长(分钟)">
-                <a-input-number v-model="caseFormData.expectDuration" :min="1" placeholder="分钟" style="width: 100%;"/>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <!-- 关联信息 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">关联信息</span>
-          </a-divider>
-          <a-form-item label="关联需求">
-            <a-select
-                v-model="caseFormData.requirementId"
-                allow-clear
-                allow-search
-                :filter-option="false"
-                placeholder="请输入关键词搜索需求"
-                @search="handleSearchCaseRequirement"
-                @dropdown-visible-change="handleCaseRequirementDropdownVisibleChange"
-                @dropdown-reach-bottom="loadMoreCaseRequirement"
-            >
-              <a-option v-for="req in caseRequirementOptions" :key="req.id" :value="req.id">{{ req.reqCode }} - {{ req.title }}</a-option>
-              <template #dropdownRender="{ menuNode: menu }">
-                <div>
-                  <VNodeRenderer :vnodes="menu" />
-                  <div v-if="caseRequirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                    滚动加载更多...
-                  </div>
-                  <div v-else-if="caseRequirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                    没有更多了
-                  </div>
-                </div>
-              </template>
-            </a-select>
-          </a-form-item>
-
-          <!-- 测试内容 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">测试内容</span>
-          </a-divider>
-          <a-form-item label="前置条件">
-            <RichEditor v-model="caseFormData.preCondition" placeholder="请输入前置条件" @uploaded="handleUploadedCaseFile"/>
-          </a-form-item>
-          <a-form-item label="测试步骤">
-            <a-space direction="vertical" style="width: 100%">
-              <div
-                  v-for="(step, index) in caseStepList"
-                  :key="index"
-                  class="step-card"
-              >
-                <div class="step-card-header">
-                  <span class="step-number">步骤 {{ index + 1 }}</span>
-                  <a-space>
-                    <a-button v-permission="QA_TEST_CASE_UPDATE" type="text" size="mini" :disabled="index === 0" @click="moveCaseStep(index, -1)">↑</a-button>
-                    <a-button v-permission="QA_TEST_CASE_UPDATE" type="text" size="mini" :disabled="index === caseStepList.length - 1" @click="moveCaseStep(index, 1)">↓</a-button>
-                    <a-button v-permission="QA_TEST_CASE_UPDATE" type="text" status="danger" size="mini" @click="removeCaseStep(index)">删除</a-button>
-                  </a-space>
-                </div>
-                <a-row :gutter="16">
-                  <a-col :span="12">
-                    <a-form-item label="步骤描述" style="margin-bottom: 0;">
-                      <a-textarea v-model="step.step" :placeholder="`步骤${index + 1}`" :auto-size="{ minRows: 2, maxRows: 8 }"/>
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="12">
-                    <a-form-item label="预期结果" style="margin-bottom: 0;">
-                      <a-textarea v-model="step.expected" placeholder="预期结果" :auto-size="{ minRows: 2, maxRows: 8 }"/>
-                    </a-form-item>
-                  </a-col>
-                </a-row>
-              </div>
-              <a-button v-permission="QA_TEST_CASE_UPDATE" type="dashed" long @click="addCaseStep">
-                <icon-plus/> 添加步骤
-              </a-button>
-            </a-space>
-          </a-form-item>
-          <a-form-item label="标签">
-            <a-input-tag v-model="caseFormData.tags" placeholder="输入标签后按回车" allow-clear/>
-          </a-form-item>
-        </a-form>
+      <div class="form-drawer-body">
+        <TestCaseForm ref="caseFormRef" :initial-data="caseFormData" />
       </div>
-    </a-modal>
+      <template #footer>
+        <a-space>
+          <a-button @click="caseModalVisible = false">取消</a-button>
+          <a-button type="primary" :loading="caseSaving" @click="handleSaveCase">保存</a-button>
+        </a-space>
+      </template>
+    </a-drawer>
 
-    <!-- BUG 新增/编辑弹窗 -->
-    <a-modal
-        class="qa-edit-modal"
+    <!-- BUG 新增/编辑抽屉（复用共享 BugForm，同计划脑图） -->
+    <a-drawer
         v-model:visible="bugModalVisible"
         :title="bugModalTitle"
-        :width="modalWidth"
-        @ok="handleSaveBug"
-        @cancel="bugModalVisible = false"
-        :mask-closable="false"
-    >
-      <div class="modal-scroll-body">
-        <a-form :model="bugFormData" layout="vertical">
-          <!-- 基本信息 -->
-          <a-divider orientation="left" style="margin-top: 0;">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">基本信息</span>
-          </a-divider>
-          <a-form-item label="BUG标题" required>
-            <a-input v-model="bugFormData.title" placeholder="请输入BUG标题" size="large"/>
-          </a-form-item>
-
-          <!-- 严重程度 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">严重程度</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="严重程度">
-                <a-select v-model="bugFormData.severity">
-                  <a-option value="FATAL">致命</a-option>
-                  <a-option value="SERIOUS">严重</a-option>
-                  <a-option value="NORMAL">一般</a-option>
-                  <a-option value="TIPS">提示</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="优先级">
-                <a-select v-model="bugFormData.priority">
-                  <a-option value="URGENT">紧急</a-option>
-                  <a-option value="HIGH">高</a-option>
-                  <a-option value="MEDIUM">中</a-option>
-                  <a-option value="LOW">低</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="状态">
-                <a-select v-model="bugFormData.status">
-                  <a-option value="NEW">新建</a-option>
-                  <a-option value="CONFIRMED">已确认</a-option>
-                  <a-option value="FIXING">修复中</a-option>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="VERIFIED">已验证</a-option>
-                  <a-option value="CLOSED">已关闭</a-option>
-                  <a-option value="REJECTED">已驳回</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <!-- 环境信息 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">环境信息</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="所属模块">
-                <a-select v-model="bugFormData.moduleId" allow-clear placeholder="请选择所属模块">
-                  <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="环境">
-                <a-select v-model="bugFormData.environment" placeholder="请选择环境" allow-clear>
-                  <a-option value="TEST">测试环境</a-option>
-                  <a-option value="STAGING">预发环境</a-option>
-                  <a-option value="PROD">生产环境</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="截止日期">
-                <a-date-picker v-model="bugFormData.deadline" value-format="YYYY-MM-DD" placeholder="请选择截止日期" style="width: 100%;"/>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <!-- 版本与复现 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">版本与复现</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="发现版本">
-                <a-input v-model="bugFormData.foundVersion" placeholder="如 v1.0.0"/>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="修复版本">
-                <a-input v-model="bugFormData.fixedVersion" placeholder="如 v1.0.1"/>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="重现概率">
-                <a-select v-model="bugFormData.reproduceRate" placeholder="请选择重现概率" allow-clear>
-                  <a-option value="ALWAYS">必现</a-option>
-                  <a-option value="OFTEN">高概率</a-option>
-                  <a-option value="SOMETIMES">偶现</a-option>
-                  <a-option value="RARE">难现</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <!-- 详细描述 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">详细描述</span>
-          </a-divider>
-          <a-form-item label="BUG描述">
-            <RichEditor v-model="bugFormData.description" placeholder="请输入BUG描述" @uploaded="handleUploadedBugFile"/>
-          </a-form-item>
-          <a-form-item label="复现步骤">
-            <RichEditor v-model="bugFormData.reproduceSteps" placeholder="请输入复现步骤" @uploaded="handleUploadedBugFile"/>
-          </a-form-item>
-
-          <!-- 关联关系 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">关联关系</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="12">
-              <a-form-item label="关联需求">
-                <a-select
-                    v-model="bugFormData.requirementId"
-                    allow-clear
-                    allow-search
-                    :filter-option="false"
-                    placeholder="请输入关键词搜索需求"
-                    @search="handleSearchBugRequirement"
-                    @dropdown-visible-change="handleBugRequirementDropdownVisibleChange"
-                    @dropdown-reach-bottom="loadMoreBugRequirement"
-                >
-                  <a-option v-for="req in bugRequirementOptions" :key="req.id" :value="req.id">{{ req.reqCode }} - {{ req.title }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="bugRequirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="bugRequirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="关联用例">
-                <a-select
-                    v-model="bugFormData.testCaseId"
-                    allow-clear
-                    allow-search
-                    :filter-option="false"
-                    placeholder="请输入关键词搜索用例"
-                    @search="handleSearchBugTestCase"
-                    @dropdown-visible-change="handleBugTestCaseDropdownVisibleChange"
-                    @dropdown-reach-bottom="loadMoreBugTestCase"
-                >
-                  <a-option v-for="tc in bugTestCaseOptions" :key="tc.id" :value="tc.id">{{ tc.caseCode }} - {{ tc.caseName }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="bugTestCasePage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="bugTestCaseOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-
-          <!-- 其他 -->
-          <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">其他</span>
-          </a-divider>
-          <a-row :gutter="24">
-            <a-col :span="8">
-              <a-form-item label="标签">
-                <a-input-tag v-model="bugFormData.tags" placeholder="输入标签后按回车" allow-clear/>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item v-if="bugFormData.status === 'CLOSED'" label="关闭原因">
-                <a-select v-model="bugFormData.closeReason" placeholder="请选择关闭原因" allow-clear>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="DUPLICATE">重复</a-option>
-                  <a-option value="NOT_BUG">不是BUG</a-option>
-                  <a-option value="CANNOT_REPRODUCE">无法复现</a-option>
-                  <a-option value="WONT_FIX">暂不处理</a-option>
-                </a-select>
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="指派人">
-                <a-select
-                    v-model="bugFormData.assigneeId"
-                    allow-clear
-                    allow-search
-                    :filter-option="false"
-                    placeholder="请输入关键词搜索用户"
-                    @search="handleSearchUser"
-                    @dropdown-visible-change="handleUserDropdownVisibleChange"
-                    @dropdown-reach-bottom="loadMoreUser"
-                >
-                  <a-option v-for="u in userOptions" :key="u.id" :value="u.id">{{ u.nickname || u.username }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="userPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="userOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
-                    </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-form>
-      </div>
-    </a-modal>
-
-    <!-- 血缘追踪弹窗 -->
-    <a-modal
-        v-model:visible="traceModalVisible"
-        :title="traceModalTitle"
-        width="85%"
-        :footer="false"
+        :width="1000"
         :mask-closable="true"
+        @cancel="bugModalVisible = false"
     >
-      <a-row :gutter="16" style="margin-bottom: 16px;">
-        <a-col :span="6">
-          <a-statistic title="关联用例" :value="traceData.caseCount || 0">
-            <template #prefix><icon-file style="color: rgb(var(--arcoblue-6));" /></template>
-          </a-statistic>
-        </a-col>
-        <a-col :span="6">
-          <a-statistic title="关联BUG总数" :value="traceData.bugCount || 0">
-            <template #prefix><icon-bug style="color: rgb(var(--red-6));" /></template>
-          </a-statistic>
-        </a-col>
-        <a-col :span="6">
-          <a-statistic title="未关闭BUG" :value="traceData.openBugCount || 0">
-            <template #prefix><icon-exclamation-circle style="color: rgb(var(--orange-6));" /></template>
-          </a-statistic>
-        </a-col>
-        <a-col :span="6">
-          <a-statistic title="用例通过率" :value="tracePassRate">
-            <template #suffix>%</template>
-          </a-statistic>
-        </a-col>
-      </a-row>
-
-      <a-row justify="space-between" align="center" style="margin-bottom: 8px;">
+      <div class="form-drawer-body">
+        <BugForm ref="bugFormRef" :initial-data="bugFormData" />
+      </div>
+      <template #footer>
         <a-space>
-          <a-switch v-model="traceFilterBugOnly" size="small" @change="handleTraceFilterChange" />
-          <span style="font-size: 13px; color: var(--color-text-2);">仅显示有BUG的用例</span>
+          <a-button @click="bugModalVisible = false">取消</a-button>
+          <a-button type="primary" :loading="bugSaving" @click="handleSaveBug">保存</a-button>
         </a-space>
-        <a-space size="mini">
-          <span style="font-size: 12px; color: var(--color-text-3);">🖱️ 滚轮缩放 · 拖拽移动 · 点击节点折叠/展开</span>
-        </a-space>
-      </a-row>
-
-      <a-divider style="margin: 12px 0;" />
-
-      <div v-if="!traceData.testCases || traceData.testCases.length === 0">
-        <a-empty description="该需求暂无关联用例">
-          <template #extra>
-            <a-button v-permission="QA_TEST_CASE_CREATE" type="primary" size="small" @click="handleAddCaseFromTrace">
-              <template #icon><icon-plus /></template>
-              创建用例
-            </a-button>
-          </template>
-        </a-empty>
-      </div>
-      <div v-else style="height: 500px;">
-        <Chart :options="traceChartOption" height="100%" />
-      </div>
-    </a-modal>
+      </template>
+    </a-drawer>
   </div>
   <NoProjectPlaceholder v-else />
 </template>
@@ -1078,13 +516,14 @@ import {ref, computed, onMounted, onBeforeUnmount, watch, nextTick} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useRouter} from 'vue-router';
 import {Message, Modal} from '@arco-design/web-vue';
-import {IconSearch, IconPlus, IconDelete, IconMore, IconBug, IconList, IconSwap, IconEdit, IconBranch, IconFile, IconExclamationCircle, IconTool, IconExperiment, IconStop, IconCheckCircle} from '@arco-design/web-vue/es/icon';
+import {IconSearch, IconPlus, IconDelete, IconRight, IconDown} from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
-import RichEditor from '@/components/rich-editor/index.vue';
 import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue';
-import Chart from '@/components/chart/index.vue';
 import RequirementForm from './components/RequirementForm.vue';
+import TestCaseForm from '../testCase/components/TestCaseForm.vue';
+import BugForm from '../bug/components/BugForm.vue';
 import AiGenerateChatModal from '@/components/ai-generate/AiGenerateChatModal.vue';
+import ModuleTreeManager from '@/views/qa/components/ModuleTreeManager.vue';
 import {useProjectStore} from '@/store';
 import useProjectConfigStore from '@/store/modules/projectConfig';
 import {useRoute} from 'vue-router';
@@ -1100,9 +539,8 @@ import {
   QA_BUG_UPDATE,
   QA_BUG_DELETE,
 } from '@/constants/permissions';
-import {getRequirementList, getRequirementStats, getRequirementDetail, deleteRequirement, batchDeleteRequirement, getTestCaseList, getTestCaseDetail, transitionRequirementStatus, saveTestCase, updateTestCase, deleteTestCase, getQaModuleTree, getQaModuleList, getTestCaseSetOptions, getBugList, saveBug, updateBug, deleteBug, getRequirementTraceability} from '@/api/MyApi/qa';
+import {getRequirementList, getRequirementStats, getRequirementDetail, updateRequirement, deleteRequirement, batchDeleteRequirement, getTestCaseList, getTestCaseDetail, getQaModuleList, getBugList, unbindRequirementCase, unbindRequirementBug} from '@/api/MyApi/qa';
 import {getUserListByPage} from '@/api/MyApi/user';
-import {deleteRichTextImages} from '@/api/MyApi/fileUpload';
 
 const {t} = useI18n();
 const projectStore = useProjectStore();
@@ -1140,15 +578,201 @@ const windowWidth = ref(window.innerWidth);
 const handleWindowResize = () => {
   windowWidth.value = window.innerWidth;
 };
-const modalWidth = computed(() => Math.min(1200, Math.max(360, windowWidth.value * 0.94)));
+const modalWidth = computed(() => Math.min(1400, Math.max(360, windowWidth.value * 0.96)));
 onMounted(() => window.addEventListener('resize', handleWindowResize));
 onBeforeUnmount(() => window.removeEventListener('resize', handleWindowResize));
+
+// ===== 左侧模块树：可拖拽伸缩 + 拖拽隐藏（与用例列表/计划详情一致） =====
+const SIDEBAR_DEFAULT_WIDTH = 240;
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 480;
+const SIDEBAR_COLLAPSE_THRESHOLD = 20;
+
+const sidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
+// 窄屏（<992px）默认折叠侧栏，把空间让给列表
+const isSidebarCollapsed = ref(window.innerWidth < 992);
+const lastSidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
+
+// 侧栏最大宽度跟随浏览器窗口：不超过窗口的 40%
+const sidebarMaxWidth = computed(() =>
+    Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, Math.floor(windowWidth.value * 0.4)))
+);
+
+const sideColStyle = computed(() => ({
+  width: isSidebarCollapsed.value ? '0px' : `${sidebarWidth.value}px`,
+  overflow: 'hidden',
+}));
+
+const collapseSidebar = () => {
+  if (!isSidebarCollapsed.value) {
+    lastSidebarWidth.value = Math.max(sidebarWidth.value, SIDEBAR_MIN_WIDTH);
+  }
+  isSidebarCollapsed.value = true;
+  sidebarWidth.value = 0;
+};
+
+const expandSidebar = () => {
+  isSidebarCollapsed.value = false;
+  const expandedWidth = Math.round((lastSidebarWidth.value || SIDEBAR_DEFAULT_WIDTH) * 1.25);
+  sidebarWidth.value = Math.min(expandedWidth, sidebarMaxWidth.value);
+};
+
+// 窗口尺寸变化：收窄侧栏不超过动态上限；窄屏自动折叠
+watch(windowWidth, (w) => {
+  if (sidebarWidth.value > sidebarMaxWidth.value) {
+    sidebarWidth.value = sidebarMaxWidth.value;
+  }
+  if (w < 992 && !isSidebarCollapsed.value) {
+    collapseSidebar();
+  }
+});
+
+const startResizeSidebar = (e: MouseEvent) => {
+  const startX = e.clientX;
+  const wasCollapsed = isSidebarCollapsed.value;
+  const startWidth = wasCollapsed ? 0 : sidebarWidth.value;
+  let moved = false;
+
+  const onMove = (ev: MouseEvent) => {
+    if (Math.abs(ev.clientX - startX) > 3) moved = true;
+    if (wasCollapsed) {
+      isSidebarCollapsed.value = false;
+    }
+    const newWidth = startWidth + ev.clientX - startX;
+    sidebarWidth.value = Math.min(Math.max(newWidth, 0), sidebarMaxWidth.value);
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.userSelect = '';
+
+    if (!moved && wasCollapsed) {
+      expandSidebar();
+      return;
+    }
+
+    if (sidebarWidth.value <= SIDEBAR_COLLAPSE_THRESHOLD) {
+      collapseSidebar();
+    } else if (sidebarWidth.value < SIDEBAR_MIN_WIDTH) {
+      sidebarWidth.value = SIDEBAR_MIN_WIDTH;
+    }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.body.style.userSelect = 'none';
+};
+
+// ===== 模块树（复用 ModuleTreeManager 组件，支持新增/编辑/删除/拖拽排序） =====
+const moduleTreeRef = ref();
+const selectedModuleKey = ref<number>(0);
+
+// 树选中 → 同步模块筛选下拉并查询；选中 0（全部）清除模块筛选
+function onModuleTreeSelect(keys: any[]) {
+  const k = keys && keys.length ? Number(keys[0]) : 0;
+  selectedModuleKey.value = k;
+  searchModuleId.value = k ? String(k) : '';
+  handleSearch();
+}
+
+// 下拉筛选/重置 → 同步树选中
+watch(searchModuleId, (v) => {
+  selectedModuleKey.value = v ? Number(v) : 0;
+});
+
+// 模块增删改后 → 刷新下拉模块选项
+function handleModuleChanged() {
+  loadModuleOptions();
+}
+
+// 全量需求缓存：用于预览抽屉「子需求」tab
+// ponytail: 每页 9999 条全量拉取，需求量大时改后端按模块聚合接口
+const loadAllRequirements = async () => {
+  if (!projectStore.getProjectId) return;
+  try {
+    const res: any = await getRequirementList(projectStore.getProjectId, undefined, undefined, undefined, undefined, undefined, 1, 9999);
+    allRequirements.value = res.data?.records || [];
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const allRequirements = ref<any[]>([]);
+const childRequirements = computed(() =>
+  allRequirements.value.filter((r: any) => r.parentId === previewData.value?.id)
+);
+
+// ===== 子需求 tab：新增 / 关联已有 =====
+// 新增子需求：打开需求编辑弹窗，父需求/模块自动带出当前需求
+const handleAddChildReq = () => {
+  modalTitle.value = '新增子需求';
+  formData.value = {
+    projectId: projectStore.getProjectId,
+    parentId: previewData.value?.id,
+    moduleId: previewData.value?.moduleId ?? undefined,
+  };
+  modalVisible.value = true;
+};
+
+// 关联已有需求：候选 = 全量需求中排除自身/子孙/已是子级的记录（防循环引用）
+const linkChildVisible = ref(false);
+const linkChildId = ref<number | null>(null);
+
+const descendantIds = computed(() => {
+  const rootId = previewData.value?.id;
+  const set = new Set<number>(rootId ? [rootId] : []);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const r of allRequirements.value) {
+      if (r.parentId && set.has(r.parentId) && !set.has(r.id)) {
+        set.add(r.id);
+        grew = true;
+      }
+    }
+  }
+  return set;
+});
+
+const linkChildCandidates = computed(() =>
+  allRequirements.value.filter((r: any) =>
+    !descendantIds.value.has(r.id) && r.parentId !== previewData.value?.id
+  )
+);
+
+const openLinkChild = () => {
+  linkChildId.value = null;
+  linkChildVisible.value = true;
+};
+
+const handleLinkChildOk = async () => {
+  if (!linkChildId.value) {
+    Message.warning('请选择要关联的需求');
+    return false;
+  }
+  try {
+    const res: any = await updateRequirement({
+      id: linkChildId.value,
+      parentId: previewData.value.id,
+      projectId: projectStore.getProjectId,
+    });
+    if (res.code === 200) {
+      Message.success('关联成功');
+      await loadData(); // loadAllRequirements 随之刷新 allRequirements，子需求列表自动更新
+      return true;
+    }
+    Message.error(res.msg || '关联失败');
+  } catch (e) {
+    console.error(e);
+    Message.error('关联失败');
+  }
+  return false;
+};
 const formData = ref<any>({});
 const requirementFormRef = ref<any>(null);
 const selectedKeys = ref<number[]>([]);
 
-const drawerVisible = ref(false);
-const drawerTitle = ref('');
 const drawerCaseList = ref<any[]>([]);
 const drawerLoading = ref(false);
 const drawerPagination = ref({ current: 1, pageSize: 10, total: 0, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] });
@@ -1156,18 +780,10 @@ const currentRequirementId = ref<number | null>(null);
 const caseModalVisible = ref(false);
 const caseModalTitle = ref('');
 const caseFormData = ref<any>({});
-const isEditCase = ref(false);
-const initialCaseFileIds = ref<Set<string>>(new Set());
-const uploadedCaseFileIds = ref<Set<string>>(new Set());
-const caseModuleTree = ref<any[]>([{id: 0, moduleName: '全部用例', children: []}]);
-const caseSetOptions = ref<any[]>([]);
-const caseStepList = ref<any[]>([{step: '', expected: ''}]);
-const caseRequirementOptions = ref<any[]>([]);
-const caseRequirementPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
+const caseFormRef = ref<any>(null);
+const caseSaving = ref(false);
 
-// BUG 抽屉
-const bugDrawerVisible = ref(false);
-const bugDrawerTitle = ref('');
+// BUG tab
 const drawerBugList = ref<any[]>([]);
 const bugDrawerLoading = ref(false);
 const bugDrawerPagination = ref({ current: 1, pageSize: 10, total: 0, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] });
@@ -1178,42 +794,12 @@ const currentRequirementRecord = ref<any>({});
 const bugModalVisible = ref(false);
 const bugModalTitle = ref('');
 const bugFormData = ref<any>({});
-const isEditBug = ref(false);
-const initialBugFileIds = ref<Set<string>>(new Set());
-const uploadedBugFileIds = ref<Set<string>>(new Set());
-const bugRequirementOptions = ref<any[]>([]);
-const bugRequirementPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
-const bugTestCaseOptions = ref<any[]>([]);
-const bugTestCasePage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
+const bugFormRef = ref<any>(null);
+const bugSaving = ref(false);
 
 // 富文本图片 fileId 提取
-const extractFileIds = (html?: string): Set<string> => {
-  if (!html) return new Set();
-  const regex = /\/api\/file\/download\?fileId=([^"'\s&)]+)/g;
-  const result = new Set<string>();
-  let match;
-  while ((match = regex.exec(html)) !== null) {
-    result.add(decodeURIComponent(match[1]));
-  }
-  return result;
-};
 
-const handleUploadedCaseFile = (fileId: string) => {
-  uploadedCaseFileIds.value.add(fileId);
-};
 
-const handleUploadedBugFile = (fileId: string) => {
-  uploadedBugFileIds.value.add(fileId);
-};
-
-// 血缘追踪弹窗
-const traceModalVisible = ref(false);
-const traceModalTitle = ref('');
-const traceData = ref<any>({});
-const traceChartOption = ref<any>({});
-const tracePassRate = ref(0);
-const traceCurrentReqId = ref<number | null>(null);
-const traceFilterBugOnly = ref(false);
 
 const previewVisible = ref(false);
 const previewData = ref<any>({});
@@ -1240,9 +826,6 @@ const previewComments = ref<any[]>([]);
 const previewCommentInput = ref('');
 const previewLogs = ref<any[]>([]);
 const commentInputFocused = ref(false);
-const transitionModalVisible = ref(false);
-const transitionForm = ref<any>({});
-
 // 预览抽屉基础属性（按项目字段显隐配置过滤）
 const previewDescriptions = computed(() => {
   const items = [
@@ -1278,6 +861,7 @@ const loadData = async () => {
     requirementList.value = res.data.records || [];
     pagination.value.total = res.data.total || 0;
     loadStats();
+    loadAllRequirements(); // 刷新全量需求缓存（子需求 tab 复用）
     // 消息通知跳转：高亮并打开指定需求预览
     await checkHighlightRequirement();
   } catch (e) {
@@ -1355,12 +939,29 @@ const handleEditInModal = (record: any) => {
 
 const handlePreview = (record: any) => {
   previewData.value = {...record};
-  previewTabKey.value = 'comments';
+  previewTabKey.value = 'info';
   previewCommentInput.value = '';
   // 加载评论和操作日志（当前为模拟数据，后续可对接后端接口）
   loadPreviewComments(record.id);
   loadPreviewLogs(record.id);
   previewVisible.value = true;
+};
+
+// 预览抽屉 tab 切换：按需加载关联数据
+const handlePreviewTabChange = (key: any) => {
+  const id = previewData.value?.id;
+  if (!id) return;
+  if (key === 'cases') {
+    currentRequirementId.value = id;
+    currentRequirementRecord.value = previewData.value;
+    drawerPagination.value.current = 1;
+    loadDrawerCases();
+  } else if (key === 'bugs') {
+    currentRequirementIdForBug.value = id;
+    currentRequirementRecord.value = previewData.value;
+    bugDrawerPagination.value.current = 1;
+    loadDrawerBugs();
+  }
 };
 
 /**
@@ -1421,15 +1022,6 @@ const handleEditFromPreview = () => {
   });
 };
 
-const handleViewCases = (record: any) => {
-  currentRequirementId.value = record.id;
-  currentRequirementRecord.value = record;
-  drawerTitle.value = `「${record.title}」关联用例`;
-  drawerPagination.value = { current: 1, pageSize: 10, total: 0, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] };
-  drawerVisible.value = true;
-  loadDrawerCases();
-};
-
 const loadDrawerCases = async () => {
   if (!currentRequirementId.value || !projectStore.getProjectId) return;
   drawerLoading.value = true;
@@ -1468,16 +1060,6 @@ const handleDrawerPageSizeChange = (pageSize: number) => {
   loadDrawerCases();
 };
 
-// ==================== BUG 抽屉相关方法 ====================
-const handleViewBugs = (record: any) => {
-  currentRequirementIdForBug.value = record.id;
-  currentRequirementRecord.value = record;
-  bugDrawerTitle.value = `「${record.title}」关联BUG`;
-  bugDrawerPagination.value = { current: 1, pageSize: 10, total: 0, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] };
-  bugDrawerVisible.value = true;
-  loadDrawerBugs();
-};
-
 const loadDrawerBugs = async () => {
   if (!currentRequirementIdForBug.value || !projectStore.getProjectId) return;
   bugDrawerLoading.value = true;
@@ -1488,14 +1070,15 @@ const loadDrawerBugs = async () => {
         undefined,                         // status
         undefined,                         // severity
         undefined,                         // priority
-        currentRequirementIdForBug.value,  // requirementId
+        undefined,                         // requirementId（精确筛选，这里不用）
         undefined,                         // caseId
         undefined,                         // moduleId
         undefined,                         // environment
         undefined,                         // reproduceRate
         undefined,                         // closeReason
         bugDrawerPagination.value.current,
-        bugDrawerPagination.value.pageSize
+        bugDrawerPagination.value.pageSize,
+        currentRequirementIdForBug.value   // requirementScopeId：合并口径（直接关联 ∪ 需求下用例的BUG）
     );
     if (res.data && res.data.records) {
       drawerBugList.value = res.data.records;
@@ -1521,325 +1104,54 @@ const handleBugDrawerPageSizeChange = (pageSize: number) => {
   loadDrawerBugs();
 };
 
-const collectBugFileIds = (): Set<string> => {
-  const set = new Set<string>();
-  extractFileIds(bugFormData.value.description).forEach(id => set.add(id));
-  extractFileIds(bugFormData.value.reproduceSteps).forEach(id => set.add(id));
-  return set;
-};
 
-const handleAddBug = async () => {
+const handleAddBug = () => {
   if (!currentRequirementIdForBug.value) {
-    Message.warning('当前需求信息缺失，请重新打开关联BUG抽屉');
+    Message.warning('当前需求信息缺失，请重新打开预览');
     return;
   }
-  isEditBug.value = false;
   bugModalTitle.value = '新增BUG';
+  // 共享 BugForm：关联需求自动带出，下拉选项组件内部加载
   bugFormData.value = {
-    severity: 'NORMAL',
-    priority: 'MEDIUM',
-    status: 'NEW',
     projectId: projectStore.getProjectId,
     requirementId: currentRequirementIdForBug.value,
-    moduleId: currentRequirementRecord.value?.moduleId || undefined,
-    tags: []
+    moduleId: currentRequirementRecord.value?.moduleId ?? undefined,
   };
-  // 预加载关联选项，并把当前需求插入首位
-  bugRequirementOptions.value = [];
-  bugTestCaseOptions.value = [];
-  initialBugFileIds.value = new Set();
-  uploadedBugFileIds.value = new Set();
-  await loadBugRequirementOptions();
-  const currentReq = currentRequirementRecord.value;
-  if (currentReq && !bugRequirementOptions.value.find((r: any) => r.id === currentRequirementIdForBug.value)) {
-    bugRequirementOptions.value.unshift({
-      id: currentRequirementIdForBug.value,
-      reqCode: currentReq.reqCode,
-      title: currentReq.title
-    });
-  }
   bugModalVisible.value = true;
 };
 
-const handleEditBug = async (record: any) => {
-  isEditBug.value = true;
-  bugModalTitle.value = '编辑BUG';
-  bugFormData.value = {...record};
-  if (bugFormData.value.tags && typeof bugFormData.value.tags === 'string') {
-    bugFormData.value.tags = bugFormData.value.tags.split(',').filter((t: string) => t.trim());
-  }
-  initialBugFileIds.value = collectBugFileIds();
-  uploadedBugFileIds.value = new Set();
-  // 预加载关联选项
-  bugRequirementOptions.value = [];
-  bugTestCaseOptions.value = [];
-  await loadBugRequirementOptions();
-  if (bugFormData.value.requirementId && !bugRequirementOptions.value.find((r: any) => r.id === bugFormData.value.requirementId)) {
-    try {
-      const res: any = await getRequirementDetail(bugFormData.value.requirementId);
-      if (res.data) bugRequirementOptions.value = [res.data, ...bugRequirementOptions.value];
-    } catch (e) { console.error(e); }
-  }
-  await loadBugTestCaseOptions();
-  if (bugFormData.value.testCaseId && !bugTestCaseOptions.value.find((tc: any) => tc.id === bugFormData.value.testCaseId)) {
-    try {
-      const res: any = await getTestCaseDetail(bugFormData.value.testCaseId);
-      if (res.data) bugTestCaseOptions.value = [res.data, ...bugTestCaseOptions.value];
-    } catch (e) { console.error(e); }
-  }
-  bugModalVisible.value = true;
-};
 
 const handleSaveBug = async () => {
-  if (!bugFormData.value.title) {
-    Message.warning('请输入BUG标题');
-    return;
-  }
+  bugSaving.value = true;
   try {
-    const payload = {...bugFormData.value};
-    if (payload.tags && Array.isArray(payload.tags)) {
-      payload.tags = payload.tags.join(',');
-    }
-    const api = isEditBug.value ? updateBug : saveBug;
-    const res: any = await api(payload);
-    if (res.code === 200) {
-      Message.success('保存成功');
-      // 计算并删除被移除的富文本图片
-      const currentFileIds = collectBugFileIds();
-      const allSessionFileIds = new Set<string>([...initialBugFileIds.value, ...uploadedBugFileIds.value]);
-      const deletedFileIds = Array.from(allSessionFileIds).filter(id => !currentFileIds.has(id));
-      uploadedBugFileIds.value.clear();
-      if (deletedFileIds.length > 0) {
-        deleteRichTextImages(deletedFileIds).catch(() => {
-          // 图片删除失败不影响业务保存
-        });
-      }
+    const success = await bugFormRef.value?.save();
+    if (success) {
       bugModalVisible.value = false;
       bugDrawerPagination.value.current = 1;
       await loadDrawerBugs();
       await loadData();
     }
-  } catch (e) {
-    console.error(e);
+  } finally {
+    bugSaving.value = false;
   }
 };
 
-const handleDeleteBug = async (id: number) => {
+// 取消 BUG 与当前需求的关联（直接关联清字段 + 解除该需求下用例的绑定，BUG 本身保留）
+const handleUnbindBug = async (id: number) => {
   try {
-    const res: any = await deleteBug(id);
+    const res: any = await unbindRequirementBug(currentRequirementIdForBug.value!, id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success('已取消关联');
       await loadDrawerBugs();
       await loadData();
+    } else {
+      Message.error(res.msg || '取消关联失败');
     }
   } catch (e) {
     console.error(e);
+    Message.error('取消关联失败');
   }
 };
-
-// ==================== 血缘追踪弹窗 ====================
-const handleShowTraceability = async (record: any) => {
-  traceCurrentReqId.value = record.id;
-  traceModalTitle.value = `「${record.title}」血缘图谱`;
-  traceModalVisible.value = true;
-  traceData.value = {};
-  traceChartOption.value = {};
-  try {
-    const res: any = await getRequirementTraceability(record.id);
-    if (res.code === 200 && res.data) {
-      traceData.value = res.data;
-      buildTraceChartOption(res.data, traceFilterBugOnly.value);
-      calcPassRate(res.data);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const calcPassRate = (data: any) => {
-  const cases = data.testCases || [];
-  if (cases.length === 0) {
-    tracePassRate.value = 0;
-    return;
-  }
-  const passed = cases.filter((tc: any) => tc.lastResult === 'PASS').length;
-  tracePassRate.value = Math.round((passed / cases.length) * 100);
-};
-
-const ellipsis = (str: string, len: number) => {
-  if (!str) return '';
-  return str.length > len ? str.substring(0, len) + '…' : str;
-};
-
-const buildTraceChartOption = (data: any, filterBugOnly: boolean = false) => {
-  const req = data.requirement || {};
-  const cases = data.testCases || [];
-  const directBugs = data.directBugs || [];
-
-  // 构建 echarts tree 数据
-  const children: any[] = [];
-
-  // 用例分支（支持过滤：仅显示有BUG的用例）
-  cases.forEach((tc: any) => {
-    const bugs = tc.bugs || [];
-    if (filterBugOnly && bugs.length === 0) {
-      return; // 跳过无BUG的用例
-    }
-    const bugCount = bugs.length;
-    const caseNode: any = {
-      name: `${tc.caseCode} ${ellipsis(tc.caseName, 8)}${bugCount > 0 ? ` (${bugCount}BUG)` : ' (无BUG)'}`,
-      fullTitle: `${tc.caseCode} ${tc.caseName} (${bugCount > 0 ? `${bugCount}个BUG` : '无BUG'})`,
-      value: '用例',
-      itemStyle: { color: '#00B42A', borderColor: '#00B42A' },
-      label: {
-        backgroundColor: '#E8FFEA',
-        borderColor: '#00B42A',
-        borderWidth: 1,
-        borderRadius: 4,
-        padding: [4, 8],
-        color: '#333',
-        fontSize: 12
-      },
-      children: []
-    };
-    bugs.forEach((bug: any) => {
-      caseNode.children.push({
-        name: `${bug.bugCode} ${ellipsis(bug.title, 6)} ${bugStatusText(bug.status)}·${severityText(bug.severity)}`,
-        fullTitle: `${bug.bugCode} ${bug.title} — ${bugStatusText(bug.status)} · ${severityText(bug.severity)}`,
-        value: 'BUG',
-        itemStyle: { color: '#F53F3F', borderColor: '#F53F3F' },
-        label: {
-          backgroundColor: '#FFECE8',
-          borderColor: '#F53F3F',
-          borderWidth: 1,
-          borderRadius: 4,
-          padding: [4, 8],
-          color: '#333',
-          fontSize: 12
-        }
-      });
-    });
-    children.push(caseNode);
-  });
-
-  // 直接关联BUG分支
-  if (directBugs.length > 0) {
-    const directBugNode: any = {
-      name: `直接关联BUG (${directBugs.length})`,
-      value: '直接BUG',
-      itemStyle: { color: '#F77234', borderColor: '#F77234' },
-      label: {
-        backgroundColor: '#FFF3E8',
-        borderColor: '#F77234',
-        borderWidth: 1,
-        borderRadius: 4,
-        padding: [4, 8],
-        color: '#333'
-      },
-      children: []
-    };
-    directBugs.forEach((bug: any) => {
-      directBugNode.children.push({
-        name: `${bug.bugCode} ${ellipsis(bug.title, 6)} ${bugStatusText(bug.status)}·${severityText(bug.severity)}`,
-        fullTitle: `${bug.bugCode} ${bug.title} — ${bugStatusText(bug.status)} · ${severityText(bug.severity)}`,
-        value: 'BUG',
-        itemStyle: { color: '#F53F3F', borderColor: '#F53F3F' },
-        label: {
-          backgroundColor: '#FFECE8',
-          borderColor: '#F53F3F',
-          borderWidth: 1,
-          borderRadius: 4,
-          padding: [4, 8],
-          color: '#333',
-          fontSize: 12
-        }
-      });
-    });
-    children.push(directBugNode);
-  }
-
-  traceChartOption.value = {
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        return params.data.fullTitle || params.data.name;
-      }
-    },
-    series: [{
-      type: 'tree',
-      data: [{
-        name: `${req.reqCode || ''} ${ellipsis(req.title, 10)} (${cases.length}用例·${data.bugCount || 0}BUG)`,
-        fullTitle: `${req.reqCode || ''} ${req.title || ''} (${cases.length}用例·${data.bugCount || 0}BUG)`,
-        value: '需求',
-        itemStyle: { color: '#165DFF', borderColor: '#165DFF' },
-        label: {
-          backgroundColor: '#E8F3FF',
-          borderColor: '#165DFF',
-          borderWidth: 1,
-          borderRadius: 4,
-          padding: [6, 10],
-          fontWeight: 'bold',
-          color: '#333',
-          fontSize: 13
-        },
-        children
-      }],
-      top: '5%',
-      left: '3%',
-      bottom: '5%',
-      right: '3%',
-      symbol: 'roundRect',
-      symbolSize: [10, 10],
-      orient: 'LR',
-      expandAndCollapse: true,
-      roam: true,
-      initialTreeDepth: 2,
-      layerPadding: 240,
-      nodePadding: 18,
-      label: {
-        position: 'right',
-        verticalAlign: 'middle',
-        align: 'left',
-        fontSize: 12,
-        lineHeight: 16
-      },
-      leaves: {
-        label: {
-          position: 'right',
-          verticalAlign: 'middle',
-          align: 'left'
-        }
-      },
-      emphasis: {
-        focus: 'descendant'
-      },
-      animationDuration: 550,
-      animationDurationUpdate: 750,
-      lineStyle: {
-        color: '#C9CDD4',
-        width: 1.5,
-        curveness: 0.5
-      }
-    }]
-  };
-};
-
-const handleTraceFilterChange = (val: any) => {
-  buildTraceChartOption(traceData.value, val);
-};
-
-const handleAddCaseFromTrace = () => {
-  traceModalVisible.value = false;
-  nextTick(() => {
-    if (traceCurrentReqId.value) {
-      const record = requirementList.value.find((r: any) => r.id === traceCurrentReqId.value);
-      if (record) {
-        handleViewCases(record);
-      }
-    }
-  });
-};
-
 const severityColor = (severity: string) => {
   const map: Record<string, string> = {FATAL: 'red', SERIOUS: 'orange', NORMAL: 'blue', TIPS: 'gray'};
   return map[severity] || 'gray';
@@ -1866,19 +1178,6 @@ const bugStatusText = (status: string) => {
   return map[status] || status;
 };
 
-// 预览抽屉统计卡片点击
-const handlePreviewStatClick = (type: string) => {
-  previewVisible.value = false;
-  nextTick(() => {
-    if (type === 'case') {
-      handleViewCases(previewData.value);
-    } else if (type === 'bug') {
-      handleViewBugs(previewData.value);
-    }
-  });
-};
-
-// 从BUG抽屉点击关联用例，预览用例
 const handlePreviewCaseFromBug = async (caseId: number) => {
   if (!caseId) return;
   try {
@@ -1953,6 +1252,77 @@ const handleDelete = async (id: number) => {
     console.error(e);
   }
 };
+
+// 删除需求（Modal 二次确认）
+const confirmDelete = (record: any) => {
+  Modal.confirm({
+    title: '删除需求',
+    content: '确认删除该需求吗？',
+    okText: '删除',
+    cancelText: '取消',
+    okButtonProps: { status: 'danger' },
+    onOk: () => handleDelete(record.id),
+  });
+};
+
+// 主表列定义
+const columns = [
+  { title: '需求编号', dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'reqCode' },
+  { title: '需求名称', dataIndex: 'title', width: 200, ellipsis: true, slotName: 'title' },
+  { title: '需求类型', dataIndex: 'reqType', width: 90, slotName: 'reqType' },
+  { title: '优先级', dataIndex: 'priority', width: 80, slotName: 'priority' },
+  { title: '状态', dataIndex: 'status', width: 90, slotName: 'status' },
+  { title: '标签', dataIndex: 'tags', ellipsis: true, slotName: 'tags' },
+  { title: '关联用例', dataIndex: 'caseCount', width: 90, slotName: 'caseCount' },
+  { title: '关联BUG', dataIndex: 'bugCount', width: 90, slotName: 'bugCount' },
+  { title: '操作', width: 200, fixed: 'right' as const, slotName: 'actions' },
+];
+
+// 抽屉-关联用例表格列
+const drawerCaseColumns = [
+  { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
+  { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true },
+  { title: '类型', dataIndex: 'caseType', width: 80, slotName: 'caseType' },
+  { title: '用例等级', dataIndex: 'priority', width: 80, slotName: 'drawerCasePriority' },
+  { title: '关联BUG', dataIndex: 'bugCount', width: 90, slotName: 'drawerCaseBugCount' },
+  { title: '操作', width: 200, fixed: 'right' as const, slotName: 'drawerCaseActions' },
+];
+
+// 抽屉-关联BUG表格列
+const drawerBugColumns = [
+  { title: 'BUG编号', dataIndex: 'bugCode', width: 120, slotName: 'bugCode' },
+  { title: 'BUG标题', dataIndex: 'title', width: 140, slotName: 'bugTitle' },
+  { title: '严重程度', dataIndex: 'severity', width: 90, slotName: 'severity' },
+  { title: '状态', dataIndex: 'status', width: 90, slotName: 'bugStatus' },
+  { title: '发现计划', dataIndex: 'planName', width: 110, slotName: 'planName' },
+  { title: '关联用例', dataIndex: 'caseName', width: 100, slotName: 'bugCaseName' },
+  { title: '操作', width: 200, slotName: 'drawerBugActions' },
+];
+
+// 抽屉-子需求表格列
+const subReqColumns = [
+  { title: '需求编号', dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'subReqCode' },
+  { title: '需求名称', dataIndex: 'title', width: 200, ellipsis: true, slotName: 'subReqTitle' },
+  { title: '优先级', dataIndex: 'priority', width: 80, slotName: 'subReqPriority' },
+  { title: '状态', dataIndex: 'status', width: 90, slotName: 'subReqStatus' },
+  { title: '负责人', dataIndex: 'ownerName', width: 100, ellipsis: true, tooltip: true, slotName: 'subReqOwner' },
+];
+
+// 操作列：统一文字按钮，前 2 个常显，第 3 个起收入「更多」下拉
+interface RequirementOp {
+  key: string;
+  label: string;
+  danger?: boolean;
+  permission?: string;
+  handler: (record: any) => void;
+}
+const opsFor = (record: any): RequirementOp[] => [
+  { key: 'edit', label: '编辑', permission: QA_REQUIREMENT_UPDATE, handler: handleEdit },
+  { key: 'delete', label: '删除', danger: true, permission: QA_REQUIREMENT_DELETE, handler: confirmDelete },
+  { key: 'aiGenerate', label: 'AI 生成用例', permission: QA_TEST_CASE_CREATE, handler: handleAiGenerate },
+];
+const visibleOps = (record: any) => opsFor(record).slice(0, 2);
+const overflowOps = (record: any) => opsFor(record).slice(2);
 
 const handleSelectChange = (keys: any[]) => {
   selectedKeys.value = keys;
@@ -2060,325 +1430,55 @@ const caseTypeText = (type: string) => {
   return map[type] || type;
 };
 
-const loadCaseModuleTree = async () => {
-  if (!projectStore.getProjectId) return;
-  try {
-    const res: any = await getQaModuleTree(projectStore.getProjectId);
-    caseModuleTree.value = res.data || [{id: 0, moduleName: '全部用例', children: []}];
-  } catch (e) {
-    console.error(e);
-  }
-};
 
-const loadCaseSetOptions = async () => {
-  if (!projectStore.getProjectId) return;
-  try {
-    const res: any = await getTestCaseSetOptions(projectStore.getProjectId);
-    caseSetOptions.value = res.data || [];
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const collectCaseFileIds = (): Set<string> => {
-  const set = new Set<string>();
-  extractFileIds(caseFormData.value.preCondition).forEach(id => set.add(id));
-  caseStepList.value.forEach((s: any) => {
-    extractFileIds(s.step).forEach(id => set.add(id));
-    extractFileIds(s.expected).forEach(id => set.add(id));
-  });
-  return set;
-};
-
-const handleAddCase = async () => {
+const handleAddCase = () => {
   if (!currentRequirementId.value) {
-    Message.warning('当前需求信息缺失，请重新打开关联用例抽屉');
+    Message.warning('当前需求信息缺失，请重新打开预览');
     return;
   }
-  isEditCase.value = false;
   caseModalTitle.value = '新增用例';
+  // 共享 TestCaseForm：关联需求/所属模块自动从当前需求带出，下拉选项组件内部加载
   caseFormData.value = {
-    caseType: 'FUNCTION',
-    priority: 'P1',
-    status: 'DRAFT',
     projectId: projectStore.getProjectId,
     requirementId: currentRequirementId.value,
-    moduleId: undefined,
-    setIds: [],
-    tags: []
+    moduleId: currentRequirementRecord.value?.moduleId ?? undefined,
   };
-  caseStepList.value = [{step: '', expected: ''}];
-  initialCaseFileIds.value = new Set();
-  uploadedCaseFileIds.value = new Set();
-  // 预加载关联需求下拉框，并把当前需求插入首位
-  caseRequirementOptions.value = [];
-  await loadCaseRequirementOptions();
-  const currentReq = currentRequirementRecord.value;
-  if (currentReq && !caseRequirementOptions.value.find((r: any) => r.id === currentRequirementId.value)) {
-    caseRequirementOptions.value.unshift({
-      id: currentRequirementId.value,
-      reqCode: currentReq.reqCode,
-      title: currentReq.title
-    });
-  }
-  await loadCaseModuleTree();
-  await loadCaseSetOptions();
   caseModalVisible.value = true;
 };
 
-const handleEditCase = async (record: any) => {
-  isEditCase.value = true;
-  caseModalTitle.value = '编辑用例';
-  caseFormData.value = {...record};
-  if (caseFormData.value.tags && typeof caseFormData.value.tags === 'string') {
-    caseFormData.value.tags = caseFormData.value.tags.split(',').filter((t: string) => t.trim());
-  }
-  if (!caseFormData.value.setIds) {
-    caseFormData.value.setIds = [];
-  }
-  caseStepList.value = record.testSteps || [{step: '', expected: ''}];
-  initialCaseFileIds.value = collectCaseFileIds();
-  uploadedCaseFileIds.value = new Set();
-  caseRequirementOptions.value = [];
-  await loadCaseRequirementOptions();
-  if (caseFormData.value.requirementId && !caseRequirementOptions.value.find((r: any) => r.id === caseFormData.value.requirementId)) {
-    try {
-      const res: any = await getRequirementDetail(caseFormData.value.requirementId);
-      if (res.data) caseRequirementOptions.value = [res.data, ...caseRequirementOptions.value];
-    } catch (e) { console.error(e); }
-  }
-  await loadCaseModuleTree();
-  await loadCaseSetOptions();
-  caseModalVisible.value = true;
-};
 
 const handleSaveCase = async () => {
-  if (!caseFormData.value.caseName) {
-    Message.warning('请输入用例名称');
-    return;
-  }
+  caseSaving.value = true;
   try {
-    const payload = {...caseFormData.value};
-    payload.testSteps = caseStepList.value.filter((s: any) => s.step || s.expected);
-    if (payload.tags && Array.isArray(payload.tags)) {
-      payload.tags = payload.tags.join(',');
-    }
-    const api = isEditCase.value ? updateTestCase : saveTestCase;
-    const res: any = await api(payload);
-    if (res.code === 200) {
-      Message.success('保存成功');
-      // 计算并删除被移除的富文本图片
-      const currentFileIds = collectCaseFileIds();
-      const allSessionFileIds = new Set<string>([...initialCaseFileIds.value, ...uploadedCaseFileIds.value]);
-      const deletedFileIds = Array.from(allSessionFileIds).filter(id => !currentFileIds.has(id));
-      uploadedCaseFileIds.value.clear();
-      if (deletedFileIds.length > 0) {
-        deleteRichTextImages(deletedFileIds).catch(() => {
-          // 图片删除失败不影响业务保存
-        });
-      }
+    const saved = await caseFormRef.value?.save();
+    if (saved) {
       caseModalVisible.value = false;
       drawerPagination.value.current = 1;
       await loadDrawerCases();
     }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-// 用例弹窗测试步骤操作
-const addCaseStep = () => {
-  caseStepList.value.push({step: '', expected: ''});
-};
-const removeCaseStep = (index: number) => {
-  if (caseStepList.value.length <= 1) return;
-  caseStepList.value.splice(index, 1);
-};
-const moveCaseStep = (index: number, direction: number) => {
-  const newIndex = index + direction;
-  if (newIndex < 0 || newIndex >= caseStepList.value.length) return;
-  const temp = caseStepList.value[index];
-  caseStepList.value[index] = caseStepList.value[newIndex];
-  caseStepList.value[newIndex] = temp;
-};
-
-// 用例弹窗关联需求搜索
-const loadCaseRequirementOptions = async (keyword?: string, isLoadMore = false) => {
-  if (!projectStore.getProjectId) return;
-  if (!isLoadMore) {
-    caseRequirementPage.value.current = 1;
-    caseRequirementPage.value.keyword = keyword || '';
-    caseRequirementOptions.value = [];
-  }
-  try {
-    const res: any = await getRequirementList(
-        projectStore.getProjectId,
-        caseRequirementPage.value.keyword || undefined,
-        undefined, undefined, undefined, undefined,
-        caseRequirementPage.value.current,
-        caseRequirementPage.value.pageSize
-    );
-    const records = res.data?.records || [];
-    if (isLoadMore) {
-      caseRequirementOptions.value.push(...records);
-    } else {
-      caseRequirementOptions.value = records;
-    }
-    caseRequirementPage.value.hasMore = records.length >= caseRequirementPage.value.pageSize;
-  } catch (e) {
-    console.error(e);
-  }
-};
-const loadMoreCaseRequirement = async () => {
-  if (!caseRequirementPage.value.hasMore || caseRequirementPage.value.loading) return;
-  caseRequirementPage.value.loading = true;
-  try {
-    caseRequirementPage.value.current++;
-    await loadCaseRequirementOptions(undefined, true);
   } finally {
-    caseRequirementPage.value.loading = false;
-  }
-};
-const handleSearchCaseRequirement = (keyword: string) => {
-  loadCaseRequirementOptions(keyword);
-};
-const handleCaseRequirementDropdownVisibleChange = (visible: boolean) => {
-  if (visible) {
-    loadCaseRequirementOptions('');
+    caseSaving.value = false;
   }
 };
 
-// BUG弹窗关联需求搜索
-const loadBugRequirementOptions = async (keyword?: string, isLoadMore = false) => {
-  if (!projectStore.getProjectId) return;
-  if (!isLoadMore) {
-    bugRequirementPage.value.current = 1;
-    bugRequirementPage.value.keyword = keyword || '';
-    bugRequirementOptions.value = [];
-  }
-  try {
-    const res: any = await getRequirementList(
-        projectStore.getProjectId,
-        bugRequirementPage.value.keyword || undefined,
-        undefined, undefined, undefined, undefined,
-        bugRequirementPage.value.current,
-        bugRequirementPage.value.pageSize
-    );
-    const records = res.data?.records || [];
-    if (isLoadMore) {
-      bugRequirementOptions.value.push(...records);
-    } else {
-      bugRequirementOptions.value = records;
-    }
-    bugRequirementPage.value.hasMore = records.length >= bugRequirementPage.value.pageSize;
-  } catch (e) {
-    console.error(e);
-  }
-};
-const loadMoreBugRequirement = async () => {
-  if (!bugRequirementPage.value.hasMore || bugRequirementPage.value.loading) return;
-  bugRequirementPage.value.loading = true;
-  try {
-    bugRequirementPage.value.current++;
-    await loadBugRequirementOptions(undefined, true);
-  } finally {
-    bugRequirementPage.value.loading = false;
-  }
-};
-const handleSearchBugRequirement = (keyword: string) => {
-  loadBugRequirementOptions(keyword);
-};
-const handleBugRequirementDropdownVisibleChange = (visible: boolean) => {
-  if (visible) {
-    loadBugRequirementOptions('');
-  }
-};
 
-// BUG弹窗关联用例搜索
-const loadBugTestCaseOptions = async (keyword?: string, isLoadMore = false) => {
-  if (!projectStore.getProjectId) return;
-  if (!isLoadMore) {
-    bugTestCasePage.value.current = 1;
-    bugTestCasePage.value.keyword = keyword || '';
-    bugTestCaseOptions.value = [];
-  }
-  try {
-    const res: any = await getTestCaseList(
-        projectStore.getProjectId,
-        undefined, undefined,
-        bugTestCasePage.value.keyword || undefined,
-        undefined, undefined,
-        bugTestCasePage.value.current,
-        bugTestCasePage.value.pageSize
-    );
-    const records = res.data?.records || [];
-    if (isLoadMore) {
-      bugTestCaseOptions.value.push(...records);
-    } else {
-      bugTestCaseOptions.value = records;
-    }
-    bugTestCasePage.value.hasMore = records.length >= bugTestCasePage.value.pageSize;
-  } catch (e) {
-    console.error(e);
-  }
-};
-const loadMoreBugTestCase = async () => {
-  if (!bugTestCasePage.value.hasMore || bugTestCasePage.value.loading) return;
-  bugTestCasePage.value.loading = true;
-  try {
-    bugTestCasePage.value.current++;
-    await loadBugTestCaseOptions(undefined, true);
-  } finally {
-    bugTestCasePage.value.loading = false;
-  }
-};
-const handleSearchBugTestCase = (keyword: string) => {
-  loadBugTestCaseOptions(keyword);
-};
-const handleBugTestCaseDropdownVisibleChange = (visible: boolean) => {
-  if (visible) {
-    loadBugTestCaseOptions('');
-  }
-};
 
-const handleDeleteCase = async (id: number) => {
+
+
+// 取消用例与当前需求的关联（清 requirement_id + 多需求串移除，用例本身保留）
+const handleUnbindCase = async (id: number) => {
   try {
-    const res: any = await deleteTestCase(id);
+    const res: any = await unbindRequirementCase(currentRequirementId.value!, id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success('已取消关联');
       await loadDrawerCases();
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-const openTransitionModal = (record: any) => {
-  transitionForm.value = {
-    requirementId: record.id,
-    currentStatus: record.status,
-    targetStatus: ''
-  };
-  transitionModalVisible.value = true;
-};
-
-const handleConfirmTransition = async () => {
-  if (!transitionForm.value.targetStatus) {
-    Message.warning('请选择目标状态');
-    return;
-  }
-  try {
-    const res: any = await transitionRequirementStatus(
-      transitionForm.value.requirementId,
-      transitionForm.value.targetStatus
-    );
-    if (res.code === 200) {
-      Message.success('状态已更新');
-      transitionModalVisible.value = false;
       await loadData();
+    } else {
+      Message.error(res.msg || '取消关联失败');
     }
   } catch (e) {
     console.error(e);
+    Message.error('取消关联失败');
   }
 };
 
@@ -2407,8 +1507,32 @@ watch(
   height: var(--page-container-height, calc(100vh - 60px));
 }
 
-.table-skeleton {
-  padding: 16px;
+/* tab 标题计数徽标（灰色，与计划详情页一致） */
+.tab-count-badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  margin-left: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  color: #4e5969;
+  background: #e5e6eb;
+  border-radius: 9px;
+}
+
+/* 用例/BUG 表单抽屉内容区：纵向滚动、禁掉横向滚动 */
+.form-drawer-body {
+  padding: 4px 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* 抽屉里 a-row 负 margin 会撑出横向滚动条，兜底裁掉 */
+:deep(.arco-drawer-body) {
+  overflow-x: hidden;
 }
 
 .requirement-card {
@@ -2427,6 +1551,109 @@ watch(
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* ===== 左右分栏 + 伸缩分隔条（与用例列表/计划详情一致） ===== */
+.main-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  margin-top: 16px;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.side-col {
+  flex-shrink: 0;
+  transition: none;
+}
+.content-col {
+  flex: 1;
+  min-width: 0;
+}
+.tree-card {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tree-card :deep(.arco-card-body) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.main-resizer {
+  flex-shrink: 0;
+  width: 6px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  background: transparent;
+  user-select: none;
+}
+.main-resizer.is-collapsed {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  border-right: 1px solid var(--color-border-2);
+  position: relative;
+}
+.sidebar-expand-btn {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border-2);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  z-index: 10;
+}
+.sidebar-expand-btn:hover {
+  background: var(--color-fill-2);
+}
+.sidebar-expand-icon {
+  color: rgb(var(--primary-6));
+  font-size: 14px;
+}
+.main-resizer:hover .resizer-line,
+.main-resizer:active .resizer-line {
+  background: rgb(var(--primary-6));
+}
+.resizer-line {
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--color-border-2);
+}
+.req-tree-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.req-tree-panel :deep(.module-tree-manager) {
+  flex: 1;
+  min-height: 0;
 }
 
 .list-toolbar {
@@ -2470,6 +1697,10 @@ watch(
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+.table-wrapper :deep(.arco-table-th) {
+  background: var(--color-fill-1);
 }
 
 .drawer-table-wrapper {
@@ -2618,52 +1849,57 @@ watch(
   border-color: #c8f0c8;
 }
 
-// 高效过滤搜索区
+// 主操作行
 .filter-toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
 
   .filter-left {
     display: flex;
     align-items: center;
     gap: 12px;
-    flex-shrink: 0;
 
     .add-btn {
       font-weight: 600;
     }
   }
+}
 
-  .filter-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
+// 筛选区（a-row + a-col 栅格，gutter 控制间距）
+.filter-grid {
+  margin: 8px 0 16px;
+}
+
+.filter-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  :deep(.arco-input-wrapper),
+  :deep(.arco-select-view) {
     flex: 1;
     min-width: 0;
   }
+}
 
-  .filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    width: 100%;
-  }
+.filter-label {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--color-text-2);
+  text-align: right;
+  white-space: nowrap;
+}
 
-  .filter-input,
-  .filter-select {
-    width: 100%;
-  }
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 
-  .filter-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    width: 100%;
+  :deep(.arco-btn) {
+    min-width: 72px;
   }
 }
 
@@ -2766,6 +2002,13 @@ watch(
   flex: 1;
   overflow-y: auto;
   padding: 16px 20px;
+}
+
+/* 多 tab 结构：tab 内容区留白与原卡片一致 */
+.preview-tabs {
+  :deep(.arco-tabs-content) {
+    padding-top: 8px;
+  }
 }
 
 .preview-section {

@@ -1,22 +1,14 @@
 <template>
-  <div class="test-case-form">
+  <div class="test-case-form" :class="{ 'slim-mode': slim }">
     <a-form :model="formData" layout="vertical">
       <a-row :gutter="20" class="form-row">
         <!-- 左侧主栏：用例内容 -->
-        <a-col :xs="24" :lg="16" class="main-col">
-          <a-card class="main-card">
-            <div class="section-header">
-              <div class="section-icon" style="background: #e8ffea; color: #00b42a;">
-                <IconFile />
-              </div>
-              <span class="section-title">用例信息</span>
-            </div>
-
-            <a-form-item label="用例名称" required class="title-form-item">
+        <a-col :xs="24" :lg="slim ? 24 : 16" class="main-col">
+          <a-card class="main-card" :bordered="false">
+            <a-form-item v-if="!slim" label="用例名称" required class="title-form-item">
               <a-input
                 v-model="formData.caseName"
                 placeholder="请输入用例名称"
-                size="large"
                 class="title-input"
                 allow-clear
               />
@@ -26,7 +18,8 @@
               <RichEditor
                 v-model="formData.preCondition"
                 placeholder="请输入前置条件"
-                height="140px"
+                :height="slim ? undefined : '260px'"
+                :auto-height="slim"
                 @uploaded="handleUploadedFile"
               />
             </a-form-item>
@@ -96,133 +89,70 @@
                     </div>
                   </div>
                 </div>
-
-                <a-button v-permission="'qa:testcase:update'" type="dashed" long style="margin-top: 12px;" @click="addStep">
-                  <icon-plus /> 添加步骤
-                </a-button>
               </div>
+
+              <a-button v-permission="'qa:testcase:update'" type="dashed" long class="add-step-btn" @click="addStep">
+                <icon-plus /> 添加步骤
+              </a-button>
             </div>
           </a-card>
         </a-col>
 
-        <!-- 右侧副栏：属性面板 -->
-        <a-col :xs="24" :lg="8" class="side-col">
+        <!-- 右侧副栏：属性字段（平铺，不再按卡片分组；slim 模式隐藏，字段在列表行内修改） -->
+        <a-col v-if="!slim" :xs="24" :lg="8" class="side-col">
           <a-scrollbar class="side-scrollbar">
-            <!-- 卡片 A：分类属性 -->
-            <a-card class="side-card">
-              <template #title>
-                <div class="card-title">
-                  <div class="card-title-dot" style="background: #00b42a;" />
-                  分类属性
-                </div>
-              </template>
+            <a-form-item v-if="fieldVis('moduleId')" label="所属模块" required>
+              <a-tree-select
+                v-model="formData.moduleId"
+                :data="moduleTreeData"
+                :fieldNames="{ key: 'id', title: 'moduleName' }"
+                placeholder="请选择所属模块"
+              />
+            </a-form-item>
 
-              <a-form-item v-if="fieldVis('caseType')" label="用例类型">
-                <a-select v-model="formData.caseType" placeholder="请选择">
-                  <a-option value="FUNCTION">功能</a-option>
-                  <a-option value="API">接口</a-option>
-                  <a-option value="PERFORMANCE">性能</a-option>
-                  <a-option value="COMPATIBILITY">兼容</a-option>
-                  <a-option value="SMOKE">冒烟</a-option>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item v-if="fieldVis('moduleId')" label="所属模块">
-                <a-tree-select
-                  v-model="formData.moduleId"
-                  :data="moduleTreeData"
-                  :fieldNames="{ key: 'id', title: 'moduleName' }"
-                  placeholder="请选择所属模块"
-                  allow-clear
-                />
-              </a-form-item>
-
-              <a-form-item label="所属测试集">
-                <a-select
-                  v-model="formData.setIds"
-                  placeholder="请选择测试集"
-                  multiple
-                  allow-clear
-                  :max-tag-count="2"
-                >
-                  <a-option v-for="set in setOptions" :key="set.id" :value="set.id">{{ set.setName }}</a-option>
-                </a-select>
-              </a-form-item>
-
-              <a-form-item v-if="fieldVis('requirementId')" label="关联需求" style="margin-bottom: 0;">
-                <a-select
-                  v-model="formData.requirementId"
-                  allow-clear
-                  allow-search
-                  :filter-option="false"
-                  placeholder="请输入关键词搜索需求"
-                  @search="handleSearchRequirement"
-                  @dropdown-visible-change="handleRequirementDropdownVisibleChange"
-                  @dropdown-reach-bottom="loadMoreRequirement"
-                >
-                  <a-option v-for="req in requirementOptions" :key="req.id" :value="req.id">{{ req.reqCode }} - {{ req.title }}</a-option>
-                  <template #dropdownRender="{ menuNode: menu }">
-                    <div>
-                      <VNodeRenderer :vnodes="menu" />
-                      <div v-if="requirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
-                      </div>
-                      <div v-else-if="requirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
-                      </div>
+            <a-form-item v-if="fieldVis('requirementId')" label="关联需求">
+              <a-select
+                v-model="formData.requirementIds"
+                multiple
+                allow-search
+                :filter-option="false"
+                placeholder="请输入关键词搜索需求（可多选）"
+                @search="handleSearchRequirement"
+                @dropdown-visible-change="handleRequirementDropdownVisibleChange"
+                @dropdown-reach-bottom="loadMoreRequirement"
+              >
+                <a-option v-for="req in requirementOptions" :key="req.id" :value="req.id">{{ req.reqCode }} - {{ req.title }}</a-option>
+                <template #dropdownRender="{ menuNode: menu }">
+                  <div>
+                    <VNodeRenderer :vnodes="menu" />
+                    <div v-if="requirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
+                      滚动加载更多...
                     </div>
-                  </template>
-                </a-select>
-              </a-form-item>
-            </a-card>
+                    <div v-else-if="requirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
+                      没有更多了
+                    </div>
+                  </div>
+                </template>
+              </a-select>
+            </a-form-item>
 
-            <!-- 卡片 B：状态与协作 -->
-            <a-card class="side-card">
-              <template #title>
-                <div class="card-title">
-                  <div class="card-title-dot" style="background: #165dff;" />
-                  状态与协作
-                </div>
-              </template>
+            <a-form-item v-if="fieldVis('priority')" label="用例等级" required>
+              <a-select v-model="formData.priority" placeholder="请选择">
+                <a-option value="P0">
+                  <span class="priority-dot" style="background: #f53f3f;" />P0
+                </a-option>
+                <a-option value="P1">
+                  <span class="priority-dot" style="background: #ff7d00;" />P1
+                </a-option>
+                <a-option value="P2">
+                  <span class="priority-dot" style="background: #165dff;" />P2
+                </a-option>
+              </a-select>
+            </a-form-item>
 
-              <a-row :gutter="16">
-                <a-col :span="12">
-                  <a-form-item v-if="fieldVis('priority')" label="优先级">
-                    <a-select v-model="formData.priority" placeholder="请选择">
-                      <a-option value="P0">
-                        <span class="priority-dot" style="background: #f53f3f;" />P0
-                      </a-option>
-                      <a-option value="P1">
-                        <span class="priority-dot" style="background: #ff7d00;" />P1
-                      </a-option>
-                      <a-option value="P2">
-                        <span class="priority-dot" style="background: #165dff;" />P2
-                      </a-option>
-                    </a-select>
-                  </a-form-item>
-                </a-col>
-                <a-col :span="12">
-                  <a-form-item label="状态">
-                    <a-select v-model="formData.status" placeholder="请选择">
-                      <a-option value="DRAFT">草稿</a-option>
-                      <a-option value="REVIEWING">评审中</a-option>
-                      <a-option value="REVIEWED">已评审</a-option>
-                      <a-option value="DEPRECATED">已废弃</a-option>
-                    </a-select>
-                  </a-form-item>
-                </a-col>
-              </a-row>
-
-              <a-form-item v-if="fieldVis('expectDuration')" label="预期执行时长">
-                <a-input-number v-model="formData.expectDuration" :min="1" placeholder="分钟" style="width: 100%;">
-                  <template #append>分钟</template>
-                </a-input-number>
-              </a-form-item>
-
-              <a-form-item v-if="fieldVis('tags')" label="标签" style="margin-bottom: 0;">
-                <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear />
-              </a-form-item>
-            </a-card>
+            <a-form-item v-if="fieldVis('tags')" label="标签" style="margin-bottom: 0;">
+              <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear />
+            </a-form-item>
           </a-scrollbar>
         </a-col>
       </a-row>
@@ -237,8 +167,7 @@ import {
   IconPlus,
   IconDragDotVertical,
   IconDelete,
-  IconCopy,
-  IconFile
+  IconCopy
 } from '@arco-design/web-vue/es/icon';
 import RichEditor from '@/components/rich-editor/index.vue';
 import {useProjectStore} from '@/store';
@@ -251,12 +180,13 @@ import {
   updateTestCase,
   getTestCaseDetail,
   getQaModuleTree,
-  getTestCaseSetOptions,
 } from '@/api/MyApi/qa';
 
 const props = defineProps<{
   id?: number | string;
   initialData?: any;
+  /** 精简模式：隐藏关联需求与右侧属性面板（用于详情抽屉内嵌编辑） */
+  slim?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -330,7 +260,6 @@ const updateSnapshot = () => {
 };
 
 const moduleTreeData = ref<any[]>([{id: 0, moduleName: '全部用例', children: []}]);
-const setOptions = ref<any[]>([]);
 
 const requirementOptions = ref<any[]>([]);
 const requirementPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
@@ -345,15 +274,6 @@ const loadModuleTree = async () => {
   }
 };
 
-const loadSetOptions = async () => {
-  if (!projectStore.getProjectId) return;
-  try {
-    const res: any = await getTestCaseSetOptions(projectStore.getProjectId);
-    setOptions.value = res.data || [];
-  } catch (e) {
-    console.error(e);
-  }
-};
 
 const resetForm = () => {
   formData.value = {
@@ -361,9 +281,10 @@ const resetForm = () => {
     caseType: 'FUNCTION',
     priority: 'P1',
     status: 'DRAFT',
-    moduleId: undefined,
-    setIds: [],
-    expectDuration: undefined,
+    moduleId: 0, // 默认归属根节点「全部用例」，提交时归一化为 NULL
+    requirementIds: [],
+    setIds: [], // 测试集字段保留（后端仍支持），UI 已隐藏
+    expectDuration: undefined, // UI 已隐藏
     tags: []
   };
   stepList.value = [createEmptyStep()];
@@ -409,26 +330,41 @@ const handleDragEnd = () => {
   dragFromHandle.value = false;
 };
 
+const parseRequirementIds = (data: any): number[] => {
+  if (data?.requirementIds) {
+    return String(data.requirementIds)
+      .split(',')
+      .map((s: string) => Number(s.trim()))
+      .filter((n: number) => n > 0);
+  }
+  return data?.requirementId ? [data.requirementId] : [];
+};
+
+// 把已关联但不在下拉选项里的需求逐个补详情，避免多选框显示空白
+const ensureRequirementsInOptions = async (ids: number[]) => {
+  for (const id of ids) {
+    await ensureRequirementInOptions(id);
+  }
+};
+
 const loadDetail = async (id: number | string) => {
   try {
     const res: any = await getTestCaseDetail(Number(id));
     if (res.data) {
       formData.value = {...res.data};
+      // 根节点归属（NULL/0）统一显示为选中「全部用例」
+      formData.value.moduleId = res.data.moduleId ?? 0;
+      formData.value.requirementIds = parseRequirementIds(res.data);
       stepList.value = normalizeSteps(res.data.testSteps);
       if (formData.value.tags && typeof formData.value.tags === 'string') {
         formData.value.tags = formData.value.tags.split(',').filter((t: string) => t.trim());
       } else if (!formData.value.tags) {
         formData.value.tags = [];
       }
-      if (!formData.value.setIds) {
-        formData.value.setIds = [];
-      }
       collectInitialFileIds();
       updateSnapshot();
       await loadRequirementOptions();
-      if (formData.value.requirementId) {
-        await ensureRequirementInOptions(formData.value.requirementId);
-      }
+      await ensureRequirementsInOptions(formData.value.requirementIds);
     }
   } catch (e) {
     console.error(e);
@@ -523,7 +459,19 @@ const save = async () => {
     Message.warning('请输入用例名称');
     return false;
   }
+  if (formData.value.moduleId === undefined || formData.value.moduleId === null || formData.value.moduleId === '') {
+    Message.warning('请选择所属模块');
+    return false;
+  }
+  if (!formData.value.priority) {
+    Message.warning('请选择用例等级');
+    return false;
+  }
   const payload = {...formData.value};
+  // 多需求关联：数组转逗号分隔字符串；requirementId 旧字段由后端按列表首个自动同步
+  payload.requirementIds = Array.isArray(formData.value.requirementIds)
+    ? formData.value.requirementIds.join(',')
+    : (formData.value.requirementIds || '');
   payload.testSteps = stepList.value
     .filter((s: any) => s.step || s.expected)
     .map((s: any) => ({ step: s.step, expected: s.expected }));
@@ -551,8 +499,8 @@ const save = async () => {
           // 图片删除失败不影响业务保存
         });
       }
-      emit('saved');
-      return true;
+      emit('saved', res.data);
+      return res.data;
     }
   } catch (e) {
     console.error(e);
@@ -560,30 +508,23 @@ const save = async () => {
   return false;
 };
 
-defineExpose({
-  save,
-  isDirty: () => isDirty.value,
-});
-
 const initForm = async () => {
   if (props.initialData) {
     formData.value = {...props.initialData};
+    // 根节点归属（NULL/undefined）统一显示为选中「全部用例」
+    formData.value.moduleId = props.initialData.moduleId ?? 0;
+    formData.value.requirementIds = parseRequirementIds(props.initialData);
     stepList.value = normalizeSteps(props.initialData.testSteps);
     if (formData.value.tags && typeof formData.value.tags === 'string') {
       formData.value.tags = formData.value.tags.split(',').filter((t: string) => t.trim());
     } else if (!formData.value.tags) {
       formData.value.tags = [];
     }
-    if (!formData.value.setIds) {
-      formData.value.setIds = [];
-    }
     isEdit.value = !!props.initialData.id;
     collectInitialFileIds();
     updateSnapshot();
     await loadRequirementOptions();
-    if (formData.value.requirementId) {
-      await ensureRequirementInOptions(formData.value.requirementId);
-    }
+    await ensureRequirementsInOptions(formData.value.requirementIds);
   } else if (props.id) {
     isEdit.value = true;
     await loadDetail(props.id);
@@ -593,6 +534,12 @@ const initForm = async () => {
     await loadRequirementOptions();
   }
 };
+
+defineExpose({
+  save,
+  isDirty: () => isDirty.value,
+  initForm,
+});
 
 watch(
   () => [props.id, props.initialData],
@@ -607,10 +554,9 @@ watch(
   async (newId) => {
     if (newId) {
       loadModuleTree();
-      loadSetOptions();
       await loadRequirementOptions();
-      if (formData.value.requirementId) {
-        await ensureRequirementInOptions(formData.value.requirementId);
+      if (Array.isArray(formData.value.requirementIds) && formData.value.requirementIds.length) {
+        await ensureRequirementsInOptions(formData.value.requirementIds);
       }
     }
   },
@@ -633,6 +579,12 @@ onMounted(() => {
   :deep(.arco-form-item-label) {
     font-weight: 500;
     color: var(--color-text-2);
+    line-height: 24px;
+    margin-bottom: 2px;
+  }
+
+  :deep(.arco-form-item) {
+    margin-bottom: 12px;
   }
 }
 
@@ -655,45 +607,36 @@ onMounted(() => {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    padding: 14px 16px;
   }
-}
 
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-  flex-shrink: 0;
-}
+  // 左侧主栏 label 前置竖向蓝条
+  :deep(.arco-form-item-label),
+  .steps-area-label {
+    position: relative;
+    padding-left: 10px;
 
-.section-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-1);
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 14px;
+      border-radius: 2px;
+      background: rgb(var(--primary-6));
+    }
+  }
 }
 
 .title-form-item {
   flex-shrink: 0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .title-input {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.title-input :deep(.arco-input) {
-  font-size: 18px;
-  font-weight: 600;
 }
 
 .title-input:focus-within {
@@ -703,7 +646,7 @@ onMounted(() => {
 
 .precondition-item {
   flex-shrink: 0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 // 测试步骤区：占满左侧剩余空间，步骤多时在区域内滚动
@@ -767,17 +710,25 @@ onMounted(() => {
 
 .steps-table {
   border: 1px solid var(--color-border-2);
-  border-radius: 8px;
-  overflow: hidden;
+  border-radius: 6px;
+  /* 不能用 overflow:hidden 裁圆角，否则表头 sticky 会失效；改为首尾行各自圆角 */
+}
+
+.steps-table-header {
+  border-radius: 6px 6px 0 0;
+}
+
+.steps-table-row:last-child {
+  border-radius: 0 0 6px 6px;
 }
 
 .steps-table-header,
 .steps-table-row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) 88px;
+  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr) 80px;
   column-gap: 8px;
   align-items: start;
-  padding: 8px 12px;
+  padding: 6px 10px;
 }
 
 .steps-table-header {
@@ -786,6 +737,16 @@ onMounted(() => {
   font-weight: 600;
   color: var(--color-text-2);
   align-items: center;
+  /* 步骤区域滚动时表头吸顶 */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* 添加步骤按钮固定在滚动区外，不随步骤列表滚动 */
+.add-step-btn {
+  flex-shrink: 0;
+  margin-top: 8px;
 }
 
 .steps-table-row {
@@ -802,8 +763,8 @@ onMounted(() => {
 .col-index {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-top: 6px;
+  gap: 4px;
+  padding-top: 4px;
   cursor: grab;
 
   &:active {
@@ -849,6 +810,48 @@ onMounted(() => {
       height: 100%;
       overflow-y: auto;
     }
+  }
+}
+
+// slim 模式（详情抽屉内嵌编辑）：抽屉没有给表单有界高度，
+// 100% 高度接力会塌缩成 0，flex:1 + min-height:0 会把内容压没；
+// 改为高度由内容自然撑开，步骤区给个上限在区域内滚动
+.slim-mode {
+  &,
+  > :deep(.arco-form),
+  .form-row,
+  .main-col,
+  .main-card {
+    height: auto;
+  }
+
+  .main-card :deep(.arco-card-body) {
+    flex: none;
+  }
+
+  /* 抽屉内嵌编辑：去掉最外层卡片边框/阴影/内边距，内容直接平铺 */
+  .main-card {
+    border: none;
+    box-shadow: none;
+
+    :deep(.arco-card-body) {
+      padding: 0;
+    }
+  }
+
+  .steps-area {
+    flex: none;
+  }
+
+  .steps-scroll {
+    flex: none;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .section-header {
+    margin-bottom: 16px;
   }
 }
 
