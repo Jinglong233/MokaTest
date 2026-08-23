@@ -23,6 +23,9 @@ RUN yarn install --frozen-lockfile
 # 复制完整源码（包含 config/ 目录）
 COPY . .
 
+# 增加这一行
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # 构建生产包
 RUN yarn build
 
