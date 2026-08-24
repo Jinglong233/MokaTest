@@ -271,7 +271,7 @@
 </script>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, onBeforeUnmount, watch} from 'vue';
+import {ref, computed, onMounted, onActivated, onBeforeUnmount, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import {Message, Modal} from '@arco-design/web-vue';
 import {IconPlus, IconSearch, IconDelete, IconDownload, IconRight} from '@arco-design/web-vue/es/icon';
@@ -699,6 +699,10 @@ const statusText = (status: string) => {
 };
 
 onMounted(() => {
+  loadData();
+});
+// keep-alive 激活时刷新（新建/编辑计划返回后列表同步）
+onActivated(() => {
   loadData();
 });
 

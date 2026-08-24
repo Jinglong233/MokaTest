@@ -107,7 +107,7 @@
 </script>
 
 <script setup lang="ts">
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, onActivated} from 'vue';
 import {IconSearch, IconFile, IconBug, IconExclamationCircle} from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue';
@@ -232,6 +232,10 @@ const handleLoadTrace = async () => {
 };
 
 onMounted(() => {
+  loadRequirements(true);
+});
+// keep-alive 激活时刷新
+onActivated(() => {
   loadRequirements(true);
 });
 </script>

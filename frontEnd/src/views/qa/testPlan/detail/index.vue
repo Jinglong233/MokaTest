@@ -744,7 +744,7 @@
 </script>
 
 <script setup lang="ts">
-import {ref, onMounted, onBeforeUnmount, computed, watch, nextTick} from 'vue';
+import {ref, onMounted, onActivated, onBeforeUnmount, computed, watch, nextTick} from 'vue';
 import {useRoute, useRouter, onBeforeRouteLeave} from 'vue-router';
 import {Message, Modal} from '@arco-design/web-vue';
 import {
@@ -1794,6 +1794,11 @@ const statusText = (status: string) => {
 onMounted(() => {
   loadPlanDetail();
   loadModuleOptions(); // 左栏模块树
+});
+// keep-alive 激活时刷新（编辑计划用例返回后详情同步）
+onActivated(() => {
+  loadPlanDetail();
+  loadModuleOptions();
 });
 </script>
 

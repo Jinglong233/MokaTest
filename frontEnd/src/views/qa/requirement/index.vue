@@ -512,7 +512,7 @@
 </script>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, onBeforeUnmount, watch, nextTick} from 'vue';
+import {ref, computed, onMounted, onActivated, onBeforeUnmount, watch, nextTick} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useRouter} from 'vue-router';
 import {Message, Modal} from '@arco-design/web-vue';
@@ -1483,6 +1483,11 @@ const handleUnbindCase = async (id: number) => {
 };
 
 onMounted(() => {
+  loadData();
+  loadModuleOptions();
+});
+// keep-alive 激活时刷新（新建/编辑需求返回后列表同步）
+onActivated(() => {
   loadData();
   loadModuleOptions();
 });

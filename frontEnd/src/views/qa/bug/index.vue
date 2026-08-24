@@ -334,6 +334,7 @@
     ref,
     computed,
     onMounted,
+    onActivated,
     onBeforeUnmount,
     watch,
     nextTick,
@@ -1272,6 +1273,13 @@
   };
 
   onMounted(() => {
+    loadData();
+    loadFilterRequirementOptions('');
+    loadFilterCaseOptions('');
+    loadModuleOptions();
+  });
+  // keep-alive 激活时刷新（新建/编辑缺陷返回后列表同步）
+  onActivated(() => {
     loadData();
     loadFilterRequirementOptions('');
     loadFilterCaseOptions('');

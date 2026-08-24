@@ -12,6 +12,7 @@ import localePlan from '@/views/plan/locale/en-US';
 import localeProject from '@/views/project/locale/en-US';
 import localeElement from '@/views/element/locale/en-US';
 import localeApi from '@/views/apiManager/locale/en-US';
+import localeQa from '@/views/qa/locale/en-US';
 import localeDataTemplate from '@/views/dataTemplate/locale/en-US';
 
 import locale403 from '@/views/exception/403/locale/en-US';
@@ -74,5 +75,6 @@ export default {
     ...localeReport,
     ...localePlan,
     ...localeApi,
+    ...localeQa,
     ...localeDataTemplate
 };

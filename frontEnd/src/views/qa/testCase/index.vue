@@ -405,7 +405,7 @@
 </script>
 
 <script setup lang="ts">
-  import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
+  import { ref, onMounted, onActivated, onBeforeUnmount, watch, computed, nextTick } from 'vue';
   import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
   import { Message, Modal } from '@arco-design/web-vue';
   import {
@@ -1204,6 +1204,11 @@
         }
       }).catch(() => Message.warning('该用例不存在或已删除'));
     }
+  });
+  // keep-alive 激活时刷新（新建/编辑用例返回后列表同步）
+  onActivated(() => {
+    loadData();
+    loadModuleOptions();
   });
 
   watch(

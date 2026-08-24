@@ -2,7 +2,6 @@ module.exports = {
   extends: [
     'stylelint-config-standard',
     'stylelint-config-rational-order',
-    'stylelint-config-prettier',
     'stylelint-config-recommended-vue',
   ],
   defaultSeverity: 'warning',
