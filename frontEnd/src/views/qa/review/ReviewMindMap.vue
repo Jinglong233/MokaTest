@@ -146,8 +146,8 @@
 <script setup lang="ts">
 import {ref, onMounted, onBeforeUnmount, nextTick, watch} from 'vue';
 import {Message, Modal} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.css';
 import {getTestCaseDetail, getCaseReviewHistory, updateReviewCaseReviewers, resetReviewCase, submitTestCaseReview} from '@/api/MyApi/qa';
 
 const props = defineProps<{

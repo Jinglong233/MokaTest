@@ -256,8 +256,8 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, onBeforeUnmount, nextTick, watch} from 'vue';
 import {Message} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.css';
 import {getTestPoints, getTestCaseDetail, executePlanCaseWithSteps, assignPlanCaseExecutor, removeCaseFromPlan, getTestCaseExecutionHistory, getBugListByPlanCase} from '@/api/MyApi/qa';
 import {getUserListByPage} from '@/api/MyApi/user';
 import {useProjectStore} from '@/store';
