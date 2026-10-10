@@ -241,6 +241,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- AI 基础设施模块 -->
+        <dependency>
+            <groupId>com.mokaTest</groupId>
+            <artifactId>platform-ai</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 公共基础模块 -->
+        <dependency>
+            <groupId>com.mokaTest</groupId>
+            <artifactId>platform-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- DevTools -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

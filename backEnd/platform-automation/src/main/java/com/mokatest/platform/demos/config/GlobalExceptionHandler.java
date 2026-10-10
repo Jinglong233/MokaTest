@@ -7,6 +7,7 @@ import com.mokatest.platform.demos.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
@@ -18,6 +19,12 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+
+    // SSE 异步请求超时：响应已提交为 text/event-stream，不能写 JSON，只记日志
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncTimeout(AsyncRequestTimeoutException e) {
+        log.warn("SSE 异步请求超时: {}", e.getMessage());
+    }
 
     //使用全局异常
     @ExceptionHandler(RuntimeException.class)

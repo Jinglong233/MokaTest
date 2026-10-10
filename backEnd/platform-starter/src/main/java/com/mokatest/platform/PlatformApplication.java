@@ -9,7 +9,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @ComponentScan("com.mokatest.platform.demos")
-@MapperScan({"com.mokatest.platform.demos.mapper", "com.mokatest.platform.demos.api.mapper", "com.mokatest.platform.demos.qa.mapper", "com.mokatest.platform.demos.qa.message.mapper", "com.mokatest.platform.demos.qa.config.mapper", "com.mokatest.platform.demos.ai.mapper"}) // 确保包路径正确
+@MapperScan({"com.mokatest.platform.demos.mapper", "com.mokatest.platform.demos.api.mapper", "com.mokatest.platform.demos.qa.mapper", "com.mokatest.platform.demos.qa.message.mapper", "com.mokatest.platform.demos.qa.config.mapper", "com.mokatest.platform.demos.qa.aidoc", "com.mokatest.platform.demos.qa.aireview", "com.mokatest.platform.demos.qa.ai.agent.mapper", "com.mokatest.platform.demos.ai.mapper", "com.mokatest.platform.demos.ai.memory", "com.mokatest.platform.demos.ai.knowledge"}) // 确保包路径正确
 public class PlatformApplication extends SpringBootServletInitializer {
 
     @Override
