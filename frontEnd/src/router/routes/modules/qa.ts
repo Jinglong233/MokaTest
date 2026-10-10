@@ -18,6 +18,7 @@ const QA: AppRouteRecordRaw = {
             'qa:module:view',
             'qa:testplan:view',
             'qa:overview:view',
+            'qa:ai:use',
         ],
     },
     children: [
@@ -191,6 +192,48 @@ const QA: AppRouteRecordRaw = {
                 requiresAuth: false,
                 hideInMenu: true,
                 permission: 'qa:requirement:view',
+            },
+        },
+        {
+            path: 'aiWorkbench',
+            name: 'AiWorkbench',
+            component: () => import('@/views/qa/ai/workbench.vue'),
+            meta: {
+                locale: 'menu.qa.aiWorkbench',
+                requiresAuth: false,
+                permission: 'qa:ai:use',
+            },
+        },
+        {
+            path: 'aiSkills',
+            name: 'AiSkills',
+            component: () => import('@/views/qa/ai/skills.vue'),
+            meta: {
+                locale: 'menu.qa.aiSkills',
+                requiresAuth: false,
+                permission: 'qa:ai:use',
+            },
+        },
+        {
+            path: 'aiReview',
+            name: 'AiReview',
+            component: () => import('@/views/qa/ai/review.vue'),
+            meta: {
+                locale: 'menu.qa.aiReview',
+                requiresAuth: false,
+                hideInMenu: true,
+                permission: 'qa:ai:use',
+            },
+        },
+        {
+            path: 'aiCaseGen',
+            name: 'AiCaseGen',
+            component: () => import('@/views/qa/ai/caseGen.vue'),
+            meta: {
+                locale: 'menu.qa.aiCaseGen',
+                requiresAuth: false,
+                hideInMenu: true,
+                permission: 'qa:ai:use',
             },
         },
     ],

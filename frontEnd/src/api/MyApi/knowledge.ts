@@ -63,3 +63,8 @@ export function listKnowledgeChunks(docId: number) {
 export function rebuildKnowledgeIndex(id: number) {
     return axios.post(`/api/knowledge/rebuildIndex/${id}`);
 }
+
+/** 全量重建索引（超管）：重建所有项目知识库索引，灌入 Qdrant */
+export function rebuildAllKnowledge() {
+    return axios.post('/api/knowledge/rebuildAll');
+}

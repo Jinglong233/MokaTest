@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 用例生成 — 优化交互原型</title>
+<style>
+:root {
+  --primary: #165DFF;
+  --primary-light: #E8F0FF;
+  --success: #00B42A;
+  --success-light: #E8FFEA;
+  --warning: #FF7D00;
+  --warning-light: #FFF7E8;
+  --danger: #F53F3F;
+  --danger-light: #FFECE8;
+  --border: #E5E6EB;
+  --fill-1: #F7F8FA;
+  --fill-2: #F2F3F5;
+  --fill-3: #E5E6EB;
+  --text-1: #1D2129;
+  --text-2: #4E5969;
+  --text-3: #86909C;
+  --text-4: #C9CDD4;
+  --radius: 8px;
+  --radius-sm: 6px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--fill-1);
+  color: var(--text-1);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.app { display: flex; flex-direction: column; height: 100vh; max-width: 960px; margin: 0 auto; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+
+/* ============ Header ============ */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; padding: 0 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0; background: #fff; z-index: 10;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-left .back-btn {
+  width: 28px; height: 28px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: .2s;
+  background: #fff; color: var(--text-2);
+}
+.header-left .back-btn:hover { border-color: var(--primary); color: var(--primary); }
+.req-badge { font-size: 12px; color: var(--text-3); background: var(--fill-2); padding: 2px 8px; border-radius: 4px; }
+.req-title { font-size: 15px; font-weight: 600; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.req-stat { display: flex; gap: 12px; font-size: 12px; color: var(--text-3); }
+.req-stat span { display: flex; align-items: center; gap: 3px; }
+
+/* ============ Body ============ */
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.chat-area { flex: 1; overflow-y: auto; padding: 20px; scroll-behavior: smooth; }
+.chat-inner { max-width: 820px; margin: 0 auto; }
+
+/* ============ Empty State ============ */
+.empty-state { text-align: center; padding: 80px 0 40px; }
+.empty-state h2 { font-size: 18px; margin-bottom: 8px; }
+.empty-state p { color: var(--text-3); margin-bottom: 20px; }
+.suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.suggestion-chip {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+  font-size: 13px; color: var(--text-2); cursor: pointer; transition: .2s; background: #fff;
+}
+.suggestion-chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* ============ Messages ============ */
+.msg { margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+.msg.user { justify-content: flex-end; }
+.user-bubble {
+  background: var(--primary); color: #fff; padding: 8px 14px;
+  border-radius: var(--radius); max-width: 70%; font-size: 13px; word-break: break-word;
+}
+.ai-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #165DFF, #722ED1);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px;
+}
+.ai-content { flex: 1; min-width: 0; }
+
+/* ============ Thinking Section ============ */
+.thinking-box {
+  margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  overflow: hidden; background: var(--fill-1);
+}
+.thinking-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; cursor: pointer; font-size: 12px; color: var(--text-3); user-select: none;
+}
+.thinking-header:hover { background: var(--fill-2); }
+.thinking-header .label { display: flex; align-items: center; gap: 6px; }
+.thinking-spinner {
+  width: 12px; height: 12px; border: 2px solid var(--text-4); border-top-color: transparent;
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.thinking-body {
+  padding: 10px 14px; font-size: 12px; line-height: 1.7; color: var(--text-3);
+  white-space: pre-wrap; max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border);
+}
+.thinking-box.collapsed .thinking-body { display: none; }
+
+/* ============ Context Preview Panel ============ */
+.context-panel {
+  border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px;
+  overflow: hidden; background: #fff;
+}
+.context-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: var(--fill-1); font-size: 12px; color: var(--text-2);
+  cursor: pointer; user-select: none;
+}
+.context-header .title { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.context-header .badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--primary-light); color: var(--primary); }
+.context-body { padding: 12px 14px; border-top: 1px solid var(--border); }
+.context-body.collapsed { display: none; }
+.context-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.context-item {
+  display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px;
+  background: var(--fill-1); border-radius: var(--radius-sm); font-size: 12px;
+}
+.context-item .icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.context-item .text { flex: 1; min-width: 0; }
+.context-item .label { color: var(--text-3); font-size: 11px; margin-bottom: 2px; }
+.context-item .value { color: var(--text-1); font-weight: 500; }
+.context-item .detail { color: var(--text-3); font-size: 11px; margin-top: 2px; }
+
+/* ============ Progress Card ============ */
+.progress-card {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
+  background: #fff; margin-bottom: 10px;
+}
+.progress-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.progress-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--primary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.progress-title { font-size: 13px; font-weight: 500; color: var(--text-1); }
+.progress-count { font-size: 12px; color: var(--primary); font-weight: 600; }
+.progress-timeline { display: flex; flex-direction: column; gap: 6px; }
+.progress-step {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3);
+}
+.progress-step .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.progress-step.done .dot { background: var(--success); }
+.progress-step.active .dot { background: var(--primary); animation: pulse 1s infinite; }
+.progress-step.pending .dot { background: var(--text-4); }
+.progress-step.done { color: var(--text-2); }
+.progress-step.active { color: var(--primary); font-weight: 500; }
+.progress-bar {
+  height: 4px; background: var(--fill-3); border-radius: 2px; margin-top: 10px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--primary), #722ED1);
+  border-radius: 2px; transition: width .5s ease; width: 0%;
+}
+
+/* ============ Skeleton Drafts (streaming placeholder) ============ */
+.skeleton-drafts { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.skeleton-card {
+  border: 1px solid var(--fill-3); border-radius: var(--radius-sm); padding: 12px;
+  background: var(--fill-1); position: relative; overflow: hidden;
+}
+.skeleton-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.skeleton-line { height: 12px; background: var(--fill-3); border-radius: 3px; margin-bottom: 6px; }
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 65%; }
+.skeleton-line.long { width: 85%; }
+
+/* ============ Adopt Card ============ */
+.adopt-card {
+  border: 1px solid var(--border); border-radius: var(--radius); background: #fff;
+  overflow: hidden; margin-bottom: 16px;
+}
+.adopt-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--primary-light); border-bottom: 1px solid var(--border);
+}
+.adopt-header .left { display: flex; align-items: center; gap: 8px; }
+.adopt-header .title { font-size: 13px; font-weight: 600; color: var(--primary); }
+.adopt-header .summary { font-size: 12px; color: var(--text-3); }
+
+/* ============ Draft Filter Bar ============ */
+.filter-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  border-bottom: 1px solid var(--border); background: var(--fill-1);
+}
+.filter-bar .left { display: flex; align-items: center; gap: 6px; flex: 1; }
+.filter-bar .right { display: flex; align-items: center; gap: 8px; }
+.filter-chip {
+  padding: 3px 10px; border: 1px solid var(--border); border-radius: 12px;
+  font-size: 12px; color: var(--text-2); cursor: pointer; transition: .2s; background: #fff;
+}
+.filter-chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.filter-chip .count { font-size: 10px; color: var(--text-4); margin-left: 2px; }
+.filter-chip.active .count { color: var(--primary); }
+.search-input {
+  width: 160px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 12px; outline: none; transition: .2s;
+}
+.search-input:focus { border-color: var(--primary); }
+.toolbar-btn {
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--text-2); cursor: pointer; transition: .2s; background: #fff;
+  display: flex; align-items: center; gap: 4px;
+}
+.toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
+.toolbar-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.toolbar-btn.primary:hover { background: #4080FF; }
+.toolbar-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ============ Case Draft List ============ */
+.draft-list { padding: 8px 16px; max-height: 480px; overflow-y: auto; }
+.draft-item {
+  border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px;
+  background: #fff; transition: .2s; position: relative;
+}
+.draft-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(22,93,255,.1); }
+.draft-item.selected { border-color: var(--primary); border-width: 2px; }
+.draft-item.adopted { border-color: var(--success); background: var(--success-light); }
+.draft-item.failed { border-color: var(--danger); background: var(--danger-light); }
+.draft-item.submitting { opacity: .6; pointer-events: none; }
+
+.draft-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border);
+}
+.draft-checkbox {
+  width: 16px; height: 16px; border: 1.5px solid var(--text-4); border-radius: 3px;
+  cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  transition: .2s;
+}
+.draft-checkbox.checked { background: var(--primary); border-color: var(--primary); }
+.draft-checkbox.checked::after { content: '✓'; color: #fff; font-size: 11px; line-height: 1; }
+.draft-checkbox:has(~ .draft-header .edit-btn) { }
+
+.pri-tag {
+  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: #fff; flex-shrink: 0;
+}
+.pri-P0 { background: var(--danger); }
+.pri-P1 { background: var(--warning); }
+.pri-P2 { background: var(--text-4); }
+
+.draft-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.type-tag { font-size: 10px; padding: 1px 5px; border-radius: 2px; background: var(--fill-3); color: var(--text-3); flex-shrink: 0; }
+.method-tag { font-size: 10px; padding: 1px 5px; border-radius: 2px; background: var(--primary-light); color: var(--primary); flex-shrink: 0; }
+
+.draft-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.icon-btn {
+  width: 24px; height: 24px; border: none; border-radius: 4px; background: transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  color: var(--text-3); transition: .2s;
+}
+.icon-btn:hover { background: var(--fill-2); color: var(--text-1); }
+.icon-btn.danger:hover { background: var(--danger-light); color: var(--danger); }
+
+.draft-body { padding: 8px 12px; }
+.draft-body.collapsed { display: none; }
+.draft-pre { font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.draft-steps { display: flex; flex-direction: column; gap: 4px; }
+.draft-step { display: flex; gap: 8px; font-size: 12px; line-height: 1.5; }
+.draft-step .num {
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 3px; background: var(--fill-3);
+  font-size: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-2);
+}
+.draft-step .step-text { flex: 1; }
+.draft-step .step-action { color: var(--text-2); }
+.draft-step .step-expected { color: var(--success); font-size: 11px; margin-top: 1px; }
+.draft-step .step-expected::before { content: '→ '; }
+.draft-cover { font-size: 11px; color: var(--text-4); margin-top: 6px; }
+.draft-cover .tag { display: inline-block; padding: 1px 6px; margin-right: 4px; background: var(--fill-2); border-radius: 3px; }
+
+/* Edit mode */
+.draft-edit { padding: 10px 12px; }
+.draft-edit input, .draft-edit textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;
+  font-size: 13px; outline: none; font-family: inherit; transition: .2s;
+}
+.draft-edit input:focus, .draft-edit textarea:focus { border-color: var(--primary); }
+.draft-edit .field { margin-bottom: 8px; }
+.draft-edit .field-label { font-size: 12px; color: var(--text-3); margin-bottom: 3px; }
+.draft-edit .step-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.draft-edit .step-row input { flex: 1; }
+.draft-edit .edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+.edit-btn-primary { padding: 4px 12px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.edit-btn-secondary { padding: 4px 12px; background: #fff; color: var(--text-2); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+/* Adopted status */
+.draft-status {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--border);
+}
+.draft-status .status-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; }
+.draft-status .status-icon.success { background: var(--success); }
+.draft-status .status-icon.fail { background: var(--danger); }
+.draft-status .status-text { font-size: 12px; color: var(--text-2); }
+
+/* Adopt toolbar */
+.adopt-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-top: 1px solid var(--border); background: var(--fill-1);
+}
+.adopt-toolbar .left { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); }
+.adopt-result {
+  display: flex; gap: 12px; font-size: 12px; padding: 8px 16px; border-top: 1px solid var(--border);
+  background: var(--success-light);
+}
+.adopt-result .stat { display: flex; align-items: center; gap: 3px; }
+.adopt-result .stat.success { color: var(--success); }
+.adopt-result .stat.skip { color: var(--warning); }
+.adopt-result .stat.fail { color: var(--danger); }
+
+/* Uncertainty notice */
+.uncertainty-notice {
+  border: 1px solid var(--warning); border-radius: var(--radius); padding: 10px 14px;
+  background: var(--warning-light); margin-bottom: 10px;
+}
+.uncertainty-notice .title { font-size: 12px; font-weight: 600; color: var(--warning); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.uncertainty-notice ul { padding-left: 18px; font-size: 12px; color: var(--text-2); }
+
+/* ============ Input Area ============ */
+.input-area {
+  display: flex; gap: 8px; padding: 12px 20px; flex-shrink: 0;
+  border-top: 1px solid var(--border); background: #fff;
+}
+.input-area textarea {
+  flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px;
+  font-size: 13px; font-family: inherit; resize: none; outline: none; transition: .2s;
+  min-height: 38px; max-height: 100px;
+}
+.input-area textarea:focus { border-color: var(--primary); }
+.send-btn {
+  padding: 0 20px; background: var(--primary); color: #fff; border: none;
+  border-radius: var(--radius); font-size: 13px; cursor: pointer; transition: .2s; flex-shrink: 0;
+}
+.send-btn:hover { background: #4080FF; }
+.send-btn:disabled { background: var(--text-4); cursor: not-allowed; }
+.send-btn.danger { background: var(--danger); }
+.send-btn.danger:hover { background: #F76560; }
+.input-hint { font-size: 11px; color: var(--text-4); padding: 0 20px 6px; text-align: center; }
+
+/* ============ Action buttons under AI message ============ */
+.msg-actions { display: flex; gap: 6px; margin-top: 6px; }
+.msg-actions button {
+  padding: 3px 10px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; color: var(--text-2); cursor: pointer; transition: .2s; background: #fff;
+}
+.msg-actions button:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Scroll button */
+.scroll-btn {
+  position: sticky; bottom: 12px; align-self: center;
+  width: 32px; height: 32px; border-radius: 50%; background: #fff;
+  border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  z-index: 5; color: var(--text-3);
+}
+.scroll-btn:hover { border-color: var(--primary); color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============ Header ============ -->
+  <div class="header">
+    <div class="header-left">
+      <div class="back-btn" onclick="history.back()">←</div>
+      <span class="req-badge">REQ-2024-001</span>
+      <span class="req-title">用户登录功能</span>
+    </div>
+    <div class="req-stat">
+      <span>📋 已有用例 12</span>
+      <span>🤖 AI评审 8.5</span>
+    </div>
+  </div>
+
+  <!-- ============ Body ============ -->
+  <div class="body">
+    <div class="chat-area" id="chatArea">
+      <div class="chat-inner" id="chatInner">
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState">
+          <h2>AI 用例生成助手</h2>
+          <p>基于需求内容、已有用例、关联模块和历史缺陷自动生成测试用例</p>
+          <div class="suggestion-chips">
+            <span class="suggestion-chip" onclick="useSuggestion(this)">生成 5 条用例</span>
+            <span class="suggestion-chip" onclick="useSuggestion(this)">生成 10 条，重点覆盖异常场景</span>
+            <span class="suggestion-chip" onclick="useSuggestion(this)">补充 3 条并发测试用例</span>
+            <span class="suggestion-chip" onclick="useSuggestion(this)">覆盖登录限流和验证码场景</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ Input Area ============ -->
+    <div class="input-hint">Enter 发送 · Shift+Enter 换行</div>
+    <div class="input-area">
+      <textarea id="inputText" placeholder="输入指令，如：生成5条用例 / 再补充3条异常场景" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+        oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ State ============
+let messages = [];
+let generating = false;
+let recordNo = '';
+let drafts = [];
+let selectedFilter = 'all';
+let searchKeyword = '';
+let msgId = 0;
+
+// ============ Mock Data ============
+const mockDrafts = [
+  {
+    draftId: 'd1', caseName: '正常登录-有效账号密码', priority: 'P0', caseType: 'FUNCTION', method: '黑盒',
+    preCondition: '已注册账号 user@test.com，密码 Test@123',
+    testSteps: [
+      { step: '打开登录页面', expected: '显示登录表单，包含用户名、密码、登录按钮' },
+      { step: '输入有效用户名 user@test.com', expected: '用户名输入框显示输入内容' },
+      { step: '输入有效密码 Test@123', expected: '密码输入框显示掩码字符' },
+      { step: '点击登录按钮', expected: '跳转到首页，显示用户头像和欢迎信息' }
+    ],
+    coverPoints: ['正常流程', '有效输入', '成功跳转'], tags: '登录,正向'
+  },
+  {
+    draftId: 'd2', caseName: '密码错误-连续3次锁定', priority: 'P0', caseType: 'FUNCTION', method: '黑盒',
+    preCondition: '已注册账号 user@test.com',
+    testSteps: [
+      { step: '输入正确用户名，错误密码，点击登录', expected: '提示"用户名或密码错误"' },
+      { step: '重复步骤1共3次', expected: '第3次后提示"账号已锁定，请15分钟后重试"' },
+      { step: '立即用正确密码登录', expected: '提示"账号已锁定"，无法登录' }
+    ],
+    coverPoints: ['异常流程', '安全锁定', '防暴力破解'], tags: '登录,异常,安全'
+  },
+  {
+    draftId: 'd3', caseName: '空密码登录-前端校验', priority: 'P1', caseType: 'FUNCTION', method: '黑盒',
+    preCondition: '无',
+    testSteps: [
+      { step: '输入有效用户名，密码留空', expected: '密码输入框下方提示"请输入密码"' },
+      { step: '点击登录按钮', expected: '不发送请求，表单不提交' }
+    ],
+    coverPoints: ['前端校验', '空值处理'], tags: '登录,校验'
+  },
+  {
+    draftId: 'd4', caseName: 'SQL注入-用户名输入框', priority: 'P0', caseType: 'SECURITY', method: '安全测试',
+    preCondition: '无',
+    testSteps: [
+      { step: '在用户名输入框输入 admin\' OR 1=1 --', expected: '不返回数据库错误信息' },
+      { step: '点击登录按钮', expected: '提示"用户名或密码错误"，不能绕过认证' }
+    ],
+    coverPoints: ['安全防护', '注入攻击', '输入过滤'], tags: '登录,安全,注入'
+  },
+  {
+    draftId: 'd5', caseName: '并发登录-多设备同时登录', priority: 'P2', caseType: 'PERFORMANCE', method: '性能测试',
+    preCondition: '2台设备，同一账号',
+    testSteps: [
+      { step: '设备A和设备B同时输入相同账号密码', expected: '两台设备同时发起登录请求' },
+      { step: '观察后端响应', expected: '根据业务策略：允许或互踢，不出现数据混乱' }
+    ],
+    coverPoints: ['并发控制', '多设备'], tags: '登录,并发'
+  }
+];
+
+// ============ Utilities ============
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function useSuggestion(el) {
+  $('#inputText').value = el.textContent;
+  autoResize($('#inputText'));
+  $('#inputText').focus();
+}
+
+function scrollToBottom() {
+  const area = $('#chatArea');
+  area.scrollTop = area.scrollHeight;
+}
+
+function toggleThinking(msgEl) {
+  msgEl.querySelector('.thinking-box').classList.toggle('collapsed');
+}
+
+function toggleContext(msgEl) {
+  msgEl.querySelector('.context-body').classList.toggle('collapsed');
+}
+
+function toggleDraft(el) {
+  el.querySelector('.draft-body').classList.toggle('collapsed');
+}
+
+// ============ Send Message ============
+function sendMessage() {
+  const text = $('#inputText').value.trim();
+  if (!text || generating) return;
+  $('#inputText').value = '';
+  autoResize($('#inputText'));
+  $('#emptyState')?.remove();
+
+  // Push user message
+  pushUserMsg(text);
+
+  // Start generation flow
+  startGeneration(text);
+}
+
+function pushUserMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="user-bubble">${escapeHtml(text)}</div>`;
+  $('#chatInner').appendChild(div);
+  scrollToBottom();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============ Generation Flow (simulated SSE) ============
+function startGeneration(instruction) {
+  generating = true;
+  updateSendBtn();
+
+  // Create AI message wrapper
+  const msgEl = document.createElement('div');
+  msgEl.className = 'msg';
+  msgEl.innerHTML = `
+    <div class="ai-avatar">AI</div>
+    <div class="ai-content" id="aiMsg-${++msgId}">
+      <!-- Context Panel -->
+      <div class="context-panel">
+        <div class="context-header" onclick="toggleContext(document.getElementById('aiMsg-${msgId}').parentElement)">
+          <span class="title">📋 已组装上下文 <span class="badge">5 个来源</span></span>
+          <span>展开 ▾</span>
+        </div>
+        <div class="context-body collapsed">
+          <div class="context-grid">
+            <div class="context-item">
+              <span class="icon">📄</span>
+              <div class="text">
+                <div class="label">L1 核心需求</div>
+                <div class="value">用户登录功能</div>
+                <div class="detail">3 个验收标准 · 2 个约束条件</div>
+              </div>
+            </div>
+            <div class="context-item">
+              <span class="icon">🔗</span>
+              <div class="text">
+                <div class="label">L2 关联需求</div>
+                <div class="value">注册、找回密码、个人中心</div>
+                <div class="detail">3 个关联模块</div>
+              </div>
+            </div>
+            <div class="context-item">
+              <span class="icon">📦</span>
+              <div class="text">
+                <div class="label">L3 模块需求</div>
+                <div class="value">用户管理模块</div>
+                <div class="detail">含权限、角色子模块</div>
+              </div>
+            </div>
+            <div class="context-item">
+              <span class="icon">🧪</span>
+              <div class="text">
+                <div class="label">L4 已有用例</div>
+                <div class="value">12 条用例</div>
+                <div class="detail">避免重复生成 · 覆盖率参考</div>
+              </div>
+            </div>
+            <div class="context-item">
+              <span class="icon">🐛</span>
+              <div class="text">
+                <div class="label">L5 历史缺陷</div>
+                <div class="value">3 个相关BUG</div>
+                <div class="detail">验证码绕过 · 密码明文 · Session不失效</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card -->
+      <div class="progress-card" id="progressCard">
+        <div class="progress-header">
+          <span class="progress-dot"></span>
+          <span class="progress-title">AI 正在生成用例</span>
+          <span class="progress-count" id="progressCount">准备中…</span>
+        </div>
+        <div class="progress-timeline">
+          <div class="progress-step done" id="step-context">
+            <span class="dot"></span> ✅ 上下文组装
+          </div>
+          <div class="progress-step active" id="step-gen">
+            <span class="dot"></span> 🔄 AI 模型生成中
+          </div>
+          <div class="progress-step pending" id="step-parse">
+            <span class="dot"></span> ⏳ 结构化解析
+          </div>
+          <div class="progress-step pending" id="step-dedup">
+            <span class="dot"></span> ⏳ 去重校验
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-bar-fill" id="progressBar" style="width:20%"></div></div>
+      </div>
+
+      <!-- Skeleton drafts placeholder -->
+      <div class="skeleton-drafts" id="skeletonArea" style="display:none">
+        ${Array(3).fill(`
+          <div class="skeleton-card">
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line long"></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  $('#chatInner').appendChild(msgEl);
+  scrollToBottom();
+
+  const aiContent = $(`#aiMsg-${msgId}`);
+
+  // Phase 1: Context done, start generation
+  setTimeout(() => {
+    aiContent.querySelector('#step-context').classList.replace('active', 'done');
+    aiContent.querySelector('#step-context').innerHTML = '<span class="dot"></span> ✅ 上下文组装';
+    aiContent.querySelector('#progressBar').style.width = '30%';
+    aiContent.querySelector('#progressCount').textContent = '调用模型中…';
+  }, 800);
+
+  // Phase 2: Generating (show thinking)
+  setTimeout(() => {
+    // Simulate thinking
+    const thinkingBox = document.createElement('div');
+    thinkingBox.className = 'thinking-box';
+    thinkingBox.innerHTML = `
+      <div class="thinking-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span class="label"><span class="thinking-spinner"></span> AI 思考中…</span>
+        <span>收起</span>
+      </div>
+      <div class="thinking-body">分析需求：用户登录功能，需要覆盖正常流程、异常场景、安全防护、性能和兼容性。
+已有 12 条用例，避免重复。
+历史缺陷提示：验证码绕过、密码明文传输、Session 不失效。
+将生成 5 条用例，优先级分布 P0×3、P1×1、P2×1。</div>
+    `;
+    aiContent.insertBefore(thinkingBox, aiContent.querySelector('.progress-card'));
+    aiContent.querySelector('#progressCount').textContent = '生成中…';
+    aiContent.querySelector('#progressBar').style.width = '50%';
+    // Show skeleton
+    aiContent.querySelector('#skeletonArea').style.display = 'flex';
+  }, 1500);
+
+  // Phase 3: Parse
+  setTimeout(() => {
+    aiContent.querySelector('.thinking-box').classList.add('collapsed');
+    aiContent.querySelector('.thinking-header .label').innerHTML = '✅ 已深度思考 (2s)';
+    aiContent.querySelector('#step-gen').classList.replace('active', 'done');
+    aiContent.querySelector('#step-gen').innerHTML = '<span class="dot"></span> ✅ AI 模型生成';
+    aiContent.querySelector('#step-parse').classList.replace('pending', 'active');
+    aiContent.querySelector('#progressCount').textContent = '解析中…';
+    aiContent.querySelector('#progressBar').style.width = '75%';
+    aiContent.querySelector('#skeletonArea').style.display = 'none';
+  }, 3500);
+
+  // Phase 4: Dedup
+  setTimeout(() => {
+    aiContent.querySelector('#step-parse').classList.replace('active', 'done');
+    aiContent.querySelector('#step-parse').innerHTML = '<span class="dot"></span> ✅ 结构化解析';
+    aiContent.querySelector('#step-dedup').classList.replace('pending', 'active');
+    aiContent.querySelector('#progressCount').textContent = '去重中…';
+    aiContent.querySelector('#progressBar').style.width = '90%';
+  }, 4200);
+
+  // Phase 5: Done — show result
+  setTimeout(() => {
+    aiContent.querySelector('#step-dedup').classList.replace('active', 'done');
+    aiContent.querySelector('#step-dedup').innerHTML = '<span class="dot"></span> ✅ 去重校验';
+    aiContent.querySelector('#progressBar').style.width = '100%';
+    aiContent.querySelector('#progressCount').textContent = '完成';
+
+    // Replace progress card with success text
+    aiContent.querySelector('.progress-card').innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--success);font-weight:500;">
+        ✅ 已生成 5 条用例草稿，请在下方查看和采纳
+      </div>
+      <div class="msg-actions">
+        <button onclick="alert('重新生成')">🔄 重新生成</button>
+        <button onclick="alert('继续补充')">➕ 继续补充</button>
+      </div>
+    `;
+
+    // Uncertainty notice
+    const notice = document.createElement('div');
+    notice.className = 'uncertainty-notice';
+    notice.innerHTML = `
+      <div class="title">⚠️ 需求不确定点</div>
+      <ul>
+        <li>验证码机制未明确：是图形验证码还是滑块？是否每次都需要？</li>
+        <li>登录限流策略未定义：是 IP 限流还是账号限流？阈值多少？</li>
+      </ul>
+    `;
+    aiContent.appendChild(notice);
+
+    // Adopt card
+    drafts = mockDrafts.map(d => ({ ...d, _selected: true, _adoptStatus: 'pending', _editing: false }));
+    renderAdoptCard(aiContent);
+    generating = false;
+    updateSendBtn();
+    scrollToBottom();
+  }, 5000);
+}
+
+// ============ Render Adopt Card ============
+function renderAdoptCard(parent) {
+  // Remove old adopt cards
+  $$('.adopt-card').forEach(el => el.remove());
+
+  const filtered = filterDrafts(drafts);
+  const pendingCount = drafts.filter(d => d._adoptStatus === 'pending').length;
+  const selectedCount = drafts.filter(d => d._selected && d._adoptStatus === 'pending').length;
+
+  const adoptEl = document.createElement('div');
+  adoptEl.className = 'adopt-card';
+  adoptEl.innerHTML = `
+    <div class="adopt-header">
+      <div class="left">
+        <span class="title">📋 用例草稿</span>
+        <span class="summary">共 ${drafts.length} 条 · 待采纳 ${pendingCount} · 已选 ${selectedCount}</span>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="left">
+        <span class="filter-chip ${selectedFilter==='all'?'active':''}" onclick="setFilter('all')">全部 <span class="count">${drafts.length}</span></span>
+        <span class="filter-chip ${selectedFilter==='P0'?'active':''}" onclick="setFilter('P0')">P0 <span class="count">${drafts.filter(d=>d.priority==='P0').length}</span></span>
+        <span class="filter-chip ${selectedFilter==='P1'?'active':''}" onclick="setFilter('P1')">P1 <span class="count">${drafts.filter(d=>d.priority==='P1').length}</span></span>
+        <span class="filter-chip ${selectedFilter==='P2'?'active':''}" onclick="setFilter('P2')">P2 <span class="count">${drafts.filter(d=>d.priority==='P2').length}</span></span>
+        <span class="filter-chip ${selectedFilter==='pending'?'active':''}" onclick="setFilter('pending')">待采纳 <span class="count">${pendingCount}</span></span>
+      </div>
+      <div class="right">
+        <input class="search-input" placeholder="搜索用例名称…" oninput="searchKeyword=this.value;renderAdoptCard(document.querySelector('.adopt-card').parentElement)" value="${searchKeyword}">
+      </div>
+    </div>
+    <div class="draft-list" id="draftList">
+      ${filtered.map((d, i) => renderDraftItem(d, i)).join('')}
+    </div>
+    <div class="adopt-toolbar">
+      <div class="left">
+        <span class="draft-checkbox ${drafts.every(d=>d._selected)?'checked':''}" onclick="toggleAll()"></span>
+        全选
+      </div>
+      <div class="right">
+        <button class="toolbar-btn primary" ${selectedCount===0?'disabled':''} onclick="adoptSelected()">
+          ✅ 采纳选中 (${selectedCount})
+        </button>
+        <button class="toolbar-btn" onclick="adoptAll()">📥 全部采纳</button>
+      </div>
+    </div>
+  `;
+  parent.appendChild(adoptEl);
+  scrollToBottom();
+}
+
+function filterDrafts(list) {
+  let filtered = list;
+  if (selectedFilter === 'pending') filtered = filtered.filter(d => d._adoptStatus === 'pending');
+  else if (['P0','P1','P2'].includes(selectedFilter)) filtered = filtered.filter(d => d.priority === selectedFilter);
+  if (searchKeyword) filtered = filtered.filter(d => d.caseName.includes(searchKeyword));
+  return filtered;
+}
+
+function renderDraftItem(d, i) {
+  const statusClass = d._adoptStatus === 'success' ? 'adopted' : d._adoptStatus === 'failed' ? 'failed' : d._adoptStatus === 'submitting' ? 'submitting' : '';
+  const selectedClass = d._selected ? 'selected' : '';
+
+  if (d._editing) {
+    return `
+      <div class="draft-item ${statusClass}" id="draft-${d.draftId}">
+        <div class="draft-edit">
+          <div class="field">
+            <div class="field-label">用例名称</div>
+            <input value="${escapeHtml(d.caseName)}" onchange="updateDraft('${d.draftId}','caseName',this.value)">
+          </div>
+          <div class="field">
+            <div class="field-label">优先级</div>
+            <select style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;" onchange="updateDraft('${d.draftId}','priority',this.value)">
+              <option value="P0" ${d.priority==='P0'?'selected':''}>P0</option>
+              <option value="P1" ${d.priority==='P1'?'selected':''}>P1</option>
+              <option value="P2" ${d.priority==='P2'?'selected':''}>P2</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">前置条件</div>
+            <textarea rows="2" onchange="updateDraft('${d.draftId}','preCondition',this.value)">${escapeHtml(d.preCondition || '')}</textarea>
+          </div>
+          <div class="field">
+            <div class="field-label">测试步骤</div>
+            ${d.testSteps.map((s, si) => `
+              <div class="step-row">
+                <input value="${escapeHtml(s.step)}" placeholder="操作步骤" style="flex:1"
+                  onchange="updateStep('${d.draftId}',${si},'step',this.value)">
+                <input value="${escapeHtml(s.expected)}" placeholder="预期结果" style="flex:1"
+                  onchange="updateStep('${d.draftId}',${si},'expected',this.value)">
+                <button class="icon-btn danger" onclick="removeStep('${d.draftId}',${si})">✕</button>
+              </div>
+            `).join('')}
+            <button class="toolbar-btn" onclick="addStep('${d.draftId}')">+ 添加步骤</button>
+          </div>
+          <div class="field">
+            <div class="field-label">标签</div>
+            <input value="${escapeHtml(d.tags || '')}" onchange="updateDraft('${d.draftId}','tags',this.value)">
+          </div>
+          <div class="edit-actions">
+            <button class="edit-btn-secondary" onclick="cancelEdit('${d.draftId}')">取消</button>
+            <button class="edit-btn-primary" onclick="saveEdit('${d.draftId}')">保存</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="draft-item ${statusClass} ${selectedClass}" id="draft-${d.draftId}" onclick="toggleDraft(this)">
+      <div class="draft-header" onclick="event.stopPropagation()">
+        <span class="draft-checkbox ${d._selected?'checked':''}" onclick="toggleSelect('${d.draftId}')"></span>
+        <span class="pri-tag pri-${d.priority}">${d.priority}</span>
+        <span class="draft-name" title="${escapeHtml(d.caseName)}">${escapeHtml(d.caseName)}</span>
+        <span class="type-tag">${d.caseType === 'FUNCTION' ? '功能' : d.caseType === 'SECURITY' ? '安全' : '性能'}</span>
+        <span class="method-tag">${d.method}</span>
+        <div class="draft-actions">
+          <button class="icon-btn" onclick="event.stopPropagation();editDraft('${d.draftId}')" title="编辑">✏️</button>
+          <button class="icon-btn danger" onclick="event.stopPropagation();deleteDraft('${d.draftId}')" title="删除">🗑</button>
+          <button class="icon-btn" onclick="event.stopPropagation();adoptSingle('${d.draftId}')" title="采纳">✓</button>
+        </div>
+      </div>
+      ${d._adoptStatus === 'success' ? `
+        <div class="draft-status">
+          <span class="status-icon success">✓</span>
+          <span class="status-text">已入库 · CASE-${1000 + drafts.indexOf(d)}</span>
+        </div>
+      ` : d._adoptStatus === 'failed' ? `
+        <div class="draft-status">
+          <span class="status-icon fail">!</span>
+          <span class="status-text">入库失败 · ${d._error || '网络异常'}</span>
+          <button class="toolbar-btn" style="margin-left:auto" onclick="event.stopPropagation();adoptSingle('${d.draftId}')">重试</button>
+        </div>
+      ` : `
+        <div class="draft-body">
+          ${d.preCondition ? `<div class="draft-pre"><strong>前置条件：</strong>${escapeHtml(d.preCondition)}</div>` : ''}
+          <div class="draft-steps">
+            ${d.testSteps.map((s, si) => `
+              <div class="draft-step">
+                <span class="num">${si+1}</span>
+                <div class="step-text">
+                  <div class="step-action">${escapeHtml(s.step)}</div>
+                  <div class="step-expected">${escapeHtml(s.expected)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${d.coverPoints?.length ? `<div class="draft-cover">${d.coverPoints.map(c => `<span class="tag">${c}</span>`).join('')}</div>` : ''}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ============ Draft Actions ============
+function setFilter(f) { selectedFilter = f; renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function toggleSelect(id) { const d = drafts.find(x => x.draftId === id); d._selected = !d._selected; renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function toggleAll() {
+  const allSelected = drafts.every(d => d._selected);
+  drafts.forEach(d => { if (d._adoptStatus === 'pending') d._selected = !allSelected; });
+  renderAdoptCard(document.querySelector('.adopt-card').parentElement);
+}
+function editDraft(id) { const d = drafts.find(x => x.draftId === id); d._editing = true; renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function cancelEdit(id) { const d = drafts.find(x => x.draftId === id); d._editing = false; renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function saveEdit(id) { const d = drafts.find(x => x.draftId === id); d._editing = false; renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function deleteDraft(id) { drafts = drafts.filter(d => d.draftId !== id); renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function updateDraft(id, field, val) { const d = drafts.find(x => x.draftId === id); if (d) d[field] = val; }
+function updateStep(id, idx, field, val) { const d = drafts.find(x => x.draftId === id); if (d && d.testSteps[idx]) d.testSteps[idx][field] = val; }
+function removeStep(id, idx) { const d = drafts.find(x => x.draftId === id); if (d) d.testSteps.splice(idx, 1); renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+function addStep(id) { const d = drafts.find(x => x.draftId === id); if (d) d.testSteps.push({ step: '', expected: '' }); renderAdoptCard(document.querySelector('.adopt-card').parentElement); }
+
+function adoptSingle(id) {
+  const d = drafts.find(x => x.draftId === id);
+  d._adoptStatus = 'submitting';
+  renderAdoptCard(document.querySelector('.adopt-card').parentElement);
+  setTimeout(() => {
+    d._adoptStatus = 'success';
+    d._selected = false;
+    renderAdoptCard(document.querySelector('.adopt-card').parentElement);
+    pushAiMsg(`✅ 已入库用例「${d.caseName}」（CASE-${1000 + drafts.indexOf(d)}）`);
+  }, 800);
+}
+
+function adoptSelected() {
+  const selected = drafts.filter(d => d._selected && d._adoptStatus === 'pending');
+  if (!selected.length) return;
+  selected.forEach(d => d._adoptStatus = 'submitting');
+  renderAdoptCard(document.querySelector('.adopt-card').parentElement);
+  setTimeout(() => {
+    let success = 0, skipped = 0;
+    selected.forEach((d, i) => {
+      if (i < 4) { d._adoptStatus = 'success'; success++; }
+      else { d._adoptStatus = 'failed'; d._error = '同名已存在'; skipped++; }
+      d._selected = false;
+    });
+    renderAdoptCard(document.querySelector('.adopt-card').parentElement);
+    // Result summary
+    const resultEl = document.createElement('div');
+    resultEl.className = 'adopt-result';
+    resultEl.innerHTML = `
+      <span class="stat success">✅ 成功 ${success}</span>
+      <span class="stat skip">⚠️ 跳过 0</span>
+      <span class="stat fail">❌ 失败 ${skipped}</span>
+    `;
+    document.querySelector('.adopt-card').appendChild(resultEl);
+    pushAiMsg(`已入库 ${success} 条用例${skipped ? `，${skipped} 条失败` : ''}。`);
+  }, 1500);
+}
+
+function adoptAll() {
+  drafts.forEach(d => { if (d._adoptStatus === 'pending') { d._selected = true; } });
+  adoptSelected();
+}
+
+function pushAiMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `
+    <div class="ai-avatar">AI</div>
+    <div class="ai-content">
+      <div style="font-size:13px;padding:8px 12px;background:var(--fill-2);border-radius:8px;max-width:80%;">${escapeHtml(text)}</div>
+    </div>
+  `;
+  $('#chatInner').appendChild(div);
+  scrollToBottom();
+}
+
+function updateSendBtn() {
+  const btn = $('#sendBtn');
+  if (generating) {
+    btn.textContent = '停止';
+    btn.classList.add('danger');
+    btn.onclick = stopGeneration;
+  } else {
+    btn.textContent = '发送';
+    btn.classList.remove('danger');
+    btn.onclick = sendMessage;
+  }
+}
+
+function stopGeneration() {
+  generating = false;
+  updateSendBtn();
+  pushAiMsg('⏹ 生成已停止');
+}
+
+// Init
+updateSendBtn();
+</script>
+
+</body>
+</html>

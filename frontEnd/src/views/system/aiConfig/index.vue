@@ -182,58 +182,24 @@
           />
         </a-form-item>
 
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item label="最大输出 Tokens" field="maxTokens">
-              <a-input-number
-                v-model="form.maxTokens"
-                :min="256"
-                :max="32000"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="请求超时（毫秒）" field="timeoutMs">
-              <a-input-number
-                v-model="form.timeoutMs"
-                :min="5000"
-                :max="300000"
-                :step="5000"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-
-        <a-form-item label="采样温度" field="temperature">
-          <a-slider
-            v-model="temperatureValue"
-            :min="0"
-            :max="1"
-            :step="0.1"
-            show-input
-            style="max-width: 420px"
-          />
-        </a-form-item>
-
-        <a-form-item
-          label="启用多模态（图片理解）"
-          field="visionEnabled"
-          extra="开启后，需求描述中的图片会一并发送给模型分析；需要模型本身支持视觉能力"
-        >
-          <a-switch
-            :checked="form.visionEnabled === 1"
-            @change="(v: any) => form.visionEnabled = v ? 1 : 0"
-          />
-        </a-form-item>
-
         <a-form-item label="备注" field="remark">
           <a-input
             v-model="form.remark"
             placeholder="配置用途说明，可空"
             :max-length="200"
           />
+        </a-form-item>
+
+        <a-form-item
+          label="Thinking 模式"
+          field="thinkingMode"
+          extra="关闭可显著降低首 token 延迟，推理质量略降；自动模式按厂商适配"
+        >
+          <a-select v-model="form.thinkingMode" placeholder="自动">
+            <a-option value="AUTO">自动（按厂商适配）</a-option>
+            <a-option value="DISABLED">强制关闭</a-option>
+            <a-option value="ENABLED">强制开启</a-option>
+          </a-select>
         </a-form-item>
       </a-form>
       <template #footer>
@@ -254,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import useLoadState from '@/hooks/useLoadState';
 import LoadError from '@/components/load-error/index.vue';
@@ -285,21 +251,11 @@ const blankForm = () => ({
   apiKey: '',
   chatModel: '',
   embeddingModel: '',
-  maxTokens: 4096,
-  temperature: 0.3,
-  timeoutMs: 60000,
-  visionEnabled: 0,
-  remark: ''
+  remark: '',
+  thinkingMode: 'AUTO'
 });
 
 const form = reactive<any>(blankForm());
-
-const temperatureValue = computed<number>({
-  get: () => Number(form.temperature ?? 0.3),
-  set: (v: number) => {
-    form.temperature = v;
-  }
-});
 
 async function loadList() {
   const res: any = await track(listAiConfigs());

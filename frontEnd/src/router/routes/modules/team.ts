@@ -72,16 +72,7 @@ const RESULT: AppRouteRecordRaw = {
                 roles: ['super_admin'],
             },
         },
-        {
-            // AI 模型配置：平台级配置，仅超管可见
-            path: 'aiConfig',
-            name: 'AiConfig',
-            component: () => import('@/views/system/aiConfig/index.vue'),
-            meta: {
-                requiresAuth: true,
-                roles: ['super_admin'],
-            },
-        },
+        // AI 模型配置已下放到项目维度，平台级菜单移除（项目配置页「AI 配置」tab 替代）
         {
             // 登录日志：安全审计数据，仅超管可见
             path: 'loginLog',
