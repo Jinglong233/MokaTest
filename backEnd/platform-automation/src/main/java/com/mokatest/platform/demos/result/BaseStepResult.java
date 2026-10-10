@@ -19,6 +19,12 @@ public class BaseStepResult {
 
     private StepExecutionType status;
 
+    // AI 失败分诊结果（LOCATOR/DATA/ENV/PRODUCT_BUG），无分诊或 AI 未启用时为 null
+    private String triageCategory;
+
+    // AI 分诊专家结论（≤2000 字符）；PRODUCT_BUG 时为 BUG 草稿 JSON
+    private String triageDetail;
+
     // API 请求步骤（UI+API 混合场景）的响应 VO（ApiStepResponseVO），其他步骤类型为 null
     private Object apiResponse;
 

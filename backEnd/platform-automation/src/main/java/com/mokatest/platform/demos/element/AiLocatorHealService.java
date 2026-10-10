@@ -5,10 +5,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mokatest.platform.demos.ai.gateway.AiGatewayService;
-import com.mokatest.platform.demos.ai.gateway.ChatMessage;
-import com.mokatest.platform.demos.ai.gateway.ChatOptions;
-import com.mokatest.platform.demos.ai.gateway.ChatResult;
+import com.mokatest.platform.demos.ai.config.ModelManager;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
 import com.mokatest.platform.demos.domain.ui.Element;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
@@ -53,7 +54,7 @@ public class AiLocatorHealService {
             "只输出 JSON 对象，不要输出任何其他内容。";
 
     @Resource
-    private AiGatewayService aiGatewayService;
+    private ModelManager modelManager;
 
     @Resource
     private ElementProcessor elementProcessor;
@@ -92,16 +93,13 @@ public class AiLocatorHealService {
 
             String prompt = buildPrompt(resolveElementName(elementDTO, old), stepName, old, error, snapshot);
 
-            ChatOptions options = new ChatOptions();
-            options.setScene("UI_LOCATOR_HEAL");
-            options.setPromptSummary("步骤[" + stepName + "]定位自愈");
-            options.setMaxTokens(1200); // 推理模型会先生成思考内容，预留足够 token 防止 JSON 被截断
-            options.setTemperature(0.1);
-            options.setTimeoutMs(30000);
-            ChatResult result = aiGatewayService.chat(
-                    List.of(ChatMessage.system(SYSTEM_PROMPT), ChatMessage.user(prompt)), options);
-
-            HealResult healResult = parseResult(result.getContent());
+            ChatRequest req = ChatRequest.builder()
+                    .messages(SystemMessage.from(SYSTEM_PROMPT), UserMessage.from(prompt))
+                    .build();
+            final ChatRequest finalReq = req;
+            ChatResponse resp = com.mokatest.platform.demos.ai.config.AiUsageContext.withScene(
+                    "UI_LOCATOR_HEAL", null, () -> modelManager.getChatModel().chat(finalReq));
+            HealResult healResult = parseResult(resp.aiMessage().text());
             for (Element candidate : healResult.candidates) {
                 if (verify(frame, candidate)) {
                     log.info("[AiHeal] 步骤[{}] 自愈命中: {}={}", stepName, candidate.getLocatorType(), candidate.getLocatorValue());
@@ -222,16 +220,12 @@ public class AiLocatorHealService {
                     + "输出 JSON 对象：{\"found\":true或false,\"frame\":\"所在iframe的url\",\"note\":\"一句话结论\"}\n"
                     + "只有快照中能明确找到语义匹配的元素才 found=true，否则 found=false。";
 
-            ChatOptions options = new ChatOptions();
-            options.setScene("UI_LOCATOR_HEAL");
-            options.setPromptSummary("步骤[" + stepName + "]跨iframe诊断");
-            options.setMaxTokens(300);
-            options.setTemperature(0.1);
-            options.setTimeoutMs(30000);
-            ChatResult result = aiGatewayService.chat(
-                    List.of(ChatMessage.system(SYSTEM_PROMPT), ChatMessage.user(prompt)), options);
+            ChatRequest cfReq = ChatRequest.builder()
+                    .messages(SystemMessage.from(SYSTEM_PROMPT), UserMessage.from(prompt))
+                    .build();
+            ChatResponse cfResp = modelManager.getChatModel().chat(cfReq);
 
-            String content = result.getContent();
+            String content = cfResp.aiMessage().text();
             if (!StringUtils.hasText(content)) {
                 return null;
             }

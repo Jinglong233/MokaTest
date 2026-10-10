@@ -122,6 +122,9 @@ public abstract class AbstractTestStep implements Serializable {
                 ErrorAnalysis analysis = PlaywrightErrorParser.parseFullError(e.getMessage());
                 result.setErrorMessage(analysis.toString());
             }
+
+            // AI 失败分诊（数据/环境/真BUG 三分类）：结果写入步骤结果，调试会话实时推送
+            runFailureTriage(context, e);
         } finally {
             // 热加载回退期间：跳过截图、结果回传与队列弹出，避免产生虚假执行记录，
             // 由 executeTest 捕获热加载信号后统一清理执行状态
@@ -171,6 +174,46 @@ public abstract class AbstractTestStep implements Serializable {
     }
 
     protected abstract StepResult doExecute(TestExecutionContext context);
+
+    /**
+     * AI 失败分诊：数据/环境/真BUG 三分类（agentic 条件工作流，定位类失败在
+     * AbstractNecessaryElementTestStep 快速通道处理，不走这里）。
+     * 结果写入步骤结果（triageCategory/triageDetail，随报告 JSON 入库），调试会话额外推 TRIAGE_RESULT。
+     * 任何异常静默——分诊是加分项，不能反过来影响失败收尾。
+     */
+    private void runFailureTriage(TestExecutionContext context, Exception error) {
+        try {
+            com.mokatest.platform.demos.ai.triage.FailureTriageService triageService =
+                    ApplicationContextHolder.getBean(com.mokatest.platform.demos.ai.triage.FailureTriageService.class);
+            com.mokatest.platform.demos.ai.triage.FailureTriageService.TriageOutcome outcome =
+                    triageService.triage(context, getStepName(), String.valueOf(getStepType()), error);
+            if (outcome == null) {
+                return;
+            }
+            BaseStepResult r = context.getCurrentCommonStepResult();
+            r.setTriageCategory(outcome.category());
+            String detail = outcome.bugDraft() != null ? GSON.toJson(outcome.bugDraft()) : outcome.detail();
+            if (detail != null && detail.length() > 2000) {
+                detail = detail.substring(0, 2000);
+            }
+            r.setTriageDetail(detail);
+
+            if (context instanceof PlaywrightDebugSession debugSession) {
+                com.google.gson.JsonObject msg = new com.google.gson.JsonObject();
+                msg.addProperty("type", "TRIAGE_RESULT");
+                msg.addProperty("stepId", getId());
+                msg.addProperty("stepName", getStepName());
+                msg.addProperty("category", outcome.category());
+                msg.addProperty("detail", outcome.detail());
+                if (outcome.bugDraft() != null) {
+                    msg.add("bugDraft", GSON.toJsonTree(outcome.bugDraft()));
+                }
+                DebugWebSocketHandler.sendToSession(debugSession.getSessionId(), msg.toString());
+            }
+        } catch (Exception ex) {
+            log.warn("[Triage] 步骤[{}] 失败分诊异常，按原失败处理: {}", getStepName(), ex.getMessage());
+        }
+    }
 
     /**
      * 主逻辑执行入口（execute 模板调用点）。

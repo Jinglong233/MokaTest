@@ -68,6 +68,11 @@ public abstract class AbstractNecessaryElementTestStep extends AbstractTestStep 
                 // AI 修不了：诊断写入步骤结果，按 FAILURE 正常收尾（等价于断言失败路径）
                 if (healResult.diagnosis != null && !healResult.diagnosis.isEmpty()) {
                     context.getCurrentCommonStepResult().setErrorMessage("AI 诊断：" + healResult.diagnosis);
+                    // 分诊标记：定位失效（自愈未命中），与数据/环境/真BUG 分诊保持同一字段语义
+                    context.getCurrentCommonStepResult().setTriageCategory("LOCATOR");
+                    context.getCurrentCommonStepResult().setTriageDetail(
+                            healResult.diagnosis.length() > 2000
+                                    ? healResult.diagnosis.substring(0, 2000) : healResult.diagnosis);
                     context.getCurrentCommonStepResult().setStatus(StepExecutionType.FAILURE);
                     context.tryStopContextContineExecution();
                     return context.getCurrentStepResult();
