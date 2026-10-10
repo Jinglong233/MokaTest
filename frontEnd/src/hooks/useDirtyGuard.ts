@@ -47,3 +47,32 @@ export function useDirtyGuard(
         return true;
     });
 }
+
+/**
+ * 有未保存修改时弹窗确认，没修改直接执行
+ *
+ * 用于弹窗关闭、抽屉关闭、tab 切换等场景。
+ * 与 useDirtyGuard 分工：useDirtyGuard 处理路由离开 + beforeunload，
+ * confirmIfDirty 处理组件内操作（弹窗/抽屉/tab）。
+ *
+ * @param isDirty 是否有未保存修改
+ * @param onConfirm 没有修改或用户确认放弃后执行
+ * @param message 确认提示文案
+ */
+export function confirmIfDirty(
+    isDirty: boolean,
+    onConfirm: () => void,
+    message = '当前有未保存的修改，继续将丢失这些修改，确定离开吗？'
+) {
+    if (isDirty) {
+        Modal.confirm({
+            title: '有未保存的修改',
+            content: message,
+            okText: '放弃修改',
+            cancelText: '继续编辑',
+            onOk: onConfirm,
+        });
+    } else {
+        onConfirm();
+    }
+}
