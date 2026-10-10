@@ -5,19 +5,29 @@ import cn.dev33.satoken.util.SaResult;
 import cn.hutool.core.bean.BeanUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.mokatest.platform.demos.ai.config.ModelManager;
+import com.mokatest.platform.demos.ai.context.ContextBlocks;
 import com.mokatest.platform.demos.ai.domain.AiGenerationRecord;
-import com.mokatest.platform.demos.ai.gateway.AiGatewayService;
-import com.mokatest.platform.demos.ai.gateway.ChatMessage;
-import com.mokatest.platform.demos.ai.gateway.ChatOptions;
-import com.mokatest.platform.demos.ai.skill.AiSkill;
+import com.mokatest.platform.demos.ai.domain.Citation;
+import com.mokatest.platform.demos.ai.service.AssistantFactory;
+import com.mokatest.platform.demos.ai.service.CaseGenerationAssistant;
+import com.mokatest.platform.demos.ai.service.Intent;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.TokenStream;
 import com.mokatest.platform.demos.ai.skill.DraftGenResult;
-import com.mokatest.platform.demos.ai.skill.SkillContext;
-import com.mokatest.platform.demos.ai.skill.SkillExecutionSupport;
-import com.mokatest.platform.demos.ai.skill.SkillRegistry;
 import com.mokatest.platform.demos.ai.skill.SkillRequest;
+import com.mokatest.platform.demos.ai.stream.AiStreamBuffer;
 import com.mokatest.platform.demos.ai.skill.apicase.ApiCaseDraftDTO;
 import com.mokatest.platform.demos.ai.skill.apicase.ApiCaseDraftMapper;
-import com.mokatest.platform.demos.ai.skill.apicase.GenerateApiCaseSkill;
+import com.mokatest.platform.demos.ai.skill.apicase.ApiCaseDraftParser;
+import com.mokatest.platform.demos.ai.skill.apicase.ApiDefinitionSource;
+import com.mokatest.platform.demos.ai.skill.apicase.ExistingApiCaseSource;
+import com.mokatest.platform.demos.ai.skill.apicase.SiblingApiSource;
 import com.mokatest.platform.demos.api.domain.ApiRequest;
 import com.mokatest.platform.demos.api.domain.apiEnum.ApiNodeType;
 import com.mokatest.platform.demos.api.domain.dto.AddApiInterfaceDTO;
@@ -43,45 +53,31 @@ import java.util.Map;
  *
  * 会话隔离：append/adopt 只传 recordNo，锚定接口（entityId）与项目归属从记录读取。
  * 数据边界：接口查询带 project_id + team_id 双过滤。
+ *
+ * 重写后：用 LangChain4j CaseGenerationAssistant（AI Service + TokenStream + RAG）。
  */
 @Service
 public class AiApiCaseService {
 
     private static final Logger log = LoggerFactory.getLogger(AiApiCaseService.class);
 
-    @Autowired
-    private SkillExecutionSupport executionSupport;
+    @Autowired private ApiDefinitionSource apiDefinitionSource;
+    @Autowired private SiblingApiSource siblingApiSource;
+    @Autowired private ExistingApiCaseSource existingApiCaseSource;
 
-    @Autowired
-    private SkillRegistry skillRegistry;
+    private final ApiCaseDraftParser parser = new ApiCaseDraftParser();
 
-    @Autowired
-    private AiGatewayService gatewayService;
+    @Autowired private ModelManager modelManager;
+    @Autowired private AssistantFactory assistantFactory;
+    @Autowired private AiGenerationRecordService recordService;
+    @Autowired private ApiCaseDraftMapper apiCaseDraftMapper;
+    @Autowired private ApiRequestMapper apiRequestMapper;
+    @Autowired private ApiRequestService apiRequestService;
+    @Autowired private com.mokatest.platform.demos.ai.stream.AiStreamBufferRegistry bufferRegistry;
+    @Autowired private com.mokatest.platform.demos.ai.knowledge.KnowledgeService knowledgeService;
 
-    @Autowired
-    private AiGenerationRecordService recordService;
-
-    @Autowired
-    private ApiCaseDraftMapper apiCaseDraftMapper;
-
-    @Autowired
-    private ApiRequestService apiRequestService;
-
-    @Autowired
-    private ApiRequestMapper apiRequestMapper;
-
-    @Autowired
-    private com.mokatest.platform.demos.ai.stream.AiStreamBufferRegistry bufferRegistry;
-
-    @Autowired
-    private com.mokatest.platform.demos.ai.router.AiIntentRouter intentRouter;
-
-    /**
-     * 流式生成（SSE）
-     */
     @SuppressWarnings("unchecked")
     public void generateStream(SkillRequest request, boolean append, SseEmitter emitter) {
-        AiSkill<DraftGenResult<ApiCaseDraftDTO>> skill = skillRegistry.getSkill(GenerateApiCaseSkill.SCENE);
         String previousOutput = null;
         AiGenerationRecord record = null;
 
@@ -89,121 +85,63 @@ public class AiApiCaseService {
             record = recordService.requireValid(request.getRecordNo(), request.getProjectId());
             request.setEntityId(record.getEntityId());
             request.setProjectId(record.getProjectId());
+            request.setTeamId(record.getTeamId());
             previousOutput = latestRoundDrafts(record.getOutputSnapshot());
         }
 
-        // 对话历史注入：让模型感知用户的修正与补充信息
         if (record != null) {
-            request.setHistory(com.mokatest.platform.demos.ai.skill.ConversationHistory.build(
-                    recordService.parseRounds(record.getOutputSnapshot())));
+            request.setHistory(buildHistory(recordService.parseRounds(record.getOutputSnapshot())));
         }
 
-        // 知识库（L0）检索词：接口名 + 路径（KnowledgeSource 在 buildContext 内消费）
-        try {
-            ApiRequest api = apiRequestMapper.selectOne(new QueryWrapper<ApiRequest>()
-                    .eq("id", request.getEntityId())
-                    .eq("project_id", request.getProjectId())
-                    .select("id", "api_name", "request_path"));
-            if (api != null && api.getApiName() != null) {
-                request.setRetrievalQuery(api.getApiName() + " "
-                        + (api.getRequestPath() == null ? "" : api.getRequestPath()));
-            }
-        } catch (Exception ignore) {
-            // 检索词组装失败不影响主流程（KnowledgeSource 回退用指令检索）
-        }
+        List<String> trimmedNotes = new ArrayList<>();
+        String contextText = buildContextText(request);
 
-        SkillContext context = executionSupport.buildContext(skill, request);
-
-        ChatOptions options = buildOptions(request, "接口#" + request.getEntityId()
-                + (request.getInstruction() != null ? " 指令:" + abbreviate(request.getInstruction(), 80) : ""));
-
-        // 发送即落库：新会话先建记录；意图路由决定本轮走问答还是生成
         if (record == null) {
-            record = executionSupport.createRecord(request, GenerateApiCaseSkill.SCENE, null, context);
+            record = createRecord(request, ApiCaseGenPrompts.SCENE, trimmedNotes);
             request.setRecordNo(record.getRecordNo());
         }
-        // 发送即落库：先写入 GENERATING 轮再做意图分类，缩短首字节等待；
-        // 轮次类型先按 gen 记，QA 轮完成时由 finishQaRound 纠正为 qa
         recordService.beginRound(record.getRecordNo(), request.getProjectId(), request.getInstruction(), "gen");
-        com.mokatest.platform.demos.ai.router.AiIntentRouter.Intent intent =
-                intentRouter.route(request.getInstruction(), options);
+        Intent intent;
+        try {
+            intent = assistantFactory.createClassifier().classify(request.getInstruction());
+        } catch (Exception e) {
+            log.warn("意图分类失败，按生成处理: {}", e.getMessage());
+            intent = Intent.GENERATE;
+        }
 
         final AiGenerationRecord finalRecord = record;
-        final SkillContext finalContext = context;
-
-        // 流缓冲：边推边累积，支持关弹窗后重连续流；rawText 每 2s 落库
-        final com.mokatest.platform.demos.ai.stream.AiStreamBuffer buffer =
-                bufferRegistry.create(record.getRecordNo());
+        final AiStreamBuffer buffer = bufferRegistry.create(record.getRecordNo());
         final String recordNo = record.getRecordNo();
-        final long[] lastFlush = {System.currentTimeMillis()};
 
-        if (intent == com.mokatest.platform.demos.ai.router.AiIntentRouter.Intent.QA) {
-            qaStream(request, context, record, buffer, options, emitter);
+        if (intent == Intent.QA) {
+            qaStream(request, contextText, finalRecord, buffer, emitter);
             return;
         }
 
-        List<ChatMessage> messages = skill.buildPrompt(request, context, previousOutput);
+        int count = ApiCaseGenPrompts.resolveCount(request.getInstruction(), request.getCount(), 5);
+        String userMsg = ApiCaseGenPrompts.buildUserMessage(
+                contextText, request.getHistory(), request.getInstruction(), previousOutput, count);
 
-        gatewayService.chatStream(messages, options,
-                chunk -> {
-                    buffer.append(chunk);
-                    send(emitter, "delta", chunk);
-                    long now = System.currentTimeMillis();
-                    if (now - lastFlush[0] > 2000) {
-                        lastFlush[0] = now;
-                        recordService.updateRoundRawText(recordNo, request.getProjectId(), buffer.text());
-                    }
-                },
-                full -> handleComplete(emitter, skill, request, finalRecord, finalContext, buffer, full),
-                error -> {
-                    if (buffer.isCancelRequested()) {
-                        recordService.stopRound(recordNo, request.getProjectId(), buffer.text());
-                        buffer.markStopped();
-                        send(emitter, "stopped", "已停止");
-                    } else {
-                        recordService.failRound(recordNo, request.getProjectId(), error.getMessage());
-                        buffer.fail(error.getMessage());
-                        send(emitter, "error", error.getMessage());
-                    }
-                    emitter.complete();
-                },
-                call -> buffer.bindCall(call));
+        CaseGenerationAssistant assistant = assistantFactory.createCaseGenerator(
+                request.getProjectId(), ApiCaseGenPrompts.systemPrompt());
+        runStream(assistant.generate(userMsg), buffer, emitter, recordNo, request.getProjectId(),
+                request.getCitations(),
+                full -> handleComplete(emitter, request, finalRecord, buffer, full));
     }
 
-    /**
-     * 问答轮：带接口上下文 + 对话历史的自由问答（不出草稿、不入库）
-     */
-    private void qaStream(SkillRequest request, SkillContext context, AiGenerationRecord record,
-                          com.mokatest.platform.demos.ai.stream.AiStreamBuffer buffer,
-                          ChatOptions options, SseEmitter emitter) {
+    private void qaStream(SkillRequest request, String contextText, AiGenerationRecord record,
+                          AiStreamBuffer buffer, SseEmitter emitter) {
         String recordNo = record.getRecordNo();
-        StringBuilder user = new StringBuilder();
-        user.append(context.render());
-        if (request.getHistory() != null && !request.getHistory().isEmpty()) {
-            user.append("\n## 本会话对话历史\n").append(request.getHistory()).append('\n');
-        }
-        user.append("\n用户问题：").append(request.getInstruction());
-        List<ChatMessage> messages = List.of(
-                ChatMessage.system("你是资深接口测试专家助手。请基于给定的接口上下文和对话历史回答用户问题。"
-                        + "回答使用中文，简洁专业，可以使用 markdown 列表。"
-                        + "不要输出 JSON 用例数组；如果用户的问题其实是在要求生成用例，"
-                        + "也只需用文字给出设计建议即可。"),
-                ChatMessage.user(user.toString()));
+        String userMsg = ApiCaseGenPrompts.buildQaUserMessage(
+                contextText, request.getHistory(), request.getInstruction());
 
-        final long[] lastFlush = {System.currentTimeMillis()};
-        gatewayService.chatStream(messages, options,
-                chunk -> {
-                    buffer.append(chunk);
-                    send(emitter, "delta", chunk);
-                    long now = System.currentTimeMillis();
-                    if (now - lastFlush[0] > 2000) {
-                        lastFlush[0] = now;
-                        recordService.updateRoundRawText(recordNo, request.getProjectId(), buffer.text());
-                    }
-                },
+        CaseGenerationAssistant assistant = assistantFactory.createCaseGenerator(
+                request.getProjectId(), ApiCaseGenPrompts.qaSystemPrompt());
+        runStream(assistant.generate(userMsg), buffer, emitter, recordNo, request.getProjectId(),
+                request.getCitations(),
                 full -> {
                     recordService.finishQaRound(recordNo, request.getProjectId(), full);
-                    java.util.Map<String, Object> result = new HashMap<>();
+                    Map<String, Object> result = new HashMap<>();
                     result.put("recordNo", recordNo);
                     result.put("type", "qa");
                     result.put("drafts", List.of());
@@ -211,85 +149,34 @@ public class AiApiCaseService {
                     buffer.finish(resultJson);
                     send(emitter, "result", resultJson);
                     emitter.complete();
-                },
-                error -> {
-                    if (buffer.isCancelRequested()) {
-                        recordService.stopRound(recordNo, request.getProjectId(), buffer.text());
-                        buffer.markStopped();
-                        send(emitter, "stopped", "已停止");
-                    } else {
-                        recordService.failRound(recordNo, request.getProjectId(), error.getMessage());
-                        buffer.fail(error.getMessage());
-                        send(emitter, "error", error.getMessage());
-                    }
-                    emitter.complete();
-                },
-                call -> buffer.bindCall(call));
+                });
     }
 
-    /**
-     * 停止生成：取消底层模型调用，当前轮次标记 STOPPED 并保留部分内容
-     */
-    public void stop(String recordNo) {
-        Integer projectId = ProjectContextHolder.getProjectId();
-        AiGenerationRecord record = recordService.requireValid(recordNo, projectId);
-        com.mokatest.platform.demos.ai.stream.AiStreamBuffer buffer = bufferRegistry.get(record.getRecordNo());
-        if (buffer != null && buffer.getState() == com.mokatest.platform.demos.ai.stream.AiStreamBuffer.State.STREAMING) {
-            buffer.requestCancel();
-        } else {
-            recordService.stopRound(record.getRecordNo(), projectId, null);
-        }
-    }
-
-    /**
-     * 重新生成：删除最后一轮，按同一指令重跑（SSE）
-     *
-     * @param baseRequest 请求线程内已解析好上下文（userId/teamId/projectId）的基础请求
-     */
-    public void regenerateStream(SkillRequest baseRequest, SseEmitter emitter) {
-        String recordNo = baseRequest.getRecordNo();
-        AiGenerationRecord record = recordService.requireValid(recordNo, baseRequest.getProjectId());
-        com.alibaba.fastjson.JSONArray rounds = recordService.parseRounds(record.getOutputSnapshot());
-        if (rounds.isEmpty()) {
-            throw new BusinessException("没有可重新生成的轮次");
-        }
-        String instruction = rounds.getJSONObject(rounds.size() - 1).getString("instruction");
-        recordService.removeLastRound(recordNo, baseRequest.getProjectId());
-        baseRequest.setInstruction(instruction);
-        generateStream(baseRequest, true, emitter);
-    }
-
-    /**
-     * 删除会话记录（不影响已入库的用例）
-     */
-    public void deleteRecord(String recordNo) {
-        recordService.delete(recordNo, ProjectContextHolder.getProjectId());
-    }
-
-    private void handleComplete(SseEmitter emitter, AiSkill<DraftGenResult<ApiCaseDraftDTO>> skill, SkillRequest request,
-                                AiGenerationRecord record, SkillContext context,
-                                com.mokatest.platform.demos.ai.stream.AiStreamBuffer buffer, String full) {
+    @SuppressWarnings("unchecked")
+    private void handleComplete(SseEmitter emitter, SkillRequest request, AiGenerationRecord record,
+                                AiStreamBuffer buffer, String full) {
+        String recordNo = record.getRecordNo();
         try {
             DraftGenResult<ApiCaseDraftDTO> genResult;
             try {
-                genResult = skill.parse(full);
+                genResult = parser.parse(full);
             } catch (BusinessException parseError) {
-                SkillContext retryCtx = executionSupport.buildContext(skill, request);
-                List<ChatMessage> retryMessages = skill.buildPrompt(request, retryCtx, null);
-                retryMessages.add(ChatMessage.assistant(full));
-                retryMessages.add(ChatMessage.user("上一次输出无法解析：" + parseError.getMessage()
+                List<ChatMessage> retry = new ArrayList<>();
+                retry.add(AiMessage.from(full));
+                retry.add(UserMessage.from("上一次输出无法解析：" + parseError.getMessage()
                         + "，请严格按要求的 JSON 对象格式重新输出。"));
-                genResult = skill.parse(gatewayService.chat(retryMessages, buildOptions(request, "解析重试")).getContent());
+                genResult = parser.parse(chatSync(retry));
             }
 
             List<ApiCaseDraftDTO> drafts = genResult.getDrafts();
             assignDraftIds(drafts);
-            recordService.finishRound(record.getRecordNo(), request.getProjectId(),
+            recordService.finishRound(recordNo, request.getProjectId(),
                     JSON.toJSONString(drafts), full, JSON.toJSONString(genResult.getUncertainties()),
                     JSON.toJSONString(request.getCitations()));
+            knowledgeService.settleCitations(request.getCitations());
 
             Map<String, Object> result = new HashMap<>();
-            result.put("recordNo", record.getRecordNo());
+            result.put("recordNo", recordNo);
             result.put("drafts", drafts);
             result.put("uncertainties", genResult.getUncertainties());
             result.put("citations", request.getCitations());
@@ -299,21 +186,212 @@ public class AiApiCaseService {
             emitter.complete();
         } catch (Exception e) {
             log.warn("AI 生成接口用例解析失败: {}", e.getMessage());
-            recordService.failRound(record.getRecordNo(), request.getProjectId(),
-                    e instanceof BusinessException ? e.getMessage() : "生成结果解析失败");
+            recordService.failRound(recordNo, request.getProjectId(),
+                    e instanceof BusinessException ? e.getMessage() : "生成结果解析失败", buffer.text());
             buffer.fail(e.getMessage());
             send(emitter, "error", e instanceof BusinessException ? e.getMessage() : "生成结果解析失败，请重试");
             emitter.complete();
         }
     }
 
-    /**
-     * 采纳入库：勾选草稿 → 走现有 saveCase 保存为接口用例
-     *
-     * 防重复：draftId 已在采纳明细中的条目跳过；同接口下同名用例返回提示（不拦截）。
-     *
-     * @return savedIds / adoptedDraftIds / skippedCount / duplicateNames
-     */
+    // ==================== TokenStream 通用桥接 ====================
+
+    private void runStream(TokenStream ts, AiStreamBuffer buffer, SseEmitter emitter,
+                            String recordNo, Integer projectId,
+                            java.util.List<Citation> citationsCollector,
+                            java.util.function.Consumer<String> onComplete) {
+        final long[] lastFlush = {System.currentTimeMillis()};
+        ts.onPartialResponse(chunk -> {
+                    if (buffer.isCancelRequested() || chunk == null || chunk.isEmpty()) return;
+                    buffer.append(chunk);
+                    send(emitter, "delta", chunk);
+                    long now = System.currentTimeMillis();
+                    if (now - lastFlush[0] > 2000) {
+                        lastFlush[0] = now;
+                        recordService.updateRoundRawText(recordNo, projectId, buffer.text());
+                    }
+                })
+                .onRetrieved(contents -> {
+                    for (Content c : contents) {
+                        try {
+                            String docIdStr = c.textSegment().metadata().getString("docId");
+                            String docTitle = c.textSegment().metadata().getString("docTitle");
+                            if (docIdStr != null && citationsCollector != null) {
+                                citationsCollector.add(new Citation(
+                                        Long.valueOf(docIdStr), docTitle,
+                                        abbreviate(c.textSegment().text(), 100)));
+                            }
+                        } catch (Exception ignore) {
+                        }
+                    }
+                })
+                .onCompleteResponse(response -> {
+                    String full = buffer.text();
+                    if (buffer.isCancelRequested()) {
+                        recordService.stopRound(recordNo, projectId, full);
+                        buffer.markStopped();
+                        send(emitter, "stopped", "已停止");
+                        emitter.complete();
+                    } else {
+                        onComplete.accept(full);
+                    }
+                })
+                .onError(error -> {
+                    if (buffer.isCancelRequested()) {
+                        recordService.stopRound(recordNo, projectId, buffer.text());
+                        buffer.markStopped();
+                        send(emitter, "stopped", "已停止");
+                    } else {
+                        recordService.failRound(recordNo, projectId, error.getMessage(), buffer.text());
+                        buffer.fail(error.getMessage());
+                        send(emitter, "error", error.getMessage() != null ? error.getMessage() : "生成失败");
+                    }
+                    emitter.complete();
+                })
+                .start();
+    }
+
+    // ==================== 上下文组装 ====================
+
+    private String buildContextText(SkillRequest request) {
+        Long eid = request.getEntityId();
+        Integer pid = request.getProjectId();
+        Integer tid = request.getTeamId();
+        List<String> trimmedNotes = new ArrayList<>();
+        List<ContextBlocks.Block> blocks = new ArrayList<>();
+        ContextBlocks.Block l1 = apiDefinitionSource.load(eid, pid, tid);
+        if (l1 != null) blocks.add(l1);
+        addIfNotNull(blocks, loadSafely(() -> siblingApiSource.load(eid, pid), "L3"));
+        addIfNotNull(blocks, loadSafely(() -> existingApiCaseSource.load(eid, pid), "L4"));
+        return ContextBlocks.assemble(blocks, trimmedNotes);
+    }
+
+    private void addIfNotNull(List<ContextBlocks.Block> blocks, ContextBlocks.Block b) {
+        if (b != null) blocks.add(b);
+    }
+
+    private ContextBlocks.Block loadSafely(java.util.function.Supplier<ContextBlocks.Block> loader, String level) {
+        try {
+            return loader.get();
+        } catch (Exception e) {
+            log.warn("上下文来源 {} 加载失败，已降级跳过: {}", level, e.getMessage());
+            return null;
+        }
+    }
+
+    // ==================== 记录管理 ====================
+
+    private AiGenerationRecord createRecord(SkillRequest request, String scene, List<String> trimmedNotes) {
+        AiGenerationRecord record = recordService.create(
+                request.getProjectId(), request.getTeamId(), request.getUserId(),
+                scene, request.getEntityId(), buildSummary(request, trimmedNotes));
+        recordService.appendSnapshot(record.getRecordNo(), request.getProjectId(), null);
+        return record;
+    }
+
+    private String buildSummary(SkillRequest request, List<String> trimmedNotes) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("entityId=").append(request.getEntityId());
+        if (request.getInstruction() != null && !request.getInstruction().isEmpty()) {
+            sb.append("；指令：").append(request.getInstruction().length() > 100
+                    ? request.getInstruction().substring(0, 100) : request.getInstruction());
+        }
+        if (request.getCitations() != null && !request.getCitations().isEmpty()) {
+            sb.append("；知识库：");
+            request.getCitations().stream().map(Citation::getTitle).distinct().limit(5)
+                    .forEach(t -> sb.append("《").append(t).append("》"));
+        }
+        if (trimmedNotes != null && !trimmedNotes.isEmpty()) {
+            sb.append("；裁剪：").append(String.join(" | ", trimmedNotes));
+        }
+        return sb.length() > 480 ? sb.substring(0, 480) : sb.toString();
+    }
+
+    private String buildHistory(java.util.List<java.util.Map<String, Object>> rounds) {
+        if (rounds == null || rounds.isEmpty()) return null;
+        int maxRounds = 6;
+        int maxOutputSummary = 300;
+        StringBuilder sb = new StringBuilder();
+        int start = Math.max(0, rounds.size() - maxRounds);
+        for (int i = start; i < rounds.size(); i++) {
+            java.util.Map<String, Object> round = rounds.get(i);
+            if (round == null) continue;
+            String instruction = str(round, "instruction");
+            if (instruction != null && !instruction.isEmpty()) {
+                sb.append("用户：").append(instruction).append('\n');
+            }
+            String status = str(round, "status");
+            String type = str(round, "type");
+            if ("qa".equals(type)) {
+                String answer = str(round, "rawText");
+                if (answer != null && !answer.isEmpty()) {
+                    sb.append("助手：").append(answer.length() <= maxOutputSummary ? answer : answer.substring(0, maxOutputSummary) + "…").append('\n');
+                }
+            } else if ("DONE".equals(status)) {
+                Object draftsObj = round.get("drafts");
+                java.util.List<?> drafts = draftsObj instanceof java.util.List ? (java.util.List<?>) draftsObj : null;
+                if (drafts != null && !drafts.isEmpty()) {
+                    sb.append("助手：生成了 ").append(drafts.size()).append(" 条用例草稿（");
+                    int limit = Math.min(drafts.size(), 5);
+                    for (int j = 0; j < limit; j++) {
+                        Object o = drafts.get(j);
+                        String name = o instanceof java.util.Map ? str((java.util.Map<String, Object>) o, "caseName") : null;
+                        if (name != null) {
+                            sb.append(name);
+                            if (j < limit - 1) sb.append("、");
+                        }
+                    }
+                    if (drafts.size() > 5) sb.append(" 等");
+                    sb.append("）\n");
+                }
+            } else if ("FAILED".equals(status)) {
+                sb.append("助手：上一轮生成失败\n");
+            } else if ("STOPPED".equals(status)) {
+                sb.append("助手：上一轮被用户手动停止\n");
+            }
+        }
+        return sb.length() == 0 ? null : sb.toString();
+    }
+
+    private static String str(java.util.Map<String, Object> m, String k) {
+        if (m == null) return null;
+        Object v = m.get(k);
+        return v == null ? null : String.valueOf(v);
+    }
+
+    public void stop(String recordNo) {
+        Integer projectId = ProjectContextHolder.getProjectId();
+        AiGenerationRecord record = recordService.requireValid(recordNo, projectId);
+        AiStreamBuffer buffer = bufferRegistry.get(record.getRecordNo());
+        if (buffer != null && buffer.getState() == AiStreamBuffer.State.STREAMING) {
+            buffer.requestCancel();
+        } else {
+            recordService.stopRound(record.getRecordNo(), projectId, null);
+        }
+    }
+
+    public void regenerateStream(SkillRequest baseRequest, SseEmitter emitter) {
+        String recordNo = baseRequest.getRecordNo();
+        AiGenerationRecord record = recordService.requireValid(recordNo, baseRequest.getProjectId());
+        java.util.List<java.util.Map<String, Object>> rounds = recordService.parseRounds(record.getOutputSnapshot());
+        if (rounds.isEmpty()) {
+            throw new BusinessException("没有可重新生成的轮次");
+        }
+        java.util.Map<String, Object> lastRound = rounds.get(rounds.size() - 1);
+        String lastStatus = lastRound == null ? null : str(lastRound, "status");
+        if (!"FAILED".equals(lastStatus) && !"DONE".equals(lastStatus)) {
+            throw new BusinessException("仅允许对已完成或失败的轮次重新生成");
+        }
+        String instruction = lastRound == null ? null : str(lastRound, "instruction");
+        recordService.removeLastRound(recordNo, baseRequest.getProjectId());
+        baseRequest.setInstruction(instruction);
+        generateStream(baseRequest, true, emitter);
+    }
+
+    public void deleteRecord(String recordNo) {
+        recordService.delete(recordNo, ProjectContextHolder.getProjectId());
+    }
+
     public Map<String, Object> adopt(String recordNo, List<ApiCaseDraftDTO> items) {
         if (items == null || items.isEmpty()) {
             throw new BusinessException("请至少选择一条用例入库");
@@ -321,24 +399,18 @@ public class AiApiCaseService {
         Integer projectId = ProjectContextHolder.getProjectId();
         Integer teamId = TeamContextHolder.getTeamId();
         AiGenerationRecord record = recordService.requireValid(recordNo, projectId);
-        // 锚定接口从记录读取，不信前端
         Long apiId = record.getEntityId();
         ApiRequest base = apiRequestMapper.selectOne(new QueryWrapper<ApiRequest>()
-                .eq("id", apiId)
-                .eq("project_id", projectId)
-                .eq("api_node", ApiNodeType.INTERFACE));
+                .eq("id", apiId).eq("project_id", projectId).eq("api_node", ApiNodeType.INTERFACE));
         if (base == null) {
             throw new BusinessException("锚定接口不存在或已被删除");
         }
 
-        // 1. 过滤已采纳过的草稿（draftId 防线）
         java.util.Set<String> adoptedIds = recordService.parseAdoptedDraftIds(record.getAdoptedDetail());
         List<ApiCaseDraftDTO> toSave = new ArrayList<>();
         int skipped = 0;
         for (ApiCaseDraftDTO draft : items) {
-            if (draft.getCaseName() == null || draft.getCaseName().trim().isEmpty()) {
-                continue;
-            }
+            if (draft.getCaseName() == null || draft.getCaseName().trim().isEmpty()) continue;
             if (draft.getDraftId() != null && adoptedIds.contains(draft.getDraftId())) {
                 skipped++;
                 continue;
@@ -346,18 +418,13 @@ public class AiApiCaseService {
             toSave.add(draft);
         }
 
-        // 2. 内容级查重（同接口下同名用例，软提示不拦截）
         List<String> duplicateNames = new ArrayList<>();
         if (!toSave.isEmpty()) {
             List<ApiRequest> existing = apiRequestMapper.selectList(new QueryWrapper<ApiRequest>()
-                    .eq("project_id", projectId)
-                    .eq("source_drat_id", apiId)
-                    .select("id", "api_name"));
+                    .eq("project_id", projectId).eq("source_drat_id", apiId).select("id", "api_name"));
             java.util.Set<String> existingNames = new java.util.HashSet<>();
             for (ApiRequest c : existing) {
-                if (c.getApiName() != null) {
-                    existingNames.add(c.getApiName().trim());
-                }
+                if (c.getApiName() != null) existingNames.add(c.getApiName().trim());
             }
             for (ApiCaseDraftDTO draft : toSave) {
                 if (existingNames.contains(draft.getCaseName().trim())) {
@@ -366,13 +433,11 @@ public class AiApiCaseService {
             }
         }
 
-        // 3. 入库并登记采纳明细
         List<Integer> savedIds = new ArrayList<>();
         List<String> adoptedDraftIds = new ArrayList<>();
-        com.alibaba.fastjson.JSONArray entries = new com.alibaba.fastjson.JSONArray();
+        java.util.List<java.util.Map<String, Object>> entries = new java.util.ArrayList<>();
         for (ApiCaseDraftDTO draft : toSave) {
             ApiRequest entity = apiCaseDraftMapper.toEntity(draft, base, projectId, teamId);
-            // 走现有 saveCase 通道（继承归属填充 + 事件发布）
             AddApiInterfaceDTO dto = BeanUtil.copyProperties(entity, AddApiInterfaceDTO.class);
             dto.setSourceDratId(apiId.intValue());
             SaResult saveResult = apiRequestService.saveCase(dto);
@@ -381,13 +446,11 @@ public class AiApiCaseService {
             }
             Integer caseId = (Integer) saveResult.getData();
             savedIds.add(caseId);
-            com.alibaba.fastjson.JSONObject entry = new com.alibaba.fastjson.JSONObject();
+            java.util.Map<String, Object> entry = new java.util.LinkedHashMap<>();
             entry.put("draftId", draft.getDraftId());
             entry.put("caseId", caseId);
             entries.add(entry);
-            if (draft.getDraftId() != null) {
-                adoptedDraftIds.add(draft.getDraftId());
-            }
+            if (draft.getDraftId() != null) adoptedDraftIds.add(draft.getDraftId());
         }
         if (savedIds.isEmpty() && skipped > 0) {
             throw new BusinessException("所选条目均已入库过，无需重复入库");
@@ -405,7 +468,6 @@ public class AiApiCaseService {
         return result;
     }
 
-    /** 生成后为每条草稿分配身份标识（防重复入库） */
     private void assignDraftIds(List<ApiCaseDraftDTO> drafts) {
         for (ApiCaseDraftDTO draft : drafts) {
             if (draft.getDraftId() == null || draft.getDraftId().isEmpty()) {
@@ -414,16 +476,19 @@ public class AiApiCaseService {
         }
     }
 
-    /**
-     * 查询某接口下的生成记录（回溯）
-     */
     public List<AiGenerationRecord> listRecords(Long apiId) {
-        return recordService.listByEntity(ProjectContextHolder.getProjectId(), GenerateApiCaseSkill.SCENE, apiId);
+        return recordService.listByEntity(ProjectContextHolder.getProjectId(), ApiCaseGenPrompts.SCENE, apiId);
     }
 
-    /**
-     * 组装请求上下文（全部来自服务端上下文，不信 body）
-     */
+    private String latestRoundDrafts(String outputSnapshot) {
+        java.util.List<java.util.Map<String, Object>> rounds = recordService.parseRounds(outputSnapshot);
+        if (rounds.isEmpty()) return null;
+        java.util.Map<String, Object> latest = rounds.get(rounds.size() - 1);
+        if (latest == null) return null;
+        Object drafts = latest.get("drafts");
+        return drafts == null ? null : JSON.toJSONString(drafts);
+    }
+
     public SkillRequest buildRequest(Long apiId, String recordNo, String instruction) {
         Integer projectId = ProjectContextHolder.getProjectId();
         if (projectId == null) {
@@ -439,39 +504,23 @@ public class AiApiCaseService {
         return request;
     }
 
-    /**
-     * 从轮次快照中取最新一轮的草稿 JSON（作为追加生成的"上一轮输出"）
-     */
-    private String latestRoundDrafts(String outputSnapshot) {
-        com.alibaba.fastjson.JSONArray rounds = recordService.parseRounds(outputSnapshot);
-        if (rounds.isEmpty()) {
-            return null;
-        }
-        com.alibaba.fastjson.JSONObject latest = rounds.getJSONObject(rounds.size() - 1);
-        return latest == null ? null : latest.getString("drafts");
-    }
+    // ==================== 工具 ====================
 
-    private ChatOptions buildOptions(SkillRequest request, String summary) {        ChatOptions options = new ChatOptions();
-        options.setScene(GenerateApiCaseSkill.SCENE);
-        options.setUserId(request.getUserId());
-        options.setTeamId(request.getTeamId());
-        options.setProjectId(request.getProjectId());
-        options.setPromptSummary(summary);
-        return options;
+    private String chatSync(List<ChatMessage> messages) {
+        ChatRequest req = ChatRequest.builder().messages(messages).build();
+        ChatResponse resp = modelManager.getChatModel().chat(req);
+        return resp.aiMessage().text();
     }
 
     private void send(SseEmitter emitter, String event, String data) {
         try {
             emitter.send(SseEmitter.event().name(event).data(data));
         } catch (IOException | IllegalStateException e) {
-            // 客户端断开，忽略
         }
     }
 
     private String abbreviate(String text, int max) {
-        if (text == null || text.length() <= max) {
-            return text;
-        }
+        if (text == null || text.length() <= max) return text;
         return text.substring(0, max);
     }
 }

@@ -2,9 +2,7 @@ package com.mokatest.platform.demos.ai.skill.apicase;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.mokatest.platform.demos.ai.skill.ContextBlock;
-import com.mokatest.platform.demos.ai.skill.ContextSource;
-import com.mokatest.platform.demos.ai.skill.SkillRequest;
+import com.mokatest.platform.demos.ai.context.ContextBlocks;
 import com.mokatest.platform.demos.api.domain.ApiRequest;
 import com.mokatest.platform.demos.api.domain.apiEnum.ApiNodeType;
 import com.mokatest.platform.demos.api.mapper.ApiRequestMapper;
@@ -12,37 +10,20 @@ import com.mokatest.platform.demos.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 /**
  * L1 接口定义上下文：method/path/header/query/body/响应示例（不可裁剪）
- *
- * 数据边界：id + project_id + team_id 联合查询，跨项目/跨团队直接报"接口不存在"。
  */
 @Component
-public class ApiDefinitionSource implements ContextSource {
-
-    public static final String CODE = "api_definition";
+public class ApiDefinitionSource {
 
     @Autowired
     private ApiRequestMapper apiRequestMapper;
 
-    @Override
-    public String code() {
-        return CODE;
-    }
-
-    @Override
-    public String level() {
-        return "L1";
-    }
-
-    @Override
-    public ContextBlock load(SkillRequest request) {
+    public ContextBlocks.Block load(Long entityId, Integer projectId, Integer teamId) {
         ApiRequest api = apiRequestMapper.selectOne(new QueryWrapper<ApiRequest>()
-                .eq("id", request.getEntityId())
-                .eq("project_id", request.getProjectId())
-                .eq("team_id", request.getTeamId())
+                .eq("id", entityId)
+                .eq("project_id", projectId)
+                .eq("team_id", teamId)
                 .eq("api_node", ApiNodeType.INTERFACE));
         if (api == null) {
             throw new BusinessException("接口不存在");
@@ -66,8 +47,6 @@ public class ApiDefinitionSource implements ContextSource {
         if (api.getApiResultAssert() != null && !api.getApiResultAssert().isEmpty()) {
             sb.append("已有断言：").append(JSON.toJSONString(api.getApiResultAssert())).append('\n');
         }
-        ContextBlock block = new ContextBlock("L1", CODE, "接口定义", sb.toString());
-        block.setTrimmable(false);
-        return block;
+        return new ContextBlocks.Block("L1", "接口定义", sb.toString(), false);
     }
 }

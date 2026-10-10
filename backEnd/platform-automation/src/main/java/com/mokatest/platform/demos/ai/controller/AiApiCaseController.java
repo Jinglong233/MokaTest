@@ -138,7 +138,12 @@ public class AiApiCaseController {
     }
 
     private void runAsync(Runnable task, SseEmitter emitter) {
-        Thread thread = new Thread(() -> {
+        // 捕获请求线程上下文，传递到异步线程（ThreadLocal 不跨线程，ModelManager 解析项目档案依赖它）
+        Integer projectId = com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.getProjectId();
+        Integer teamId = com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.getTeamId();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.setProjectId(projectId);
+            com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.setTeamId(teamId);
             try {
                 task.run();
             } catch (Throwable e) {
@@ -150,10 +155,11 @@ public class AiApiCaseController {
                 } catch (Exception ignored) {
                 }
                 emitter.complete();
+            } finally {
+                com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.clear();
+                com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.clear();
             }
         });
-        thread.setDaemon(true);
-        thread.start();
     }
 
     @Data
