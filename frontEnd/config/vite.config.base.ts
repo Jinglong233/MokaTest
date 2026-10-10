@@ -50,9 +50,6 @@ export default defineConfig({
         },
         javascriptEnabled: true,
       },
-      scss: {
-        silenceDeprecations: ['legacy-js-api'],
-      },
     },
   },
 });
