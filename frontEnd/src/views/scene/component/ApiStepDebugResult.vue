@@ -11,10 +11,10 @@
         <a-space align="center">
           <a-tag color="arcoblue">{{ stepTypeLabel }}</a-tag>
           <span>{{ stepName }}</span>
-          <a-tag v-if="status === 'SUCCESS'" color="green">成功</a-tag>
-          <a-tag v-else-if="status === 'FAILURE'" color="red">失败</a-tag>
-          <a-tag v-else color="gray">跳过</a-tag>
-          <a-tag v-if="hasChildren" color="orange">{{ childrenCount }} 次子步骤</a-tag>
+          <a-tag v-if="status === 'SUCCESS'" color="green">{{ $t('scene.result.success') }}</a-tag>
+          <a-tag v-else-if="status === 'FAILURE'" color="red">{{ $t('scene.result.failure') }}</a-tag>
+          <a-tag v-else color="gray">{{ $t('scene.result.skipped') }}</a-tag>
+          <a-tag v-if="hasChildren" color="orange">{{ $t('scene.apiResult.childTimes', { count: childrenCount }) }}</a-tag>
         </a-space>
       </template>
 
@@ -23,13 +23,13 @@
         <a-tabs type="card-gutter" :default-active-key="0" lazy-load>
           <a-tab-pane v-for="(child, index) in childrenResults" :key="index">
             <template #title>
-              <span>第{{ Number(index) + 1 }}次</span>
-              <a-tag v-if="child.result?.status === 'SUCCESS'" color="green" size="small" style="margin-left: 4px">成功</a-tag>
-              <a-tag v-else-if="child.result?.status === 'FAILURE'" color="red" size="small" style="margin-left: 4px">失败</a-tag>
-              <a-tag v-else color="gray" size="small" style="margin-left: 4px">跳过</a-tag>
+              <span>{{ $t('scene.apiResult.nthTime', { index: Number(index) + 1 }) }}</span>
+              <a-tag v-if="child.result?.status === 'SUCCESS'" color="green" size="small" style="margin-left: 4px">{{ $t('scene.result.success') }}</a-tag>
+              <a-tag v-else-if="child.result?.status === 'FAILURE'" color="red" size="small" style="margin-left: 4px">{{ $t('scene.result.failure') }}</a-tag>
+              <a-tag v-else color="gray" size="small" style="margin-left: 4px">{{ $t('scene.result.skipped') }}</a-tag>
             </template>
             <a-space align="center" style="margin-bottom: 8px">
-              <span>{{ child.step?.stepName || '未命名步骤' }}</span>
+              <span>{{ child.step?.stepName || $t('scene.node.unnamedStep') }}</span>
               <a-tag v-if="child.result?.response?.statusCode" size="small"
                      :color="child.result.response.statusCode >= 200 && child.result.response.statusCode < 300 ? 'green' : 'red'">
                 {{ child.result.response.statusCode }}
@@ -47,7 +47,7 @@
                   :debug-result="child.result.response"
                   :api-type="apiTypeOf(child.step, child.result.response)"
               />
-              <a-empty v-else description="该步骤无响应数据"/>
+              <a-empty v-else :description="$t('scene.apiResult.noResponse')"/>
             </div>
           </a-tab-pane>
         </a-tabs>
@@ -57,12 +57,12 @@
       <div v-else>
         <!-- 错误信息（如条件评估异常、请求发送失败等无响应数据的失败） -->
         <a-alert v-if="errorMessage" type="error" show-icon style="margin-bottom: 12px">
-          <template #title>执行失败</template>
+          <template #title>{{ $t('scene.apiResult.execFailed') }}</template>
           {{ errorMessage }}
         </a-alert>
         <!-- 条件/断言评估结果（IF/断言步骤：展示每个条件的求值明细） -->
         <div v-if="assertResultList.length > 0" class="condition-results">
-          <div class="condition-results-title">条件评估结果</div>
+          <div class="condition-results-title">{{ $t('scene.apiResult.condResults') }}</div>
           <div v-for="item in assertResultList" :key="item.index" class="condition-item">
             <icon-check-circle-fill v-if="item.success" class="cond-icon cond-success"/>
             <icon-close-circle-fill v-else class="cond-icon cond-failure"/>
@@ -71,9 +71,9 @@
         </div>
         <!-- WHILE 每轮循环的条件评估结果 -->
         <div v-if="whileAssertResultList.length > 0" class="condition-results">
-          <div class="condition-results-title">循环条件评估结果</div>
+          <div class="condition-results-title">{{ $t('scene.apiResult.loopCondResults') }}</div>
           <div v-for="item in whileAssertResultList" :key="item.index" class="condition-item">
-            <a-tag size="small" color="arcoblue">第{{ item.cycle }}轮</a-tag>
+            <a-tag size="small" color="arcoblue">{{ $t('scene.apiResult.nthRound', { index: item.cycle }) }}</a-tag>
             <icon-check-circle-fill v-if="item.success" class="cond-icon cond-success"/>
             <icon-close-circle-fill v-else class="cond-icon cond-failure"/>
             <span class="cond-tip">{{ item.assertTip || item.assertType || '—' }}</span>
@@ -86,7 +86,7 @@
           />
         </div>
         <a-empty v-else-if="!errorMessage && assertResultList.length === 0 && whileAssertResultList.length === 0"
-                 description="暂无调试结果"/>
+                 :description="$t('scene.debugResult.empty')"/>
       </div>
     </a-drawer>
   </div>
@@ -94,6 +94,7 @@
 
 <script setup lang="ts">
 import {computed} from 'vue';
+import {useI18n} from 'vue-i18n';
 import ApiDebugResult from "@/views/apiManager/component/ApiDebugResult.vue";
 
 interface Props {
@@ -102,6 +103,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 const emit = defineEmits(['update:visible']);
 
 const visible = computed({
@@ -127,14 +129,14 @@ const errorMessage = computed(() => normalizedStepResult.value?.result?.errorMes
 
 const stepTypeLabel = computed(() => {
   const labels: Record<string, string> = {
-    'API_REQUEST': 'HTTP请求',
-    'WAIT': '等待',
-    'IF': '条件判断',
-    'FOR': 'FOR循环',
-    'WHILE': 'WHILE循环',
-    'SQL': 'SQL查询',
-    'ASSERT': '断言',
-    'EXTRACT': '关联提取'
+    'API_REQUEST': t('scene.action.httpRequest'),
+    'WAIT': t('scene.action.wait'),
+    'IF': t('scene.stepType.conditionIf'),
+    'FOR': t('scene.stepType.forLoop'),
+    'WHILE': t('scene.stepType.whileLoop'),
+    'SQL': t('scene.action.sqlQuery'),
+    'ASSERT': t('scene.action.assert'),
+    'EXTRACT': t('scene.action.extract')
   };
   return labels[stepType.value] || stepType.value;
 });
@@ -149,7 +151,7 @@ const childrenResults = computed(() => {
   if (iterations && Object.keys(iterations).length > 0) {
     return Object.entries(iterations).map(([key, value]: [string, any]) =>
         normalizeResponse({
-          step: {...normalizedStepResult.value.step, stepName: `${normalizedStepResult.value.step.stepName} - 第${key}次`},
+          step: {...normalizedStepResult.value.step, stepName: `${normalizedStepResult.value.step.stepName} - ${t('scene.apiResult.nthTime', { index: key })}`},
           result: value
         })
     );

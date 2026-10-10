@@ -17,7 +17,7 @@
       <template #type="{ record, rowIndex }">
         <a-select
             v-model="record.type"
-            placeholder="选择类型"
+            :placeholder="$t('api.extraction.typePlaceholder')"
             size="small"
             style="width: 120px"
             :disabled="disabled"
@@ -48,7 +48,7 @@
       <template #variableName="{ record, rowIndex }">
         <a-input
             v-model="record.variableName"
-            placeholder="变量名"
+            :placeholder="$t('api.extraction.variableNamePlaceholder')"
             :status="variableNameError(record) ? 'error' : undefined"
             size="small"
             :disabled="disabled"
@@ -60,7 +60,7 @@
       <template #defaultValue="{ record, rowIndex }">
         <a-input
             v-model="record.defaultValue"
-            placeholder="默认值"
+            :placeholder="$t('api.extraction.defaultValuePlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
@@ -70,7 +70,7 @@
       <template #description="{ record, rowIndex }">
         <a-input
             v-model="record.description"
-            placeholder="描述"
+            :placeholder="$t('api.sqlAssertion.descPlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
@@ -79,13 +79,13 @@
       <!-- 操作列 -->
       <template #operation="{ rowIndex }">
         <a-button type="text" status="danger" size="small" :disabled="disabled" @click="deleteRow(rowIndex)">
-          删除
+          {{ $t('qa.common.delete') }}
         </a-button>
       </template>
     </a-table>
     </div>
     <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">
-      + 添加提取规则
+      {{ $t('api.extraction.add') }}
     </a-button>
   </div>
 </template>
@@ -94,16 +94,19 @@
 import {ref, computed, watch} from 'vue'
 import {ApiExtraction} from '@/types/domain/api/requestModel/ApiExtraction'
 import {ExtractType} from '@/types/domain/api/apiEnum/ExtractType'
+import {useI18n} from 'vue-i18n'
 
-const columns = [
-  {title: '启用', slotName: 'status', width: '8%'},
-  {title: '提取类型', slotName: 'type', width: '14%'},
-  {title: '提取表达式', slotName: 'expression', width: '22%'},
-  {title: '变量名', slotName: 'variableName', width: '14%'},
-  {title: '默认值', slotName: 'defaultValue', width: '14%'},
-  {title: '描述', slotName: 'description', width: '18%'},
-  {title: '操作', slotName: 'operation', width: '10%'}
-]
+const {t} = useI18n()
+
+const columns = computed(() => [
+  {title: t('api.sqlAssertion.colEnabled'), slotName: 'status', width: '8%'},
+  {title: t('api.extraction.colType'), slotName: 'type', width: '14%'},
+  {title: t('api.extraction.colExpression'), slotName: 'expression', width: '22%'},
+  {title: t('api.extraction.colVariableName'), slotName: 'variableName', width: '14%'},
+  {title: t('api.sqlExtraction.colDefaultValue'), slotName: 'defaultValue', width: '14%'},
+  {title: t('api.sqlAssertion.colDesc'), slotName: 'description', width: '18%'},
+  {title: t('qa.common.operation'), slotName: 'operation', width: '10%'}
+])
 
 const props = defineProps<{
   disabled?: boolean;
@@ -127,10 +130,10 @@ const VARIABLE_NAME_REGEX = /^[a-zA-Z0-9_]+$/
 const extractTypeLabel = (type: ExtractType): string => {
   const labels: Record<string, string> = {
     [ExtractType.JSON_PATH]: 'JSONPath',
-    [ExtractType.REGEX]: '正则',
-    [ExtractType.HEADER]: '响应头',
+    [ExtractType.REGEX]: t('api.extraction.typeRegex'),
+    [ExtractType.HEADER]: t('api.extraction.typeHeader'),
     [ExtractType.COOKIE]: 'Cookie',
-    [ExtractType.STATUS_CODE]: '状态码'
+    [ExtractType.STATUS_CODE]: t('api.extraction.typeStatusCode')
   }
   return labels[type] || type
 }
@@ -149,9 +152,9 @@ const expressionPlaceholder = (type?: ExtractType): string => {
     case ExtractType.COOKIE:
       return 'sessionId'
     case ExtractType.STATUS_CODE:
-      return '无需填写'
+      return t('api.extraction.noNeed')
     default:
-      return '提取表达式'
+      return t('api.extraction.expressionPlaceholder')
   }
 }
 
@@ -184,19 +187,19 @@ const validateRow = (record: ApiExtraction): string => {
 
   // 变量名必填
   if (!name) {
-    return '变量名不能为空'
+    return t('api.extraction.varNameRequired')
   }
 
   // 变量名格式校验
   if (!VARIABLE_NAME_REGEX.test(name)) {
-    return '变量名只能包含英文、数字、下划线'
+    return t('api.extraction.varNameInvalid')
   }
 
   // 表达式必填（STATUS_CODE 除外）
   if (record.type !== ExtractType.STATUS_CODE) {
     const expr = record.expression?.trim()
     if (!expr) {
-      return '提取表达式不能为空'
+      return t('api.extraction.expressionRequired')
     }
   }
 
@@ -287,7 +290,7 @@ const validateAll = (): { valid: boolean; message: string } => {
 
     const error = validateRow(record)
     if (error) {
-      return { valid: false, message: `第 ${i + 1} 条提取规则：${error}` }
+      return { valid: false, message: t('api.extraction.rowError', {row: i + 1, msg: error}) }
     }
   }
   return { valid: true, message: '' }

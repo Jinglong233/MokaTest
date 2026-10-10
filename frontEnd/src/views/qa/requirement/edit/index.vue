@@ -3,10 +3,10 @@
     <!-- 顶部面包屑 & 全局操作栏（Sticky Header） -->
     <header class="edit-page-header">
       <div class="header-inner">
-        <Breadcrumb :items="['menu.qa', 'menu.qa.requirement', isEdit ? '编辑需求' : '新建需求']" />
+        <Breadcrumb :items="['menu.qa', 'menu.qa.requirement', isEdit ? 'qa.requirement.edit' : 'qa.requirement.add']" />
         <div class="header-actions">
-          <a-button class="header-cancel-btn" size="large" @click="handleCancel">取消</a-button>
-          <a-button type="primary" size="large" :loading="saving" @click="handleSave">保存</a-button>
+          <a-button class="header-cancel-btn" size="large" @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" size="large" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
         </div>
       </div>
     </header>
@@ -19,8 +19,8 @@
     <!-- 移动端/窄屏悬浮底部操作栏 -->
     <div class="mobile-footer-bar">
       <a-space size="medium">
-        <a-button long size="large" @click="handleCancel">取消</a-button>
-        <a-button type="primary" long size="large" :loading="saving" @click="handleSave">保存</a-button>
+        <a-button long size="large" @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
+        <a-button type="primary" long size="large" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
       </a-space>
     </div>
   </div>

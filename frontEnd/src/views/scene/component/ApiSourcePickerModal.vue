@@ -1,7 +1,7 @@
 <template>
   <a-modal
       :visible="visible"
-      :title="apiType === 'SQL' ? '引入已有SQL接口' : '引入已有用例'"
+      :title="apiType === 'SQL' ? $t('scene.action.importSql') : $t('scene.action.importApiCase')"
       :width="480"
       unmount-on-close
       @cancel="handleCancel"
@@ -14,14 +14,14 @@
           :allow-clear="true"
           :allow-search="true"
           :tree-check-strictly="apiType !== 'SQL'"
-          :placeholder="apiType === 'SQL' ? '仅可选择 SQL 接口' : '请选择用例（接口不可选）'"
+          :placeholder="apiType === 'SQL' ? $t('scene.picker.sqlOnly') : $t('scene.picker.selectCase')"
           style="width: 100%"
       />
     </a-spin>
     <template #footer>
-      <a-button @click="handleCancel">取消</a-button>
+      <a-button @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
       <a-button type="primary" :disabled="!selectedId" :loading="confirmLoading" @click="handleConfirm">
-        确定
+        {{ $t('scene.common.ok') }}
       </a-button>
     </template>
   </a-modal>
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import {ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
 import {getApiById, getApiTreeList, getInterfaceCaseTree} from '@/api/MyApi/apiInterface';
 import {useProjectStore} from '@/store';
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 }>();
 
 const projectStore = useProjectStore();
+const { t } = useI18n();
 
 const treeLoading = ref(false);
 const confirmLoading = ref(false);
@@ -110,7 +112,7 @@ const loadTree = async () => {
     }
   } catch (e) {
     console.error('加载接口列表失败', e);
-    Message.error({content: '加载接口列表失败', duration: 2000});
+    Message.error({content: t('scene.picker.loadFail'), duration: 2000});
   } finally {
     treeLoading.value = false;
   }
@@ -129,7 +131,7 @@ const handleCancel = () => {
 
 const handleConfirm = async () => {
   if (!selectedId.value) {
-    Message.warning({content: props.apiType === 'SQL' ? '请先选择一个 SQL 接口' : '请先选择一个用例（接口不可选）', duration: 2000});
+    Message.warning({content: props.apiType === 'SQL' ? t('scene.picker.selectSqlFirst') : t('scene.picker.selectCaseFirst'), duration: 2000});
     return;
   }
   confirmLoading.value = true;
@@ -139,10 +141,10 @@ const handleConfirm = async () => {
       emit('select', data);
       emit('update:visible', false);
     } else {
-      Message.error({content: '获取详情失败（可能已被删除）', duration: 2000});
+      Message.error({content: t('scene.picker.detailDeleted'), duration: 2000});
     }
   } catch (e: any) {
-    Message.error({content: '获取详情失败：' + (e.message || '未知错误'), duration: 2000});
+    Message.error({content: t('scene.picker.detailFail') + (e.message || t('scene.picker.unknownError')), duration: 2000});
   } finally {
     confirmLoading.value = false;
   }

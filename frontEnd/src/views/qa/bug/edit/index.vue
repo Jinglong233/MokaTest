@@ -3,11 +3,11 @@
     <!-- 顶部面包屑 & 全局操作栏（Sticky Header） -->
     <header class="edit-page-header">
       <div class="header-inner">
-        <Breadcrumb :items="['menu.qa', 'menu.qa.bug', isEdit ? '编辑BUG' : '新建BUG']" />
+        <Breadcrumb :items="['menu.qa', 'menu.qa.bug', isEdit ? 'qa.bug.edit' : 'qa.bug.add']" />
         <div class="header-actions">
-          <a-button class="header-cancel-btn" size="large" @click="handleCancel">取消</a-button>
-          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">保存继续创建</a-button>
-          <a-button type="primary" class="header-save-btn" size="large" :loading="saving" @click="handleSave">保存</a-button>
+          <a-button class="header-cancel-btn" size="large" @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">{{ $t('qa.bug.saveAndContinue') }}</a-button>
+          <a-button type="primary" class="header-save-btn" size="large" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
         </div>
       </div>
     </header>
@@ -20,9 +20,9 @@
     <!-- 移动端/窄屏悬浮底部操作栏 -->
     <div class="mobile-footer-bar">
       <a-space size="medium">
-        <a-button long size="large" @click="handleCancel">取消</a-button>
-        <a-button v-if="!isEdit" :loading="savingContinue" long size="large" @click="handleSaveAndContinue">保存继续创建</a-button>
-        <a-button type="primary" long class="header-save-btn" size="large" :loading="saving" @click="handleSave">保存</a-button>
+        <a-button long size="large" @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
+        <a-button v-if="!isEdit" :loading="savingContinue" long size="large" @click="handleSaveAndContinue">{{ $t('qa.bug.saveAndContinue') }}</a-button>
+        <a-button type="primary" long class="header-save-btn" size="large" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
       </a-space>
     </div>
   </div>
@@ -98,10 +98,6 @@ const handleSaveAndContinue = async () => {
 };
 
 const handleCancel = () => {
-  if (formRef.value?.isDirty?.()) {
-    const leave = confirm('您有未保存的更改，确定要离开吗？');
-    if (!leave) return;
-  }
   router.back();
 };
 </script>

@@ -12,14 +12,14 @@
               :show-search="true"
               :show-virtual-root="true"
               :selected-keys="[selectedModuleKey]"
-              root-name="全部需求"
+              :root-name="$t('qa.requirement.allRequirements')"
               default-expand-all
               @select="onModuleTreeSelect"
               @changed="handleModuleChanged"
             >
               <template #search-extra>
                 <a-button v-permission="QA_REQUIREMENT_CREATE" type="primary" size="small" @click="handleAdd">
-                  新建
+                  {{ $t('qa.requirement.new') }}
                 </a-button>
               </template>
             </ModuleTreeManager>
@@ -50,7 +50,17 @@
             @click="handleBatchDelete"
           >
             <template #icon><IconDelete /></template>
-            批量删除({{ selectedKeys.length }})
+            {{ $t('qa.requirement.batchDelete', { count: selectedKeys.length }) }}
+          </a-button>
+          <a-button
+            v-if="selectedKeys.length === 1"
+            v-permission="'qa:ai:use'"
+            type="primary"
+            size="large"
+            @click="handleAiReview"
+          >
+            <template #icon><IconBug /></template>
+            {{ $t('qa.requirement.aiReview') }}
           </a-button>
         </div>
       </div>
@@ -58,58 +68,58 @@
       <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">需求标题</label>
-            <a-input v-model="searchKeyword" placeholder="请输入需求标题" allow-clear />
+            <label class="filter-label">{{ $t('qa.requirement.name') }}</label>
+            <a-input v-model="searchKeyword" :placeholder="$t('qa.requirement.namePlaceholder')" allow-clear />
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">状态</label>
-            <a-select v-model="searchStatus" placeholder="请选择" allow-clear>
-              <a-option value="DRAFT">草稿</a-option>
-              <a-option value="REVIEWING">评审中</a-option>
-              <a-option value="CONFIRMED">已确认</a-option>
-              <a-option value="DEVELOPING">开发中</a-option>
-              <a-option value="TESTING">测试中</a-option>
-              <a-option value="RELEASED">已上线</a-option>
-              <a-option value="CLOSED">已关闭</a-option>
+            <label class="filter-label">{{ $t('qa.requirement.status') }}</label>
+            <a-select v-model="searchStatus" :placeholder="$t('qa.requirement.selectPlaceholder')" allow-clear>
+              <a-option value="DRAFT">{{ $t('qa.requirement.status.draft') }}</a-option>
+              <a-option value="REVIEWING">{{ $t('qa.requirement.status.reviewing') }}</a-option>
+              <a-option value="CONFIRMED">{{ $t('qa.requirement.status.confirmed') }}</a-option>
+              <a-option value="DEVELOPING">{{ $t('qa.requirement.status.developing') }}</a-option>
+              <a-option value="TESTING">{{ $t('qa.requirement.status.testing') }}</a-option>
+              <a-option value="RELEASED">{{ $t('qa.requirement.status.released') }}</a-option>
+              <a-option value="CLOSED">{{ $t('qa.requirement.status.closed') }}</a-option>
             </a-select>
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">所属模块</label>
-            <a-select v-model="searchModuleId" placeholder="请选择" allow-clear>
+            <label class="filter-label">{{ $t('qa.requirement.module') }}</label>
+            <a-select v-model="searchModuleId" :placeholder="$t('qa.requirement.selectPlaceholder')" allow-clear>
               <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
             </a-select>
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">需求类型</label>
-            <a-select v-model="searchReqType" placeholder="请选择" allow-clear>
-              <a-option value="FEATURE">功能需求</a-option>
-              <a-option value="BUGFIX">缺陷修复</a-option>
-              <a-option value="OPTIMIZE">优化</a-option>
-            <a-option value="TECH_DEBT">技术债务</a-option>
+            <label class="filter-label">{{ $t('qa.requirement.reqType') }}</label>
+            <a-select v-model="searchReqType" :placeholder="$t('qa.requirement.selectPlaceholder')" allow-clear>
+              <a-option value="FEATURE">{{ $t('qa.requirement.type.feature') }}</a-option>
+              <a-option value="BUGFIX">{{ $t('qa.requirement.type.bugfix') }}</a-option>
+              <a-option value="OPTIMIZE">{{ $t('qa.requirement.type.optimize') }}</a-option>
+            <a-option value="TECH_DEBT">{{ $t('qa.requirement.type.techDebt') }}</a-option>
           </a-select>
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">来源</label>
-            <a-select v-model="searchSource" placeholder="请选择" allow-clear>
-              <a-option value="CLIENT">客户反馈</a-option>
-              <a-option value="INTERNAL">内部规划</a-option>
-              <a-option value="COMPETITOR">竞品分析</a-option>
-              <a-option value="ONLINE">线上问题</a-option>
+            <label class="filter-label">{{ $t('qa.requirement.source') }}</label>
+            <a-select v-model="searchSource" :placeholder="$t('qa.requirement.selectPlaceholder')" allow-clear>
+              <a-option value="CLIENT">{{ $t('qa.requirement.source.client') }}</a-option>
+              <a-option value="INTERNAL">{{ $t('qa.requirement.source.internal') }}</a-option>
+              <a-option value="COMPETITOR">{{ $t('qa.requirement.source.competitor') }}</a-option>
+              <a-option value="ONLINE">{{ $t('qa.requirement.source.online') }}</a-option>
             </a-select>
           </div>
         </a-col>
         <a-col flex="auto">
           <div class="filter-actions">
-            <a-button type="primary" :loading="loading" @click="handleSearch">搜索</a-button>
-            <a-button @click="handleReset">重置</a-button>
+            <a-button type="primary" :loading="loading" @click="handleSearch">{{ $t('qa.common.search') }}</a-button>
+            <a-button @click="handleReset">{{ $t('qa.common.reset') }}</a-button>
           </div>
         </a-col>
       </a-row>
@@ -123,8 +133,10 @@
             :bordered="{ wrapper: true, cell: false }"
             row-key="id"
             :sticky-header="true"
-            :scroll="{ x: 1160 }"
-            :row-selection="{ type: 'checkbox', onChange: handleSelectChange }"
+            :scroll="{ x: 1250 }"
+            :selected-keys="selectedKeys"
+            :row-selection="{ type: 'checkbox', showCheckedAll: true, onlyCurrent: true }"
+            @selection-change="handleSelectChange"
             @page-change="handlePageChange"
             @page-size-change="handlePageSizeChange"
         >
@@ -147,6 +159,14 @@
           </template>
           <template #status="{ record }">
             <a-tag :color="statusColor(record.status)" size="small" class="status-pill">{{ statusText(record.status) }}</a-tag>
+          </template>
+          <template #aiReview="{ record }">
+            <a-tag v-if="record.aiReviewStatus === 'REVIEWED' && record.aiReviewScore != null"
+                   :color="record.aiReviewScore >= 70 ? 'green' : record.aiReviewScore >= 50 ? 'orange' : 'red'"
+                   size="small">
+              {{ $t('qa.requirement.aiScore', { score: record.aiReviewScore }) }}
+            </a-tag>
+            <span v-else style="color: #86909c; font-size: 12px;">{{ $t('qa.requirement.notReviewed') }}</span>
           </template>
           <template #tags="{ record }">
             <span
@@ -213,7 +233,7 @@
     <!-- 关联已有需求弹窗（子需求 tab） -->
     <a-modal
         v-model:visible="linkChildVisible"
-        title="关联已有需求"
+        :title="$t('qa.requirement.linkExisting')"
         :width="520"
         :on-before-ok="handleLinkChildOk"
         @cancel="linkChildVisible = false"
@@ -221,7 +241,7 @@
     >
       <a-select
           v-model="linkChildId"
-          placeholder="选择要挂到当前需求下的需求"
+          :placeholder="$t('qa.requirement.linkChildPlaceholder')"
           allow-search
           allow-clear
           style="width: 100%"
@@ -230,7 +250,7 @@
           {{ r.reqCode }} {{ r.title }}
         </a-option>
       </a-select>
-      <p style="color: var(--color-text-3); font-size: 12px; margin-top: 8px;">已排除当前需求及其所有子孙需求，避免循环引用</p>
+      <p style="color: var(--color-text-3); font-size: 12px; margin-top: 8px;">{{ $t('qa.requirement.linkChildTip') }}</p>
     </a-modal>
 
     <!-- 新增/编辑弹窗（仅预览抽屉中使用） -->
@@ -240,7 +260,7 @@
         :title="modalTitle"
         :width="modalWidth"
         @ok="handleSave"
-        @cancel="modalVisible = false"
+        @cancel="handleModalCancel"
         :mask-closable="false"
     >
       <div class="modal-scroll-body">
@@ -278,6 +298,10 @@
             <a-tag v-if="previewData.status" :color="statusColor(previewData.status)" size="small" class="status-pill">
               {{ statusText(previewData.status) }}
             </a-tag>
+            <a-button v-permission="'qa:ai:use'" type="text" size="mini" @click="handleAiReviewFromPreview" style="margin-left: 8px">
+              <template #icon><IconBug /></template>
+              {{ $t('qa.requirement.aiReview') }}
+            </a-button>
           </div>
         </div>
       </template>
@@ -285,25 +309,25 @@
       <div class="preview-body">
         <a-tabs v-model:active-key="previewTabKey" type="line" class="preview-tabs" @change="handlePreviewTabChange">
           <!-- ========== 基本信息 ========== -->
-          <a-tab-pane key="info" title="基本信息">
+          <a-tab-pane key="info" :title="$t('qa.requirement.tab.info')">
             <!-- 基础属性 -->
             <a-card class="preview-section" :bordered="false" size="small">
               <a-descriptions :bordered="true" :data="previewDescriptions" layout="horizontal" :column="2" :label-style="{ fontWeight: 'bold', width: '90px' }" :value-style="{ textAlign: 'right' }" />
             </a-card>
 
             <!-- 需求描述 -->
-            <a-card class="preview-section" title="需求描述" :bordered="false" size="small">
-              <div class="preview-description rich-text-preview" v-html="renderHtml(previewData.description, '暂无描述')"></div>
+            <a-card class="preview-section" :title="$t('qa.requirement.description')" :bordered="false" size="small">
+              <div class="preview-description rich-text-preview" v-html="renderHtml(previewData.description, $t('qa.requirement.noDescription'))"></div>
             </a-card>
           </a-tab-pane>
 
           <!-- ========== 关联用例 ========== -->
           <a-tab-pane key="cases">
-            <template #title>关联用例 <span class="tab-count-badge">{{ previewData.caseCount || 0 }}</span></template>
+            <template #title>{{ $t('qa.requirement.tab.cases') }} <span class="tab-count-badge">{{ previewData.caseCount || 0 }}</span></template>
             <a-row justify="space-between" style="margin-bottom: 12px;">
               <a-button v-permission="QA_TEST_CASE_CREATE" type="primary" size="small" @click="handleAddCase">
                 <template #icon><icon-plus /></template>
-                新增用例
+                {{ $t('qa.requirement.addCase') }}
               </a-button>
             </a-row>
             <a-table
@@ -327,26 +351,26 @@
               </template>
               <template #drawerCaseActions="{ record }">
                 <a-popconfirm
-                    content="取消该用例与当前需求的关联？（用例本身保留）"
+                    :content="$t('qa.requirement.unbindCaseConfirm')"
                     type="warning"
                     @ok="handleUnbindCase(record.id)"
                 >
-                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">取消关联</a-button>
+                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">{{ $t('qa.requirement.unbind') }}</a-button>
                 </a-popconfirm>
               </template>
               <template #empty>
-                <a-empty description="暂无关联用例"/>
+                <a-empty :description="$t('qa.requirement.noCases')"/>
               </template>
             </a-table>
           </a-tab-pane>
 
           <!-- ========== 关联BUG ========== -->
           <a-tab-pane key="bugs">
-            <template #title>关联BUG <span class="tab-count-badge">{{ previewData.bugCount || 0 }}</span></template>
+            <template #title>{{ $t('qa.requirement.tab.bugs') }} <span class="tab-count-badge">{{ previewData.bugCount || 0 }}</span></template>
             <a-row justify="space-between" style="margin-bottom: 12px;">
               <a-button v-permission="QA_BUG_CREATE" type="primary" size="small" @click="handleAddBug">
                 <template #icon><icon-plus /></template>
-                新增BUG
+                {{ $t('qa.requirement.addBug') }}
               </a-button>
             </a-row>
             <a-table
@@ -391,29 +415,29 @@
               </template>
               <template #drawerBugActions="{ record }">
                 <a-popconfirm
-                    content="取消该BUG与当前需求的关联？（BUG本身保留）"
+                    :content="$t('qa.requirement.unbindBugConfirm')"
                     type="warning"
                     @ok="handleUnbindBug(record.id)"
                 >
-                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">取消关联</a-button>
+                  <a-button v-permission="QA_REQUIREMENT_UPDATE" type="text" size="small" status="warning">{{ $t('qa.requirement.unbind') }}</a-button>
                 </a-popconfirm>
               </template>
               <template #empty>
-                <a-empty description="暂无关联BUG"/>
+                <a-empty :description="$t('qa.requirement.noBugs')"/>
               </template>
             </a-table>
           </a-tab-pane>
 
           <!-- ========== 子需求 ========== -->
           <a-tab-pane key="children">
-            <template #title>子需求 <span class="tab-count-badge">{{ childRequirements.length }}</span></template>
+            <template #title>{{ $t('qa.requirement.tab.children') }} <span class="tab-count-badge">{{ childRequirements.length }}</span></template>
             <a-row justify="space-between" style="margin-bottom: 12px;">
               <a-space>
                 <a-button v-permission="QA_REQUIREMENT_CREATE" type="primary" size="small" @click="handleAddChildReq">
                   <template #icon><icon-plus /></template>
-                  新增子需求
+                  {{ $t('qa.requirement.addChild') }}
                 </a-button>
-                <a-button v-permission="QA_REQUIREMENT_UPDATE" size="small" @click="openLinkChild">关联已有需求</a-button>
+                <a-button v-permission="QA_REQUIREMENT_UPDATE" size="small" @click="openLinkChild">{{ $t('qa.requirement.linkExisting') }}</a-button>
               </a-space>
             </a-row>
             <a-table :data="childRequirements" :columns="subReqColumns" row-key="id" :pagination="false">
@@ -436,7 +460,7 @@
               </template>
               <template #subReqOwner="{ record }">{{ record.ownerName || '-' }}</template>
               <template #empty>
-                <a-empty description="暂无子需求"/>
+                <a-empty :description="$t('qa.requirement.noChildren')"/>
               </template>
             </a-table>
           </a-tab-pane>
@@ -445,11 +469,11 @@
         <!-- 评论与操作日志：后端接口未落地（二期），暂时隐藏，避免"发表成功但不落库"的假反馈 -->
         <a-card v-if="false" class="preview-section preview-tabs-section" :bordered="false" size="small">
           <a-tabs type="line">
-            <a-tab-pane key="comments" title="评论">
-              <a-empty description="暂无评论" />
+            <a-tab-pane key="comments" :title="$t('qa.requirement.tab.comments')">
+              <a-empty :description="$t('qa.requirement.noComments')" />
             </a-tab-pane>
-            <a-tab-pane key="logs" title="操作日志">
-              <a-empty description="暂无操作日志" />
+            <a-tab-pane key="logs" :title="$t('qa.requirement.tab.logs')">
+              <a-empty :description="$t('qa.requirement.noLogs')" />
             </a-tab-pane>
           </a-tabs>
         </a-card>
@@ -458,9 +482,9 @@
       <template #footer>
         <div class="preview-footer">
           <a-space>
-            <a-button @click="previewVisible = false">关闭</a-button>
-            <a-button v-permission="QA_TEST_CASE_CREATE" @click="handleAiGenerateFromPreview"><icon-robot /> AI 生成用例</a-button>
-            <a-button v-permission="QA_REQUIREMENT_UPDATE" type="primary" @click="handleEditFromPreview">编辑需求</a-button>
+            <a-button @click="previewVisible = false">{{ $t('qa.requirement.close') }}</a-button>
+            <a-button v-permission="QA_TEST_CASE_CREATE" @click="handleAiGenerateFromPreview"><icon-robot /> {{ $t('qa.requirement.aiGenerate') }}</a-button>
+            <a-button v-permission="QA_REQUIREMENT_UPDATE" type="primary" @click="handleEditFromPreview">{{ $t('qa.requirement.edit') }}</a-button>
           </a-space>
         </div>
       </template>
@@ -478,8 +502,8 @@
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="caseModalVisible = false">取消</a-button>
-          <a-button type="primary" :loading="caseSaving" @click="handleSaveCase">保存</a-button>
+          <a-button @click="caseModalVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="caseSaving" @click="handleSaveCase">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
@@ -497,8 +521,8 @@
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="bugModalVisible = false">取消</a-button>
-          <a-button type="primary" :loading="bugSaving" @click="handleSaveBug">保存</a-button>
+          <a-button @click="bugModalVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="bugSaving" @click="handleSaveBug">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
@@ -512,11 +536,11 @@
 </script>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, onActivated, onBeforeUnmount, watch, nextTick} from 'vue';
+import {ref, computed, onMounted, onBeforeUnmount, watch, nextTick} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useRouter} from 'vue-router';
 import {Message, Modal} from '@arco-design/web-vue';
-import {IconSearch, IconPlus, IconDelete, IconRight, IconDown} from '@arco-design/web-vue/es/icon';
+import {IconSearch, IconPlus, IconDelete, IconRight, IconDown, IconBug} from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue';
 import RequirementForm from './components/RequirementForm.vue';
@@ -541,6 +565,7 @@ import {
 } from '@/constants/permissions';
 import {getRequirementList, getRequirementStats, getRequirementDetail, updateRequirement, deleteRequirement, batchDeleteRequirement, getTestCaseList, getTestCaseDetail, getQaModuleList, getBugList, unbindRequirementCase, unbindRequirementBug} from '@/api/MyApi/qa';
 import {getUserListByPage} from '@/api/MyApi/user';
+import {useDirtyGuard, confirmIfDirty} from '@/hooks/useDirtyGuard';
 
 const {t} = useI18n();
 const projectStore = useProjectStore();
@@ -706,7 +731,7 @@ const childRequirements = computed(() =>
 // ===== 子需求 tab：新增 / 关联已有 =====
 // 新增子需求：打开需求编辑弹窗，父需求/模块自动带出当前需求
 const handleAddChildReq = () => {
-  modalTitle.value = '新增子需求';
+  modalTitle.value = t('qa.requirement.addChild');
   formData.value = {
     projectId: projectStore.getProjectId,
     parentId: previewData.value?.id,
@@ -748,7 +773,7 @@ const openLinkChild = () => {
 
 const handleLinkChildOk = async () => {
   if (!linkChildId.value) {
-    Message.warning('请选择要关联的需求');
+    Message.warning(t('qa.requirement.linkChildRequired'));
     return false;
   }
   try {
@@ -758,20 +783,40 @@ const handleLinkChildOk = async () => {
       projectId: projectStore.getProjectId,
     });
     if (res.code === 200) {
-      Message.success('关联成功');
+      Message.success(t('qa.requirement.linkSuccess'));
       await loadData(); // loadAllRequirements 随之刷新 allRequirements，子需求列表自动更新
       return true;
     }
-    Message.error(res.msg || '关联失败');
+    Message.error(res.msg || t('qa.requirement.linkFailed'));
   } catch (e) {
     console.error(e);
-    Message.error('关联失败');
+    Message.error(t('qa.requirement.linkFailed'));
   }
   return false;
 };
 const formData = ref<any>({});
 const requirementFormRef = ref<any>(null);
 const selectedKeys = ref<number[]>([]);
+
+// AI 需求评审
+function handleAiReview() {
+  if (selectedKeys.value.length !== 1) return;
+  router.push({ name: 'AiReview', query: { reqId: String(selectedKeys.value[0]) } });
+}
+
+function handleAiReviewFromPreview() {
+  if (!previewData.value?.id) return;
+  router.push({ name: 'AiReview', query: { reqId: String(previewData.value.id) } });
+}
+
+function handleSupplementFromReview(instruction: string) {
+  aiTargetRequirement.value = { id: Number(route.query.reqId) };
+  nextTick(() => aiGenerateModalRef.value?.open(instruction));
+}
+
+function handleGeneratePointsFromReview() {
+  router.push({ name: 'AiCaseGen', query: { reqId: String(route.query.reqId), from: 'Requirement' } });
+}
 
 const drawerCaseList = ref<any[]>([]);
 const drawerLoading = ref(false);
@@ -806,15 +851,12 @@ const previewData = ref<any>({});
 // AI 生成用例
 const aiGenerateModalRef = ref<any>(null);
 const aiTargetRequirement = ref<any>(null);
-
 function handleAiGenerate(record: any) {
-  aiTargetRequirement.value = record;
-  nextTick(() => aiGenerateModalRef.value?.open());
+  router.push({ name: 'AiCaseGen', query: { reqId: String(record.id), from: 'Requirement' } });
 }
 
 function handleAiGenerateFromPreview() {
-  aiTargetRequirement.value = previewData.value;
-  nextTick(() => aiGenerateModalRef.value?.open());
+  router.push({ name: 'AiCaseGen', query: { reqId: String(previewData.value.id), from: 'Requirement' } });
 }
 
 function handleAiAdopted() {
@@ -829,14 +871,14 @@ const commentInputFocused = ref(false);
 // 预览抽屉基础属性（按项目字段显隐配置过滤）
 const previewDescriptions = computed(() => {
   const items = [
-    { key: 'moduleId', label: '所属模块', value: previewData.value.moduleName || '-' },
-    { key: 'reqType', label: '需求类型', value: reqTypeText(previewData.value.reqType) },
-    { key: 'source', label: '来源', value: sourceText(previewData.value.source) },
-    { key: 'priority', label: '优先级', value: previewData.value.priority },
-    { key: 'version', label: '目标版本', value: previewData.value.version || '-' },
-    { key: 'expectReleaseTime', label: '期望上线时间', value: previewData.value.expectReleaseTime || '-' },
-    { key: 'ownerId', label: '负责人', value: previewData.value.ownerName || '-' },
-    { key: 'createUser', label: '创建人', value: previewData.value.createUserName || '-' }
+    { key: 'moduleId', label: t('qa.requirement.module'), value: previewData.value.moduleName || '-' },
+    { key: 'reqType', label: t('qa.requirement.reqType'), value: reqTypeText(previewData.value.reqType) },
+    { key: 'source', label: t('qa.requirement.source'), value: sourceText(previewData.value.source) },
+    { key: 'priority', label: t('qa.requirement.priority'), value: previewData.value.priority },
+    { key: 'version', label: t('qa.requirement.targetVersion'), value: previewData.value.version || '-' },
+    { key: 'expectReleaseTime', label: t('qa.requirement.expectReleaseTime'), value: previewData.value.expectReleaseTime || '-' },
+    { key: 'ownerId', label: t('qa.requirement.owner'), value: previewData.value.ownerName || '-' },
+    { key: 'createUser', label: t('qa.requirement.creator'), value: previewData.value.createUserName || '-' }
   ];
   const locked = ['priority', 'createUser'];
   return items
@@ -1001,18 +1043,18 @@ const loadPreviewLogs = async (requirementId: number) => {
 
 const handleSavePreviewComment = async () => {
   if (!previewCommentInput.value.trim()) {
-    Message.warning('请输入评论内容');
+    Message.warning(t('qa.requirement.commentRequired'));
     return;
   }
   // TODO: 对接后端 /api/qa/requirement/comment/save
   previewComments.value.push({
     id: Date.now(),
-    userName: '当前用户',
+    userName: t('qa.requirement.currentUser'),
     content: previewCommentInput.value.trim(),
     createTime: new Date().toLocaleString()
   });
   previewCommentInput.value = '';
-  Message.success('评论发表成功');
+  Message.success(t('qa.requirement.commentSuccess'));
 };
 
 const handleEditFromPreview = () => {
@@ -1107,10 +1149,10 @@ const handleBugDrawerPageSizeChange = (pageSize: number) => {
 
 const handleAddBug = () => {
   if (!currentRequirementIdForBug.value) {
-    Message.warning('当前需求信息缺失，请重新打开预览');
+    Message.warning(t('qa.requirement.contextMissing'));
     return;
   }
-  bugModalTitle.value = '新增BUG';
+  bugModalTitle.value = t('qa.requirement.addBug');
   // 共享 BugForm：关联需求自动带出，下拉选项组件内部加载
   bugFormData.value = {
     projectId: projectStore.getProjectId,
@@ -1141,15 +1183,15 @@ const handleUnbindBug = async (id: number) => {
   try {
     const res: any = await unbindRequirementBug(currentRequirementIdForBug.value!, id);
     if (res.code === 200) {
-      Message.success('已取消关联');
+      Message.success(t('qa.requirement.unbindSuccess'));
       await loadDrawerBugs();
       await loadData();
     } else {
-      Message.error(res.msg || '取消关联失败');
+      Message.error(res.msg || t('qa.requirement.unbindFailed'));
     }
   } catch (e) {
     console.error(e);
-    Message.error('取消关联失败');
+    Message.error(t('qa.requirement.unbindFailed'));
   }
 };
 const severityColor = (severity: string) => {
@@ -1158,8 +1200,13 @@ const severityColor = (severity: string) => {
 };
 
 const severityText = (severity: string) => {
-  const map: Record<string, string> = {FATAL: '致命', SERIOUS: '严重', NORMAL: '一般', TIPS: '提示'};
-  return map[severity] || severity;
+  const map: Record<string, string> = {
+    FATAL: 'qa.requirement.severity.fatal',
+    SERIOUS: 'qa.requirement.severity.serious',
+    NORMAL: 'qa.requirement.severity.normal',
+    TIPS: 'qa.requirement.severity.tips'
+  };
+  return map[severity] ? t(map[severity]) : severity;
 };
 
 const bugStatusColor = (status: string) => {
@@ -1172,10 +1219,12 @@ const bugStatusColor = (status: string) => {
 
 const bugStatusText = (status: string) => {
   const map: Record<string, string> = {
-    NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中',
-    FIXED: '已修复', VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回'
+    NEW: 'qa.requirement.bugStatus.new', CONFIRMED: 'qa.requirement.bugStatus.confirmed',
+    FIXING: 'qa.requirement.bugStatus.fixing', FIXED: 'qa.requirement.bugStatus.fixed',
+    VERIFIED: 'qa.requirement.bugStatus.verified', CLOSED: 'qa.requirement.bugStatus.closed',
+    REJECTED: 'qa.requirement.bugStatus.rejected'
   };
-  return map[status] || status;
+  return map[status] ? t(map[status]) : status;
 };
 
 const handlePreviewCaseFromBug = async (caseId: number) => {
@@ -1184,7 +1233,7 @@ const handlePreviewCaseFromBug = async (caseId: number) => {
     const res: any = await getTestCaseDetail(caseId);
     if (res.data) {
       // 直接在新窗口或弹窗中预览用例信息
-      Message.info(`用例: ${res.data.caseName || res.data.caseCode}`);
+      Message.info(t('qa.requirement.caseInfo', { name: res.data.caseName || res.data.caseCode }));
     }
   } catch (e) {
     console.error(e);
@@ -1198,6 +1247,12 @@ const handleSave = async () => {
     await loadData();
   }
 };
+
+const handleModalCancel = () => {
+  confirmIfDirty(!!requirementFormRef.value?.isDirty?.(), () => { modalVisible.value = false; });
+};
+
+useDirtyGuard(() => modalVisible.value && (requirementFormRef.value?.isDirty?.() ?? false));
 
 const handleSearchUser = async (keyword?: string, isLoadMore = false) => {
   if (!isLoadMore) {
@@ -1245,7 +1300,7 @@ const handleDelete = async (id: number) => {
   try {
     const res: any = await deleteRequirement(id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success(t('qa.requirement.deleteSuccess'));
       await loadData();
     }
   } catch (e) {
@@ -1256,57 +1311,58 @@ const handleDelete = async (id: number) => {
 // 删除需求（Modal 二次确认）
 const confirmDelete = (record: any) => {
   Modal.confirm({
-    title: '删除需求',
-    content: '确认删除该需求吗？',
-    okText: '删除',
-    cancelText: '取消',
+    title: t('qa.requirement.deleteTitle'),
+    content: t('qa.requirement.deleteConfirm'),
+    okText: t('qa.common.delete'),
+    cancelText: t('qa.common.cancel'),
     okButtonProps: { status: 'danger' },
     onOk: () => handleDelete(record.id),
   });
 };
 
 // 主表列定义
-const columns = [
-  { title: '需求编号', dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'reqCode' },
-  { title: '需求名称', dataIndex: 'title', width: 200, ellipsis: true, slotName: 'title' },
-  { title: '需求类型', dataIndex: 'reqType', width: 90, slotName: 'reqType' },
-  { title: '优先级', dataIndex: 'priority', width: 80, slotName: 'priority' },
-  { title: '状态', dataIndex: 'status', width: 90, slotName: 'status' },
-  { title: '标签', dataIndex: 'tags', ellipsis: true, slotName: 'tags' },
-  { title: '关联用例', dataIndex: 'caseCount', width: 90, slotName: 'caseCount' },
-  { title: '关联BUG', dataIndex: 'bugCount', width: 90, slotName: 'bugCount' },
-  { title: '操作', width: 200, fixed: 'right' as const, slotName: 'actions' },
-];
+const columns = computed(() => [
+  { title: t('qa.requirement.code'), dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'reqCode' },
+  { title: t('qa.requirement.name'), dataIndex: 'title', width: 200, ellipsis: true, slotName: 'title' },
+  { title: t('qa.requirement.reqType'), dataIndex: 'reqType', width: 90, slotName: 'reqType' },
+  { title: t('qa.requirement.priority'), dataIndex: 'priority', width: 80, slotName: 'priority' },
+  { title: t('qa.requirement.status'), dataIndex: 'status', width: 90, slotName: 'status' },
+  { title: t('qa.requirement.aiReviewShort'), dataIndex: 'aiReviewScore', width: 90, slotName: 'aiReview' },
+  { title: t('qa.requirement.tags'), dataIndex: 'tags', ellipsis: true, slotName: 'tags' },
+  { title: t('qa.requirement.tab.cases'), dataIndex: 'caseCount', width: 90, slotName: 'caseCount' },
+  { title: t('qa.requirement.tab.bugs'), dataIndex: 'bugCount', width: 90, slotName: 'bugCount' },
+  { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, slotName: 'actions' },
+]);
 
 // 抽屉-关联用例表格列
-const drawerCaseColumns = [
-  { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
-  { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true },
-  { title: '类型', dataIndex: 'caseType', width: 80, slotName: 'caseType' },
-  { title: '用例等级', dataIndex: 'priority', width: 80, slotName: 'drawerCasePriority' },
-  { title: '关联BUG', dataIndex: 'bugCount', width: 90, slotName: 'drawerCaseBugCount' },
-  { title: '操作', width: 200, fixed: 'right' as const, slotName: 'drawerCaseActions' },
-];
+const drawerCaseColumns = computed(() => [
+  { title: t('qa.testCase.code'), dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testCase.name'), dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true },
+  { title: t('qa.requirement.caseType'), dataIndex: 'caseType', width: 80, slotName: 'caseType' },
+  { title: t('qa.requirement.caseLevel'), dataIndex: 'priority', width: 80, slotName: 'drawerCasePriority' },
+  { title: t('qa.requirement.tab.bugs'), dataIndex: 'bugCount', width: 90, slotName: 'drawerCaseBugCount' },
+  { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, slotName: 'drawerCaseActions' },
+]);
 
 // 抽屉-关联BUG表格列
-const drawerBugColumns = [
-  { title: 'BUG编号', dataIndex: 'bugCode', width: 120, slotName: 'bugCode' },
-  { title: 'BUG标题', dataIndex: 'title', width: 140, slotName: 'bugTitle' },
-  { title: '严重程度', dataIndex: 'severity', width: 90, slotName: 'severity' },
-  { title: '状态', dataIndex: 'status', width: 90, slotName: 'bugStatus' },
-  { title: '发现计划', dataIndex: 'planName', width: 110, slotName: 'planName' },
-  { title: '关联用例', dataIndex: 'caseName', width: 100, slotName: 'bugCaseName' },
-  { title: '操作', width: 200, slotName: 'drawerBugActions' },
-];
+const drawerBugColumns = computed(() => [
+  { title: t('qa.bug.code'), dataIndex: 'bugCode', width: 120, slotName: 'bugCode' },
+  { title: t('qa.requirement.bugTitle'), dataIndex: 'title', width: 140, slotName: 'bugTitle' },
+  { title: t('qa.bug.severity'), dataIndex: 'severity', width: 90, slotName: 'severity' },
+  { title: t('qa.bug.status'), dataIndex: 'status', width: 90, slotName: 'bugStatus' },
+  { title: t('qa.requirement.foundPlan'), dataIndex: 'planName', width: 110, slotName: 'planName' },
+  { title: t('qa.requirement.tab.cases'), dataIndex: 'caseName', width: 100, slotName: 'bugCaseName' },
+  { title: t('qa.common.operation'), width: 200, slotName: 'drawerBugActions' },
+]);
 
 // 抽屉-子需求表格列
-const subReqColumns = [
-  { title: '需求编号', dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'subReqCode' },
-  { title: '需求名称', dataIndex: 'title', width: 200, ellipsis: true, slotName: 'subReqTitle' },
-  { title: '优先级', dataIndex: 'priority', width: 80, slotName: 'subReqPriority' },
-  { title: '状态', dataIndex: 'status', width: 90, slotName: 'subReqStatus' },
-  { title: '负责人', dataIndex: 'ownerName', width: 100, ellipsis: true, tooltip: true, slotName: 'subReqOwner' },
-];
+const subReqColumns = computed(() => [
+  { title: t('qa.requirement.code'), dataIndex: 'reqCode', width: 120, ellipsis: true, tooltip: true, slotName: 'subReqCode' },
+  { title: t('qa.requirement.name'), dataIndex: 'title', width: 200, ellipsis: true, slotName: 'subReqTitle' },
+  { title: t('qa.requirement.priority'), dataIndex: 'priority', width: 80, slotName: 'subReqPriority' },
+  { title: t('qa.requirement.status'), dataIndex: 'status', width: 90, slotName: 'subReqStatus' },
+  { title: t('qa.requirement.owner'), dataIndex: 'ownerName', width: 100, ellipsis: true, tooltip: true, slotName: 'subReqOwner' },
+]);
 
 // 操作列：统一文字按钮，前 2 个常显，第 3 个起收入「更多」下拉
 interface RequirementOp {
@@ -1317,9 +1373,10 @@ interface RequirementOp {
   handler: (record: any) => void;
 }
 const opsFor = (record: any): RequirementOp[] => [
-  { key: 'edit', label: '编辑', permission: QA_REQUIREMENT_UPDATE, handler: handleEdit },
-  { key: 'delete', label: '删除', danger: true, permission: QA_REQUIREMENT_DELETE, handler: confirmDelete },
-  { key: 'aiGenerate', label: 'AI 生成用例', permission: QA_TEST_CASE_CREATE, handler: handleAiGenerate },
+  { key: 'edit', label: t('qa.requirement.action.edit'), permission: QA_REQUIREMENT_UPDATE, handler: handleEdit },
+  { key: 'delete', label: t('qa.common.delete'), danger: true, permission: QA_REQUIREMENT_DELETE, handler: confirmDelete },
+  { key: 'aiGenerate', label: t('qa.requirement.aiGenerate'), permission: QA_TEST_CASE_CREATE, handler: handleAiGenerate },
+  { key: 'aiReview', label: t('qa.requirement.aiReview'), permission: 'qa:ai:use', handler: (r: any) => router.push({ name: 'AiReview', query: { reqId: String(r.id) } }) },
 ];
 const visibleOps = (record: any) => opsFor(record).slice(0, 2);
 const overflowOps = (record: any) => opsFor(record).slice(2);
@@ -1331,15 +1388,15 @@ const handleSelectChange = (keys: any[]) => {
 const handleBatchDelete = () => {
   if (selectedKeys.value.length === 0) return;
   Modal.confirm({
-    title: '批量删除需求',
-    content: `确定删除选中的 ${selectedKeys.value.length} 个需求吗？其关联用例与 BUG 将解除关联（数据保留），子需求将变为独立需求。`,
-    okText: '删除',
-    cancelText: '取消',
+    title: t('qa.requirement.batchDeleteTitle'),
+    content: t('qa.requirement.batchDeleteContent', { count: selectedKeys.value.length }),
+    okText: t('qa.common.delete'),
+    cancelText: t('qa.common.cancel'),
     okButtonProps: {status: 'danger'},
     onOk: async () => {
       const res: any = await batchDeleteRequirement(selectedKeys.value);
       if (res.code === 200) {
-        Message.success('批量删除成功');
+        Message.success(t('qa.requirement.batchDeleteSuccess'));
         selectedKeys.value = [];
         await loadData();
       }
@@ -1362,30 +1419,32 @@ const statusColor = (status: string) => {
 
 const statusText = (status: string) => {
   const map: Record<string, string> = {
-    DRAFT: '草稿', REVIEWING: '评审中', CONFIRMED: '已确认',
-    DEVELOPING: '开发中', TESTING: '测试中', RELEASED: '已上线', CLOSED: '已关闭'
+    DRAFT: 'qa.requirement.status.draft', REVIEWING: 'qa.requirement.status.reviewing',
+    CONFIRMED: 'qa.requirement.status.confirmed', DEVELOPING: 'qa.requirement.status.developing',
+    TESTING: 'qa.requirement.status.testing', RELEASED: 'qa.requirement.status.released',
+    CLOSED: 'qa.requirement.status.closed'
   };
-  return map[status] || status;
+  return map[status] ? t(map[status]) : status;
 };
 
 const reqTypeText = (reqType: string) => {
   const map: Record<string, string> = {
-    FEATURE: '功能需求',
-    BUGFIX: '缺陷修复',
-    OPTIMIZE: '优化',
-    TECH_DEBT: '技术债务'
+    FEATURE: 'qa.requirement.type.feature',
+    BUGFIX: 'qa.requirement.type.bugfix',
+    OPTIMIZE: 'qa.requirement.type.optimize',
+    TECH_DEBT: 'qa.requirement.type.techDebt'
   };
-  return map[reqType] || reqType || '-';
+  return map[reqType] ? t(map[reqType]) : reqType || '-';
 };
 
 const sourceText = (source: string) => {
   const map: Record<string, string> = {
-    CLIENT: '客户反馈',
-    INTERNAL: '内部规划',
-    COMPETITOR: '竞品分析',
-    ONLINE: '线上问题'
+    CLIENT: 'qa.requirement.source.client',
+    INTERNAL: 'qa.requirement.source.internal',
+    COMPETITOR: 'qa.requirement.source.competitor',
+    ONLINE: 'qa.requirement.source.online'
   };
-  return map[source] || source || '-';
+  return map[source] ? t(map[source]) : source || '-';
 };
 
 const getParticipantNames = (participants: string | undefined) => {
@@ -1403,17 +1462,17 @@ const getParticipantNames = (participants: string | undefined) => {
 };
 
 // 所有可选状态列表（用于编辑弹窗和流转弹窗）
-const allStatuses = [
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'REVIEWING', label: '评审中' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'DEVELOPING', label: '开发中' },
-  { value: 'TESTING', label: '测试中' },
-  { value: 'RELEASED', label: '已上线' },
-  { value: 'CLOSED', label: '已关闭' }
-];
+const allStatuses = computed(() => [
+  { value: 'DRAFT', label: t('qa.requirement.status.draft') },
+  { value: 'REVIEWING', label: t('qa.requirement.status.reviewing') },
+  { value: 'CONFIRMED', label: t('qa.requirement.status.confirmed') },
+  { value: 'DEVELOPING', label: t('qa.requirement.status.developing') },
+  { value: 'TESTING', label: t('qa.requirement.status.testing') },
+  { value: 'RELEASED', label: t('qa.requirement.status.released') },
+  { value: 'CLOSED', label: t('qa.requirement.status.closed') }
+]);
 
-const renderHtml = (content: string | undefined, defaultText: string = '暂无') => {
+const renderHtml = (content: string | undefined, defaultText: string = t('qa.requirement.empty')) => {
   if (!content || content.trim() === '') return defaultText;
   // 如果内容已经包含 HTML 标签，直接返回
   if (/<[a-z][\s\S]*?>/i.test(content)) {
@@ -1425,18 +1484,20 @@ const renderHtml = (content: string | undefined, defaultText: string = '暂无')
 
 const caseTypeText = (type: string) => {
   const map: Record<string, string> = {
-    FUNCTION: '功能', API: '接口', PERFORMANCE: '性能', COMPATIBILITY: '兼容', SMOKE: '冒烟'
+    FUNCTION: 'qa.requirement.caseType.function', API: 'qa.requirement.caseType.api',
+    PERFORMANCE: 'qa.requirement.caseType.performance', COMPATIBILITY: 'qa.requirement.caseType.compatibility',
+    SMOKE: 'qa.requirement.caseType.smoke'
   };
-  return map[type] || type;
+  return map[type] ? t(map[type]) : type;
 };
 
 
 const handleAddCase = () => {
   if (!currentRequirementId.value) {
-    Message.warning('当前需求信息缺失，请重新打开预览');
+    Message.warning(t('qa.requirement.contextMissing'));
     return;
   }
-  caseModalTitle.value = '新增用例';
+  caseModalTitle.value = t('qa.requirement.addCase');
   // 共享 TestCaseForm：关联需求/所属模块自动从当前需求带出，下拉选项组件内部加载
   caseFormData.value = {
     projectId: projectStore.getProjectId,
@@ -1470,24 +1531,19 @@ const handleUnbindCase = async (id: number) => {
   try {
     const res: any = await unbindRequirementCase(currentRequirementId.value!, id);
     if (res.code === 200) {
-      Message.success('已取消关联');
+      Message.success(t('qa.requirement.unbindSuccess'));
       await loadDrawerCases();
       await loadData();
     } else {
-      Message.error(res.msg || '取消关联失败');
+      Message.error(res.msg || t('qa.requirement.unbindFailed'));
     }
   } catch (e) {
     console.error(e);
-    Message.error('取消关联失败');
+    Message.error(t('qa.requirement.unbindFailed'));
   }
 };
 
 onMounted(() => {
-  loadData();
-  loadModuleOptions();
-});
-// keep-alive 激活时刷新（新建/编辑需求返回后列表同步）
-onActivated(() => {
   loadData();
   loadModuleOptions();
 });

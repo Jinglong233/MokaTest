@@ -3,7 +3,7 @@
     <a-row :gutter="16" style="margin-bottom: 16px">
       <a-col :span="6">
         <a-space>
-          <span>启用 Mock</span>
+          <span>{{ $t('api.mockConfig.enabled') }}</span>
           <a-switch
             v-model="localMockResponse.enabled"
             :disabled="disabled"
@@ -13,7 +13,7 @@
       </a-col>
       <a-col :span="6">
         <a-space>
-          <span>状态码</span>
+          <span>{{ $t('api.mockConfig.statusCode') }}</span>
           <a-input-number
             v-model="localMockResponse.statusCode"
             :min="100"
@@ -25,7 +25,7 @@
       </a-col>
       <a-col :span="6">
         <a-space>
-          <span>延迟(ms)</span>
+          <span>{{ $t('api.mockConfig.delay') }}</span>
           <a-input-number
             v-model="localMockResponse.delayMs"
             :min="0"
@@ -40,7 +40,7 @@
     <a-row :gutter="16" class="mock-content-row">
       <a-col :span="14" class="mock-left">
         <a-tabs class="mock-inner-tabs">
-          <a-tab-pane key="header" title="响应头">
+          <a-tab-pane key="header" :title="$t('api.mockConfig.responseHeader')">
             <ParameterTable
               ref="headerTableRef"
               context="mockHeader"
@@ -48,14 +48,13 @@
               @change="onDataChange"
             />
           </a-tab-pane>
-          <a-tab-pane key="body" title="响应体">
+          <a-tab-pane key="body" :title="$t('api.mockConfig.responseBody')">
             <div class="mock-body-follow">
               <a-alert v-if="hasResponseSchema" type="info">
-                Mock 响应体跟随「响应定义」生成，一处定义、Mock 与结构校验共用。
-                修改结构请到「响应定义」Tab。
+                {{ $t('api.mockConfig.schemaFollowTip') }}
               </a-alert>
               <a-alert v-else type="warning">
-                当前接口未配置响应定义，Mock 响应体为空。请先到「响应定义」Tab 绑定数据模板或内联定义结构。
+                {{ $t('api.mockConfig.noSchemaTip') }}
               </a-alert>
             </div>
           </a-tab-pane>
@@ -63,7 +62,7 @@
       </a-col>
 
       <a-col :span="10" class="mock-right">
-        <a-card title="实时预览" size="small" class="preview-card"
+        <a-card :title="$t('api.mockConfig.preview')" size="small" class="preview-card"
         >
           <template #extra>
             <a-button
@@ -71,11 +70,11 @@
               size="small"
               :loading="previewLoading"
               @click="loadPreview"
-            >重新生成
+            >{{ $t('api.mockConfig.regenerate') }}
             </a-button>
           </template>
           <pre class="preview-code">{{
-              previewResult || '点击"重新生成"预览 Mock 响应'
+              previewResult || $t('api.mockConfig.previewPlaceholder')
             }}</pre>
         </a-card>
       </a-col>
@@ -92,10 +91,13 @@
     watch,
   } from 'vue';
   import { Message } from '@arco-design/web-vue';
+  import { useI18n } from 'vue-i18n';
   import ParameterTable from './ParameterTable.vue';
   import { MockResponse } from '@/types/domain/api/requestModel/MockResponse';
   import { ResponseSchema } from '@/types/domain/api/requestModel/ResponseSchema';
   import { previewResponseSchema } from '@/api/MyApi/mock';
+
+  const { t } = useI18n();
 
   const props = defineProps<{
     modelValue?: MockResponse;
@@ -163,7 +165,7 @@
       }
     } catch (e) {
       previewResult.value = '';
-      Message.error('预览生成失败：请检查响应定义是否已配置');
+      Message.error(t('api.mockConfig.previewFailed'));
     } finally {
       previewLoading.value = false;
     }

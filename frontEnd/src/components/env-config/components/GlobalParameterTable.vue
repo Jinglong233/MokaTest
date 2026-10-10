@@ -30,7 +30,7 @@
     </a-table>
     <a-button :disabled="disabled" type="dashed" long @click="openAddModal" style="margin-top: 10px">
       <icon-plus/>
-      添加参数
+      {{ $t('components.paramTable.add') }}
     </a-button>
 
     <!-- 添加/编辑参数弹窗 -->
@@ -42,25 +42,25 @@
         @cancel="handleModalCancel"
     >
       <a-form :model="formData" layout="vertical">
-        <a-form-item label="参数名" required>
+        <a-form-item :label="$t('components.paramTable.name')" required>
           <a-input
               v-model="formData.name"
-              placeholder="请输入参数名"
+              :placeholder="$t('components.paramTable.namePlaceholder')"
               allow-clear
               :disabled="disabled"
           />
         </a-form-item>
-        <a-form-item label="参数值">
+        <a-form-item :label="$t('components.paramTable.value')">
           <a-input
               v-model="formData.value"
-              placeholder="请输入参数值"
+              :placeholder="$t('components.paramTable.valuePlaceholder')"
               allow-clear
               :disabled="disabled"
           />
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item :label="$t('components.paramTable.status')">
           <a-switch v-model="formData.disabled" :checked-value="false" :unchecked-value="true" :disabled="disabled"/>
-          <span style="margin-left: 8px">{{ formData.disabled ? '禁用' : '启用' }}</span>
+          <span style="margin-left: 8px">{{ formData.disabled ? $t('components.paramTable.disabled') : $t('components.paramTable.enabled') }}</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -68,10 +68,13 @@
 </template>
 
 <script setup lang="ts">
-import {ref, reactive, watch} from 'vue'
+import {ref, reactive, watch, computed} from 'vue'
 import {IconPlus, IconEdit, IconDelete} from '@arco-design/web-vue/es/icon'
 import {Message, Modal} from '@arco-design/web-vue'
+import {useI18n} from 'vue-i18n'
 import {GlobalRequestVarType} from "@/types/domain/api/apiEnum/GlobalRequestVarType";
+
+const {t} = useI18n()
 
 const props = defineProps<{
   type?: GlobalRequestVarType
@@ -80,18 +83,20 @@ const props = defineProps<{
   disabled?: boolean
 }>()
 
-const columns = [
-  {title: '状态', slotName: 'status', width: '10%'},
-  {title: '参数名', slotName: 'name', width: '35%'},
-  {title: '参数值', slotName: 'value', width: '35%'},
-  {title: '操作', slotName: 'operation', width: '20%'}
-]
+const columns = computed(() => [
+  {title: t('components.paramTable.status'), slotName: 'status', width: '10%'},
+  {title: t('components.paramTable.name'), slotName: 'name', width: '35%'},
+  {title: t('components.paramTable.value'), slotName: 'value', width: '35%'},
+  {title: t('qa.common.operation'), slotName: 'operation', width: '20%'}
+])
 
 const tableData = ref<any[]>([])
 const modalVisible = ref(false)
-const modalTitle = ref('添加参数')
 const editIndex = ref(-1)
 const editId = ref<number | null>(null)
+
+const modalTitle = computed(() =>
+    editIndex.value >= 0 ? t('components.paramTable.edit') : t('components.paramTable.add'))
 
 const formData = reactive({
   name: '',
@@ -109,7 +114,6 @@ watch(() => props.data, (newData) => {
 }, {immediate: true, deep: true})
 
 const openAddModal = () => {
-  modalTitle.value = '添加参数'
   editIndex.value = -1
   editId.value = null
   formData.name = ''
@@ -121,7 +125,6 @@ const openAddModal = () => {
 const editRow = (index: number) => {
   const row = tableData.value[index]
   if (row) {
-    modalTitle.value = '编辑参数'
     editIndex.value = index
     editId.value = row.id
     formData.name = row.name
@@ -135,15 +138,15 @@ const deleteRow = (index: number) => {
   if (props.disabled) return
   const row = tableData.value[index]
   Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除参数"${row.name}"吗？`,
+    title: t('components.common.deleteTitle'),
+    content: t('components.paramTable.deleteContent', {name: row.name}),
     onOk: () => {
       if (props.type && row.id) {
         // 全局参数：触发删除事件
         emit('delete', props.type, row.id)
       }
       tableData.value.splice(index, 1)
-      Message.success('删除成功')
+      Message.success(t('components.common.deleteSuccess'))
     }
   })
 }
@@ -163,7 +166,7 @@ const handleUpdate = (record: any, index: number) => {
 const handleModalOk = () => {
   if (props.disabled) return
   if (!formData.name.trim()) {
-    Message.warning('请输入参数名')
+    Message.warning(t('components.paramTable.namePlaceholder'))
     return
   }
 
@@ -185,7 +188,7 @@ const handleModalOk = () => {
         disabled: formData.disabled
       })
     }
-    Message.success('修改成功')
+    Message.success(t('components.paramTable.updateSuccess'))
   } else {
 
     if (props.type) {
@@ -203,7 +206,7 @@ const handleModalOk = () => {
         value: formData.value,
         disabled: formData.disabled
       })
-      Message.success('添加成功')
+      Message.success(t('components.common.addSuccess'))
     }
   }
 

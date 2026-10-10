@@ -9,10 +9,10 @@
       @click.stop
   >
     <template #error>
-      <a-empty description="图片加载失败"/>
+      <a-empty :description="$t('scene.image.loadFailed')"/>
     </template>
   </a-image>
-  <a-empty v-else description="图片加载失败"/>
+  <a-empty v-else :description="$t('scene.image.loadFailed')"/>
 </template>
 
 <script setup lang="ts">

@@ -2,7 +2,7 @@
   <div class="api-manager-page" :class="{ 'focus-mode': focusMode }">
     <div v-if="!focusMode" class="page-header">
       <Breadcrumb :items="['menu.interfaceTest', 'menu.interfaceTest.apiList']" />
-      <a-tooltip content="进入聚焦模式">
+      <a-tooltip :content="$t('api.page.enterFocus')">
         <a-button type="text" size="small" class="focus-btn" @click="focusMode = true">
           <template #icon>
             <icon-fullscreen />
@@ -10,7 +10,7 @@
         </a-button>
       </a-tooltip>
     </div>
-    <a-tooltip v-else content="退出聚焦模式">
+    <a-tooltip v-else :content="$t('api.page.exitFocus')">
       <a-button type="primary" size="small" class="focus-exit-btn" @click="focusMode = false">
         <template #icon>
           <icon-fullscreen-exit />
@@ -37,7 +37,7 @@
         <span v-else class="resizer-line" />
       </div>
       <div class="api-manager-col api-manager-content-col">
-        <a-spin class="api-manager-spin" :loading="loading" tip="正在调试...">
+        <a-spin class="api-manager-spin" :loading="loading" :tip="$t('api.detail.debugging')">
           <a-card class="api-manager-card">
             <ApiTabs
                 v-if="tabList.length > 0"
@@ -73,23 +73,23 @@
                   >
                     <span class="bar-title">
                       <icon-up />
-                      返回响应
+                      {{ $t('api.page.backToResponse') }}
                     </span>
                     <div class="bar-meta" v-if="currentDebugResult">
                       <a-tag :color="resultStatusColor" size="small">
-                        {{ resultStatusCode != null ? resultStatusCode : (resultIsError ? '错误' : '-') }}
+                        {{ resultStatusCode != null ? resultStatusCode : (resultIsError ? $t('api.page.errorTag') : '-') }}
                       </a-tag>
                       <span v-if="resultTimeMs != null" class="meta-item">{{ resultTimeMs }} ms</span>
                       <span v-if="resultSize" class="meta-item">{{ resultSize }}</span>
                     </div>
-                    <span v-else class="bar-meta" style="color: var(--color-text-3);">暂无结果</span>
+                    <span v-else class="bar-meta" style="color: var(--color-text-3);">{{ $t('api.page.noResult') }}</span>
                   </div>
 
                   <!-- 展开态：可拖拽分隔条 + 响应面板 -->
                   <template v-else>
                     <div class="response-resizer" @mousedown="startResize">
                       <span class="resizer-grip" />
-                      <a-tooltip content="收起响应">
+                      <a-tooltip :content="$t('api.page.collapseResponse')">
                         <icon-down
                             class="resizer-collapse"
                             @mousedown.stop
@@ -110,24 +110,24 @@
               <div class="empty-cards">
                 <EmptyActionCard
                     v-if="hasApiCreatePermission"
-                    title="新建 HTTP 接口"
+                    :title="$t('api.page.newHttpApi')"
                     :icon="IconCode"
                     @click="handleAddTab(ApiType.HTTP)"
                 />
                 <EmptyActionCard
                     v-if="hasApiCreatePermission"
-                    title="新建 SQL 接口"
+                    :title="$t('api.page.newSqlApi')"
                     :icon="IconStorage"
                     @click="handleAddTab(ApiType.SQL)"
                 />
                 <EmptyActionCard
                     v-if="hasApiCreatePermission"
-                    title="导入 Swagger 接口"
+                    :title="$t('api.page.importSwaggerApi')"
                     swagger
                     @click="handleOpenImportModal"
                 />
                 <div v-if="!hasApiCreatePermission" class="empty-tip">
-                  暂无接口编辑权限，请联系管理员开通
+                  {{ $t('api.page.noPermission') }}
                 </div>
               </div>
             </div>
@@ -165,6 +165,7 @@ import Breadcrumb from '@/components/breadcrumb/index.vue';
 import EmptyActionCard from '@/components/empty-action-card/index.vue';
 import useLoading from "@/hooks/loading";
 import usePermission from '@/hooks/permission';
+import {useI18n} from 'vue-i18n';
 
 interface TabItem extends ApiRequest {
   key: string;
@@ -172,6 +173,8 @@ interface TabItem extends ApiRequest {
   unsavedChanges?: boolean;
 }
 
+
+const {t} = useI18n();
 
 const {loading, setLoading} = useLoading(false);
 const teamStore = useTeamStore();
@@ -387,7 +390,7 @@ const handleAddTab = (apiType: ApiType = ApiType.HTTP) => {
   const newApi = new AddApiInterfaceDTO(ApiNodeType.INTERFACE);
   newApi.apiType = apiType;
   if (apiType === ApiType.SQL) {
-    newApi.apiName = 'SQL查询';
+    newApi.apiName = t('api.page.defaultSqlName');
     newApi.requestMethod = undefined as any;
     newApi.requestPath = undefined;
     newApi.requestHeader = undefined;
@@ -463,7 +466,7 @@ const handleSaveTab = async (tab: TabItem) => {
   const res = await saveApi(savedData);
   if (res.code == 200) {
     Message.success({
-      content: '保存成功',
+      content: t('api.common.saveSuccess'),
       duration: 2000,
     });
     // 获取接口的详细信息
@@ -542,7 +545,7 @@ const saveAndDebugApi = async (tab: TabItem, formData?: AddApiInterfaceDTO) => {
     const res = await debug(resSave.data);
     if (res.code == 200) {
       Message.success({
-        content: '调试成功',
+        content: t('api.common.debugSuccess'),
         duration: 2000,
       });
       tabDebugResultMap[activeKey.value] = res.data;
@@ -560,7 +563,7 @@ const saveAndDebugApi = async (tab: TabItem, formData?: AddApiInterfaceDTO) => {
 const handleSaveAsCase = async (tab: TabItem, data: AddApiInterfaceDTO) => {
   // 确保有来源接口ID
   if (!data.sourceDratId) {
-    Message.error({ content: '请先保存接口，再保存为用例', duration: 2000 });
+    Message.error({ content: t('api.page.saveApiFirst'), duration: 2000 });
     return;
   }
   // 深拷贝数据，避免修改原接口数据
@@ -572,9 +575,9 @@ const handleSaveAsCase = async (tab: TabItem, data: AddApiInterfaceDTO) => {
   caseData.teamId = useTeamStore().getTeamId ?? undefined;
   const res = await saveCase(caseData);
   if (res.code == 200) {
-    Message.success({ content: '保存用例成功', duration: 2000 });
+    Message.success({ content: t('api.detail.saveCaseSuccess'), duration: 2000 });
   } else {
-    Message.error({ content: res.msg || '保存用例失败', duration: 2000 });
+    Message.error({ content: res.msg || t('api.detail.saveCaseFailed'), duration: 2000 });
   }
 };
 

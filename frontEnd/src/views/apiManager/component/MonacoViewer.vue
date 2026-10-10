@@ -8,14 +8,14 @@
         @click="formatDocument"
       >
         <template #icon><icon-brush /></template>
-        格式化
+        {{ $t('api.editor.format') }}
       </a-button>
     </div>
     <!-- Monaco 容器 -->
     <div ref="editorContainerRef" class="editor-container">
       <div v-if="loading" class="editor-loading">
         <a-spin />
-        <span class="editor-loading-text">编辑器加载中…</span>
+        <span class="editor-loading-text">{{ $t('api.editor.loading') }}</span>
       </div>
     </div>
   </div>
@@ -24,6 +24,7 @@
 <script setup lang="ts">
   import {ref, onMounted, onBeforeUnmount, watch, computed} from 'vue';
   import {Message} from '@arco-design/web-vue';
+  import {useI18n} from 'vue-i18n';
   import {IconBrush} from '@arco-design/web-vue/es/icon';
   import beautify from 'js-beautify';
   import {loadMonaco} from '@/utils/monacoLoader';
@@ -34,6 +35,8 @@
     /** 是否显示内置工具栏（默认 true；ResponseViewer 等父级合并工具栏时传 false） */
     showToolbar?: boolean;
   }
+
+  const {t} = useI18n();
 
   const props = withDefaults(defineProps<Props>(), {showToolbar: true});
 
@@ -76,9 +79,9 @@
         return;
       }
       editor.setValue(formatted);
-      Message.success({content: '格式化成功', duration: 1500});
+      Message.success({content: t('api.editor.formatSuccess'), duration: 1500});
     } catch (e) {
-      Message.warning({content: '当前内容无法格式化', duration: 2000});
+      Message.warning({content: t('api.editor.formatFailed'), duration: 2000});
     }
   };
 
@@ -112,7 +115,7 @@
       monaco = await loadMonaco();
     } catch (e: any) {
       loading.value = false;
-      Message.error({content: e?.message || '编辑器加载失败', duration: 3000});
+      Message.error({content: e?.message || t('api.editor.loadFailed'), duration: 3000});
       return;
     }
     if (!editorContainerRef.value) return;

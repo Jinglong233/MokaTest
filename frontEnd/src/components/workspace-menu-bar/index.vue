@@ -3,19 +3,19 @@
     <a-space class="workspace-context" size="medium">
       <div class="team-name">
         <icon-apps />
-        <span>{{ workspaceStore.activeTab?.teamName || '当前团队' }}</span>
+        <span>{{ workspaceStore.activeTab?.teamName || $t('components.workspaceMenuBar.currentTeam') }}</span>
       </div>
       <a-divider direction="vertical" />
       <a-select
         :style="{width:'280px'}"
         :model-value="workspaceStore.activeProjectId"
-        :placeholder="hasProjects ? '请选择项目' : '暂无项目'"
+        :placeholder="hasProjects ? $t('components.navbar.selectProject') : $t('components.noProject.title')"
         :disabled="!hasProjects"
         @change="handleProjectChange"
         @dropdown-visible-change="handleDropdownVisibleChange"
       >
         <template #prefix>
-          {{ hasProjects ? '项目:' : '暂无项目' }}
+          {{ hasProjects ? $t('components.workspaceMenuBar.projectPrefix') : $t('components.noProject.title') }}
         </template>
         <a-option
           v-for="project in dataStore.data"
@@ -44,9 +44,12 @@
 import {computed, onMounted} from 'vue';
 import {useRouter} from 'vue-router';
 import {Message} from '@arco-design/web-vue';
+import {useI18n} from 'vue-i18n';
 import {useWorkspaceStore, useProjectStore} from '@/store';
 import useDataStore from '@/store/modules/nav';
 import Menu from '@/components/menu/index.vue';
+
+const {t} = useI18n();
 
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
@@ -96,7 +99,7 @@ onMounted(async () => {
     try {
       await dataStore.fetchData();
     } catch (e) {
-      Message.warning('加载项目列表失败');
+      Message.warning(t('components.workspaceMenuBar.loadProjectsFailed'));
     }
   }
 });

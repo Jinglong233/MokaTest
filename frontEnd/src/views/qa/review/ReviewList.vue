@@ -16,7 +16,7 @@
             >
               <template #search-extra>
                 <a-button type="primary" size="small" @click="handleAdd">
-                  新建
+                  {{ $t('qa.review.add') }}
                 </a-button>
               </template>
             </ModuleTreeManager>
@@ -39,21 +39,21 @@
     <a-row class="list-toolbar" justify="space-between" align="center" style="margin-bottom: 12px">
       <div class="search-items">
         <div class="search-item">
-          <span class="search-label">关键词</span>
+          <span class="search-label">{{ $t('qa.review.keyword') }}</span>
           <a-input
               v-model="searchKeyword"
-              placeholder="标题 / 评审单号"
+              :placeholder="$t('qa.review.searchPlaceholder')"
               allow-clear
               class="search-control"
               @press-enter="handleSearch"
           />
         </div>
         <div class="search-item">
-          <span class="search-label">状态</span>
-          <a-select v-model="searchStatus" placeholder="状态" allow-clear class="search-control">
-            <a-option value="REVIEWING">评审中</a-option>
-            <a-option value="COMPLETED">已完成</a-option>
-            <a-option value="CANCELLED">已取消</a-option>
+          <span class="search-label">{{ $t('qa.testCase.status') }}</span>
+          <a-select v-model="searchStatus" :placeholder="$t('qa.testCase.status')" allow-clear class="search-control">
+            <a-option value="REVIEWING">{{ $t('qa.review.status.reviewing') }}</a-option>
+            <a-option value="COMPLETED">{{ $t('qa.review.status.completed') }}</a-option>
+            <a-option value="CANCELLED">{{ $t('qa.review.status.cancelled') }}</a-option>
           </a-select>
         </div>
         <a-button type="primary" @click="handleSearch">
@@ -72,7 +72,7 @@
           type="outline"
           :disabled="!selectedIds.length"
         >
-          批量操作
+          {{ $t('qa.review.batchOperation') }}
           <template #icon><icon-more /></template>
           <template #content>
             <a-doption
@@ -80,14 +80,14 @@
               @click="moveModalVisible = true; loadMoveModuleTree()"
             >
               <template #icon><icon-to-right /></template>
-              移动到模块
+              {{ $t('qa.review.moveToModule') }}
             </a-doption>
             <a-doption
               :disabled="!selectedIds.length"
               @click="handleBatchDelete"
             >
               <template #icon><icon-delete /></template>
-              <span style="color: #f53f3f;">批量删除</span>
+              <span style="color: #f53f3f;">{{ $t('qa.review.batchDelete') }}</span>
             </a-doption>
           </template>
         </a-dropdown-button>
@@ -135,7 +135,7 @@
         </template>
         <template #passRule="{ record }">
           <a-tag :color="record.passRule === 'MAJORITY' ? 'arcoblue' : 'purple'" size="small">
-            {{ record.passRule === 'MAJORITY' ? '多数通过' : '全票通过' }}
+            {{ record.passRule === 'MAJORITY' ? $t('qa.review.passRuleMajority') : $t('qa.review.passRuleAll') }}
           </a-tag>
         </template>
         <template #deadline="{ record }">
@@ -184,23 +184,23 @@
       <!-- 批量移动模块弹窗 -->
       <a-modal
         v-model:visible="moveModalVisible"
-        title="移动到模块"
+        :title="$t('qa.review.moveToModule')"
         :width="480"
         :ok-loading="moveLoading"
         @ok="handleBatchMove"
       >
         <div style="padding: 4px 0;">
-          <div style="margin-bottom: 4px;">目标模块 <span style="color: #f53f3f;">*</span></div>
+          <div style="margin-bottom: 4px;">{{ $t('qa.review.targetModule') }} <span style="color: #f53f3f;">*</span></div>
           <a-tree-select
             v-model="moveTargetModuleId"
             :data="moveModuleTree"
             :field-names="{ key: 'id', title: 'moduleName' }"
-            placeholder="请选择目标模块"
+            :placeholder="$t('qa.review.targetModulePlaceholder')"
             allow-clear
             style="width: 100%; margin-bottom: 12px;"
           />
           <p style="color: var(--color-text-3); font-size: 13px;">
-            将把已选的 {{ selectedIds.length }} 条评审单移动到目标模块下。
+            {{ $t('qa.review.moveTip', { count: selectedIds.length }) }}
           </p>
         </div>
       </a-modal>
@@ -213,8 +213,9 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, onActivated, onBeforeUnmount, watch} from 'vue';
+import {ref, computed, onMounted, onBeforeUnmount, watch} from 'vue';
 import {useRouter} from 'vue-router';
+import {useI18n} from 'vue-i18n';
 import {Message, Modal} from '@arco-design/web-vue';
 import { IconPlus, IconSearch, IconDown, IconMore, IconToRight, IconDelete, IconRight } from '@arco-design/web-vue/es/icon';
 import {useProjectStore} from '@/store';
@@ -232,6 +233,7 @@ import {
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
 const router = useRouter();
+const {t} = useI18n();
 
 const projectStore = useProjectStore();
 const reviewTodoStore = useReviewTodoStore();
@@ -333,18 +335,18 @@ const moduleTreeRef = ref<any>(null);
 const pagination = ref({ current: 1, pageSize: 10, total: 0, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] });
 
 // 主表列定义（:columns 数组 + slotName 方式）
-const columns = [
-  { title: '评审编号', dataIndex: 'reviewCode', width: 120, ellipsis: true, tooltip: true },
-  { title: '评审名称', dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'title' },
-  { title: '所属模块', dataIndex: 'moduleName', ellipsis: true, tooltip: true, slotName: 'moduleName' },
-  { title: '用例数', dataIndex: 'caseCount', width: 90, align: 'center', slotName: 'caseCount' },
-  { title: '通过率', width: 160, slotName: 'passRate' },
-  { title: '通过规则', dataIndex: 'passRule', width: 100, align: 'center', slotName: 'passRule' },
-  { title: '截止时间', dataIndex: 'deadline', width: 180, ellipsis: true, tooltip: true, slotName: 'deadline' },
-  { title: '状态', dataIndex: 'status', width: 90, align: 'center', slotName: 'status' },
-  { title: '创建人', dataIndex: 'creatorName', width: 100, ellipsis: true, tooltip: true, slotName: 'creator' },
-  { title: '操作', width: 200, align: 'center', fixed: 'right' as const, slotName: 'actions' },
-];
+const columns = computed(() => [
+  { title: t('qa.review.code'), dataIndex: 'reviewCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.review.name'), dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'title' },
+  { title: t('qa.review.module'), dataIndex: 'moduleName', ellipsis: true, tooltip: true, slotName: 'moduleName' },
+  { title: t('qa.review.caseCount'), dataIndex: 'caseCount', width: 90, align: 'center', slotName: 'caseCount' },
+  { title: t('qa.review.passRate'), width: 160, slotName: 'passRate' },
+  { title: t('qa.review.passRule'), dataIndex: 'passRule', width: 100, align: 'center', slotName: 'passRule' },
+  { title: t('qa.review.deadline'), dataIndex: 'deadline', width: 180, ellipsis: true, tooltip: true, slotName: 'deadline' },
+  { title: t('qa.testCase.status'), dataIndex: 'status', width: 90, align: 'center', slotName: 'status' },
+  { title: t('qa.review.creator'), dataIndex: 'creatorName', width: 100, ellipsis: true, tooltip: true, slotName: 'creator' },
+  { title: t('qa.common.operation'), width: 200, align: 'center', fixed: 'right' as const, slotName: 'actions' },
+]);
 
 // 批量操作
 const selectedIds = ref<number[]>([]);
@@ -369,16 +371,16 @@ const loadMoveModuleTree = async () => {
 
 const handleBatchDelete = () => {
   Modal.warning({
-    title: '批量删除',
-    content: `确认删除选中的 ${selectedIds.value.length} 条评审单？评审中的用例将回退为草稿，不可恢复。`,
-    okText: '删除',
+    title: t('qa.review.batchDelete'),
+    content: t('qa.review.batchDeleteContent', { count: selectedIds.value.length }),
+    okText: t('qa.common.delete'),
     okButtonProps: { status: 'danger' },
     hideCancel: false,
     onOk: async () => {
       try {
         const res: any = await batchDeleteTestCaseReview(selectedIds.value);
         if (res.code === 200) {
-          Message.success(res.msg || '批量删除完成');
+          Message.success(res.msg || t('qa.review.batchDeleteSuccess'));
           selectedIds.value = [];
           reviewTodoStore.refresh(true);
           // 后台刷新，不阻塞 UI
@@ -393,14 +395,14 @@ const handleBatchDelete = () => {
 
 const handleBatchMove = async () => {
   if (moveTargetModuleId.value === undefined) {
-    Message.warning('请选择目标模块');
+    Message.warning(t('qa.review.selectTargetModule'));
     return;
   }
   moveLoading.value = true;
   try {
     const res: any = await batchMoveTestCaseReview(selectedIds.value, moveTargetModuleId.value);
     if (res.code === 200) {
-      Message.success(`已移动 ${selectedIds.value.length} 条评审单`);
+      Message.success(t('qa.review.moveSuccess', { count: selectedIds.value.length }));
       selectedIds.value = [];
       moveModalVisible.value = false;
       moveTargetModuleId.value = undefined;
@@ -441,10 +443,10 @@ interface ReviewOp {
 }
 // 操作列：所有按钮恒可点；不适用场景由后端返回明确错误提示（如"仅创建人可删除"）
 const opsFor = (record: any): ReviewOp[] => [
-  { key: 'enter', label: '评审', handler: handleEnter },
-  { key: 'edit', label: '编辑', handler: handleEdit },
-  { key: 'view', label: '详情', handler: handleView },
-  { key: 'delete', label: '删除', danger: true, handler: confirmDelete },
+  { key: 'enter', label: t('qa.review.op.review'), handler: handleEnter },
+  { key: 'edit', label: t('qa.review.op.edit'), handler: handleEdit },
+  { key: 'view', label: t('qa.review.op.detail'), handler: handleView },
+  { key: 'delete', label: t('qa.common.delete'), danger: true, handler: confirmDelete },
 ];
 // 平铺规则：前2个常显，第3个起进「更多」
 const visibleOps = (record: any) => opsFor(record).slice(0, 2);
@@ -457,20 +459,20 @@ const guardAndRun = (op: ReviewOp, record: any) => {
 
 const confirmDelete = (record: any) => {
   Modal.warning({
-    title: '删除评审',
-    content: `确认删除评审单「${record.title}」吗？评审中的用例将回退为草稿，评审明细、评审人、圈选关联将一并删除，不可恢复。`,
-    okText: '确认删除',
+    title: t('qa.review.deleteTitle'),
+    content: t('qa.review.deleteContent', { name: record.title }),
+    okText: t('qa.review.confirmDelete'),
     okButtonProps: { status: 'danger' },
-    cancelText: '再想想',
+    cancelText: t('qa.review.thinkAgain'),
     hideCancel: false,
     onOk: async () => {
       const res: any = await deleteTestCaseReview(record.id);
       if (res.code === 200) {
-        Message.success('已删除');
+        Message.success(t('qa.review.deleted'));
         reviewTodoStore.refresh(true);
         await loadData();
       } else {
-        Message.error(res.msg || '删除失败');
+        Message.error(res.msg || t('qa.review.deleteFailed'));
       }
     },
   });
@@ -560,16 +562,12 @@ const statusColor = (status: string) => {
   return map[status] || 'gray';
 };
 const statusText = (status: string) => {
-  const map: Record<string, string> = { REVIEWING: '评审中', COMPLETED: '已完成', CANCELLED: '已取消' };
+  const map: Record<string, string> = { REVIEWING: t('qa.review.status.reviewing'), COMPLETED: t('qa.review.status.completed'), CANCELLED: t('qa.review.status.cancelled') };
   return map[status] || status;
 };
 
 onMounted(() => {
   window.addEventListener('resize', onWindowResize);
-  loadData();
-});
-// keep-alive 激活时刷新（新建/编辑评审返回后列表同步）
-onActivated(() => {
   loadData();
 });
 

@@ -8,7 +8,7 @@
   >
     <template #title>
       <div class="drawer-title-wrap">
-        <span>关联用例</span>
+        <span>{{ $t('qa.review.linkCases') }}</span>
         <a-button type="text" size="small" class="fullscreen-btn" @click="fullScreen = !fullScreen">
           <template #icon>
             <icon-fullscreen v-if="!fullScreen" />
@@ -22,7 +22,7 @@
       <div class="case-select-side">
         <a-input-search
           v-model="moduleKeyword"
-          placeholder="搜索模块"
+          :placeholder="$t('qa.review.searchModule')"
           style="margin-bottom: 8px"
           size="small"
         />
@@ -47,13 +47,13 @@
         <div class="case-select-toolbar">
           <a-input-search
             v-model="searchKeyword"
-            placeholder="搜索用例编号/名称"
+            :placeholder="$t('qa.review.searchCase')"
             allow-clear
             style="width: 240px"
             @search="handleSearch"
             @press-enter="handleSearch"
           />
-          <span class="selected-count">已选 {{ tempSelectedIds.length }} 条</span>
+          <span class="selected-count">{{ $t('qa.review.selectedCount', { count: tempSelectedIds.length }) }}</span>
         </div>
 
         <a-table
@@ -69,9 +69,9 @@
           @select-all="handleSelectAll"
         >
           <template #columns>
-            <a-table-column title="用例编号" data-index="caseCode" :width="130" />
-            <a-table-column title="用例名称" data-index="caseName" :ellipsis="true" />
-            <a-table-column title="用例等级" :width="90" align="center">
+            <a-table-column :title="$t('qa.testCase.code')" data-index="caseCode" :width="130" />
+            <a-table-column :title="$t('qa.testCase.name')" data-index="caseName" :ellipsis="true" />
+            <a-table-column :title="$t('qa.review.caseLevel')" :width="90" align="center">
               <template #cell="{ record }">
                 <span class="cell-with-icon">
                   <icon-star-fill :size="14" class="icon-priority" />
@@ -79,19 +79,19 @@
                 </span>
               </template>
             </a-table-column>
-            <a-table-column title="评审结果" :width="100" align="center">
+            <a-table-column :title="$t('qa.review.result')" :width="100" align="center">
               <template #cell="{ record }">
                 <span class="cell-with-icon">
                   <icon-check-circle-fill v-if="record.finalResult === 'PASS'" :size="14" class="icon-pass" />
                   <icon-close-circle-fill v-else-if="record.finalResult === 'REJECT'" :size="14" class="icon-reject" />
                   <icon-exclamation-circle-fill v-else :size="14" class="icon-pending" />
-                  <span v-if="record.finalResult === 'PASS'" class="text-pass">已通过</span>
-                  <span v-else-if="record.finalResult === 'REJECT'" class="text-reject">不通过</span>
-                  <span v-else class="text-pending">未评审</span>
+                  <span v-if="record.finalResult === 'PASS'" class="text-pass">{{ $t('qa.review.casePassed') }}</span>
+                  <span v-else-if="record.finalResult === 'REJECT'" class="text-reject">{{ $t('qa.review.resultReject') }}</span>
+                  <span v-else class="text-pending">{{ $t('qa.review.notReviewed') }}</span>
                 </span>
               </template>
             </a-table-column>
-            <a-table-column title="执行结果" :width="100" align="center">
+            <a-table-column :title="$t('qa.review.execResult')" :width="100" align="center">
               <template #cell>
                 <span class="cell-with-icon">
                   <icon-info-circle-fill :size="14" class="icon-pending" />
@@ -99,7 +99,7 @@
                 </span>
               </template>
             </a-table-column>
-            <a-table-column title="标签" :width="120">
+            <a-table-column :title="$t('qa.review.tags')" :width="120">
               <template #cell="{ record }">
                 <template v-if="record.tags">
                   <a-tag v-for="tag in String(record.tags).split(',').filter(Boolean)" :key="tag" size="small">{{ tag }}</a-tag>
@@ -107,8 +107,8 @@
                 <span v-else style="color: #86909c;">-</span>
               </template>
             </a-table-column>
-            <a-table-column title="创建人" data-index="createUserName" :width="100" />
-            <a-table-column title="创建时间" data-index="createTime" :width="160" />
+            <a-table-column :title="$t('qa.review.creator')" data-index="createUserName" :width="100" />
+            <a-table-column :title="$t('qa.review.createTime')" data-index="createTime" :width="160" />
           </template>
         </a-table>
       </div>
@@ -116,11 +116,11 @@
 
     <div class="case-select-footer">
       <a-space>
-        <span style="color: #86909c;">已选 {{ tempSelectedIds.length }} 条用例</span>
+        <span style="color: #86909c;">{{ $t('qa.review.selectedCases', { count: tempSelectedIds.length }) }}</span>
       </a-space>
       <a-space>
-        <a-button @click="handleClose">取消</a-button>
-        <a-button type="primary" @click="handleConfirm">确定</a-button>
+        <a-button @click="handleClose">{{ $t('qa.common.cancel') }}</a-button>
+        <a-button type="primary" @click="handleConfirm">{{ $t('qa.review.confirm') }}</a-button>
       </a-space>
     </div>
   </a-drawer>
@@ -128,7 +128,10 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getTestCaseList, getQaModuleTree } from '@/api/MyApi/qa';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   visible: boolean;
@@ -290,7 +293,7 @@ watch(() => props.visible, (val) => {
 
 const priorityColor = (p: string) => ({ P0: 'red', P1: 'orange', P2: 'blue' } as Record<string, string>)[p] || 'gray';
 const caseStatusColor = (s: string) => ({ DRAFT: 'gray', REVIEWING: 'gold', REVIEWED: 'green', DEPRECATED: 'red' } as Record<string, string>)[s] || 'gray';
-const caseStatusText = (s: string) => ({ DRAFT: '草稿', REVIEWING: '评审中', REVIEWED: '已评审', DEPRECATED: '已废弃' } as Record<string, string>)[s] || s;
+const caseStatusText = (s: string) => ({ DRAFT: t('qa.review.caseStatus.draft'), REVIEWING: t('qa.review.status.reviewing'), REVIEWED: t('qa.review.caseStatus.reviewed'), DEPRECATED: t('qa.review.caseStatus.deprecated') } as Record<string, string>)[s] || s;
 </script>
 
 <style scoped lang="less">

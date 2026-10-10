@@ -2,21 +2,21 @@
   <div class="script-step-editor" :style="{ height: editorHeight }">
     <a-form :model="localData" layout="vertical" auto-label-width>
       <a-form-item
-          label="步骤名称"
+          :label="$t('scene.script.stepName')"
           field="stepName"
-          :rules="[{ required: true, message: '步骤名称不能为空' }]"
+          :rules="[{ required: true, message: $t('scene.script.stepNameRequired') }]"
           :validate-trigger="['change', 'input']"
       >
         <a-input
             v-model="localData.stepName"
-            placeholder="请输入步骤名称"
+            :placeholder="$t('scene.script.stepNamePlaceholder')"
             allow-clear
             :disabled="disabled"
             @input="formDirty = true"
         />
       </a-form-item>
 
-      <a-form-item label="脚本内容（JavaScript，在场景变量池上下文中执行）">
+      <a-form-item :label="$t('scene.script.contentLabel')">
         <div class="script-editor-wrap">
           <div class="script-code-pane">
             <BodyCodeEditor
@@ -28,7 +28,7 @@
             />
           </div>
           <div class="script-help-pane">
-            <div class="help-title">可用 API</div>
+            <div class="help-title">{{ $t('scene.script.helpTitle') }}</div>
             <div class="help-item" v-for="item in helpItems" :key="item.code">
               <code class="help-code" @click="copyHelp(item.code)">{{ item.code }}</code>
               <div class="help-desc">{{ item.desc }}</div>
@@ -41,7 +41,8 @@
 </template>
 
 <script setup lang="ts">
-import {reactive, ref, watch} from 'vue';
+import {computed, reactive, ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
 import BodyCodeEditor from '@/views/apiManager/component/BodyCodeEditor.vue';
 
@@ -65,6 +66,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: ScriptStepData): void;
 }>();
+
+const { t } = useI18n();
 
 // 本地数据
 const localData = reactive<ScriptStepData>({
@@ -96,19 +99,19 @@ const handleCodeChange = () => {
   emit('update:modelValue', {...props.modelValue, ...localData});
 };
 
-const helpItems = [
-  {code: 'context.getVariable("token")', desc: '读取场景变量'},
-  {code: 'context.setVariable("token", "abc")', desc: '写入场景变量，后续步骤可用 ${token} 引用'},
-  {code: 'console.log("日志")', desc: '输出日志，执行结果中可见'},
-  {code: 'context.assertCondition(1 + 1 === 2, "断言提示")', desc: '自定义断言，失败则步骤失败'},
-  {code: 'context.utils.md5("text")', desc: '工具函数：md5/sha256/base64/uuid/mock/template 等'},
-  {code: 'fn.函数名("参数")', desc: '调用项目自定义函数（接口测试 → 自定义函数 中维护）'},
-];
+const helpItems = computed(() => [
+  {code: 'context.getVariable("token")', desc: t('scene.script.helpGetVar')},
+  {code: 'context.setVariable("token", "abc")', desc: t('scene.script.helpSetVar')},
+  {code: 'console.log("日志")', desc: t('scene.script.helpLog')},
+  {code: 'context.assertCondition(1 + 1 === 2, "断言提示")', desc: t('scene.script.helpAssert')},
+  {code: 'context.utils.md5("text")', desc: t('scene.script.helpUtils')},
+  {code: 'fn.函数名("参数")', desc: t('scene.script.helpFn')},
+]);
 
 const copyHelp = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    Message.success({content: '已复制', duration: 1000});
+    Message.success({content: t('scene.script.copied'), duration: 1000});
   } catch (e) {
     // 剪贴板不可用时静默
   }
@@ -117,7 +120,7 @@ const copyHelp = async (text: string) => {
 // 校验方法
 const validate = async () => {
   if (!localData.stepName || !localData.stepName.trim()) {
-    return {valid: false, errors: {stepName: ['步骤名称不能为空']}};
+    return {valid: false, errors: {stepName: [t('scene.script.stepNameRequired')]}};
   }
   return {valid: true, data: JSON.parse(JSON.stringify(localData))};
 };

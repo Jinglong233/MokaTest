@@ -2,13 +2,13 @@
   <a-card class="api-list-card">
     <div class="api-list-search-wrap">
       <a-input-search
-        placeholder="输入目录/目录名称筛选"
+        :placeholder="$t('api.list.searchPlaceholder')"
         class="api-list-search"
         v-model="searchKey"
       />
     </div>
     <a-button-group class="api-list-actions">
-      <a-popover title="新建目录" style="flex: 1">
+      <a-popover :title="$t('api.list.newFolder')" style="flex: 1">
         <a-button v-permission="'auto:api:create'" @click="userAddOrUpdateFolder(undefined)" style="width: 100%">
           <template #icon>
             <icon-folder-add />
@@ -22,18 +22,18 @@
           </template>
         </a-button>
         <template #content>
-          <a-doption value="HTTP">HTTP 接口</a-doption>
-          <a-doption value="SQL">SQL 接口</a-doption>
+          <a-doption value="HTTP">{{ $t('api.list.httpApi') }}</a-doption>
+          <a-doption value="SQL">{{ $t('api.list.sqlApi') }}</a-doption>
         </template>
       </a-dropdown>
-      <a-popover title="导入 Swagger" style="flex: 1">
+      <a-popover :title="$t('api.list.importSwagger')" style="flex: 1">
         <a-button v-permission="'auto:api:create'" @click="importModalVisible = true" style="width: 100%">
           <template #icon>
             <icon-upload />
           </template>
         </a-button>
       </a-popover>
-      <a-popover :title="isExpandAll ? '展开全部' : '折叠全部'" style="flex: 1">
+      <a-popover :title="isExpandAll ? $t('api.list.expandAll') : $t('api.list.collapseAll')" style="flex: 1">
         <a-button @click="handleApiTreeExpand" style="width: 100%">
           <template #icon>
             <icon-menu-fold v-if="isExpandAll" />
@@ -105,29 +105,29 @@
               </a-button>
               <template #content v-if="node.apiNode === ApiNodeType.FOLDER">
               <a-doption v-permission="'auto:api:create'" @click="userAddSubFolder(node.id)"
-                >新建子目录</a-doption
+                >{{ $t('api.list.newSubFolder') }}</a-doption
               >
               <a-doption v-permission="'auto:api:update'" @click="userAddOrUpdateFolder(node)"
-                >编辑目录</a-doption
+                >{{ $t('api.list.editFolder') }}</a-doption
               >
               <a-doption
                 v-permission="'auto:api:delete'"
                 v-if="node.id != null && node.id != 0"
                 @click="handleInterfaceOrFolderDelete(node.id, node.apiNode)"
-                >删除目录
+                >{{ $t('api.list.deleteFolder') }}
               </a-doption>
             </template>
             <template #content v-if="node.apiNode === ApiNodeType.INTERFACE">
               <a-doption
                 v-permission="'auto:api:delete'"
                 @click="handleInterfaceOrFolderDelete(node.id, node.apiNode)"
-                >删除接口</a-doption
+                >{{ $t('api.list.deleteApi') }}</a-doption
               >
               <a-doption
                 v-permission="'auto:api:create'"
                 v-if="node.id != null && node.id != 0"
                 @click="handleSceneCopy(node.id)"
-                >复制接口
+                >{{ $t('api.list.copyApi') }}
               </a-doption>
             </template>
           </a-dropdown>
@@ -141,7 +141,7 @@
   <!--添加/编辑 目录对话框-->
   <a-modal
     v-model:visible="folderFormVisible"
-    :title="addOrUpdateFolderForm?.id == null ? '新建目录' : '编辑目录'"
+    :title="addOrUpdateFolderForm?.id == null ? $t('api.list.newFolder') : $t('api.list.editFolder')"
     @before-ok="handleFolderBeforeOk"
   >
     <a-form
@@ -149,11 +149,11 @@
       :model="addOrUpdateFolderForm"
       :rules="addFormRules"
     >
-      <a-form-item field="parentId" label="父目录">
+      <a-form-item field="parentId" :label="$t('api.list.parentFolder')">
         <a-tree-select
           :data="folderList"
           v-model="addOrUpdateFolderForm.parentId"
-          placeholder="选择父目录"
+          :placeholder="$t('api.list.parentFolderPlaceholder')"
           :fieldNames="{
             key: 'id',
             title: 'apiName',
@@ -164,7 +164,7 @@
           </template>
         </a-tree-select>
       </a-form-item>
-      <a-form-item field="apiName" label="目录名称">
+      <a-form-item field="apiName" :label="$t('api.list.folderName')">
         <a-input v-model="addOrUpdateFolderForm.apiName" />
       </a-form-item>
     </a-form>
@@ -197,6 +197,7 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
   import useTeamStore from '@/store/modules/team';
   import usePermission from '@/hooks/permission';
   import SwaggerImportModal from './SwaggerImportModal.vue';
+  import { useI18n } from 'vue-i18n';
 
   const emit = defineEmits<{
     (e: 'add', apiType: string): void;
@@ -204,6 +205,8 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
     (e: 'deleteInterfaceTab', deleteInterfaceId: number): void;
   }>();
   const projectId = useProjectStore().getProjectId as number;
+  const { t } = useI18n();
+
   const permission = usePermission();
 
   const hasApiCreatePermission = computed(() => permission.hasPermission('auto:api:create'));
@@ -359,7 +362,7 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
 
     // 如果拖拽节点id是0 or null 就直接返回
     if (!dragNode.id || dragNode.id === 0) {
-      Message.warning('根节点无法拖拽');
+      Message.warning(t('api.list.rootNoDrag'));
       return;
     }
 
@@ -445,10 +448,10 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
 
     const result = await updateApiTreeList(data[0].children);
     if (result.code === 200) {
-      Message.success('更新成功');
+      Message.success(t('api.common.updateSuccess'));
     } else {
       Message.error({
-        content: '更新失败',
+        content: t('api.common.updateFailed'),
         duration: 1000,
       });
     }
@@ -504,20 +507,20 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
     return filteredRoot ? [filteredRoot] : [];
   };
 
-  const addFormRules = {
+  const addFormRules = computed(() => ({
     apiName: [
       {
         required: true,
-        message: '请输入目录名称',
+        message: t('api.list.folderNameRequired'),
       },
     ],
     parentId: [
       {
         required: true,
-        message: '请选择父级目录',
+        message: t('api.list.parentFolderRequired'),
       },
     ],
-  };
+  }));
 
   // 确认添加目录
   const handleFolderBeforeOk = async () => {
@@ -531,7 +534,7 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
     addOrUpdateFolderForm.value.teamId = useTeamStore().getTeamId as number;
     const res = await saveApi(addOrUpdateFolderForm.value);
     if (res.code === 200) {
-      Message.success('添加成功');
+      Message.success(t('api.common.addSuccess'));
       folderFormVisible.value = false;
       // 重新获取API列表
       await reloadList();
@@ -556,15 +559,13 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
     type: ApiNodeType
   ) => {
     Modal.warning({
-      title: '确认删除？',
+      title: t('api.list.confirmDeleteTitle'),
       content: () =>
-        `删除后，该${
-          type === ApiNodeType.FOLDER
-            ? '目录及子目录下的接口将不再可见。'
-            : '接口将不再可见；接口下的用例将被清理。'
-        }`,
-      cancelText: '取消',
-      okText: '确认',
+        type === ApiNodeType.FOLDER
+          ? t('api.list.deleteFolderContent')
+          : t('api.list.deleteApiContent'),
+      cancelText: t('qa.common.cancel'),
+      okText: t('api.common.confirm'),
       hideCancel: false,
       onOk: async () => {
         const res = await deleteApi(deleteId);
@@ -593,11 +594,11 @@ import { ApiType } from '@/types/domain/api/apiEnum/ApiType';
   const handleSceneCopy = async (apiId: number) => {
     const res = await copyApi(apiId);
     if (res.code === 200) {
-      Message.success('复制成功');
+      Message.success(t('api.common.copySuccess'));
       // 刷新列表
       await reloadList();
     } else {
-      Message.error('复制失败');
+      Message.error(t('api.common.copyFailed'));
     }
   };
 

@@ -5,19 +5,19 @@
         <!-- 左侧主栏：用例内容 -->
         <a-col :xs="24" :lg="slim ? 24 : 16" class="main-col">
           <a-card class="main-card" :bordered="false">
-            <a-form-item v-if="!slim" label="用例名称" required class="title-form-item">
+            <a-form-item v-if="!slim" :label="$t('qa.testCase.name')" required class="title-form-item">
               <a-input
                 v-model="formData.caseName"
-                placeholder="请输入用例名称"
+                :placeholder="$t('qa.testCase.namePlaceholder')"
                 class="title-input"
                 allow-clear
               />
             </a-form-item>
 
-            <a-form-item v-if="fieldVis('preCondition')" label="前置条件" class="precondition-item">
+            <a-form-item v-if="fieldVis('preCondition')" :label="$t('qa.testCase.preCondition')" class="precondition-item">
               <RichEditor
                 v-model="formData.preCondition"
-                placeholder="请输入前置条件"
+                :placeholder="$t('qa.testCase.preConditionPlaceholder')"
                 :height="slim ? undefined : '260px'"
                 :auto-height="slim"
                 @uploaded="handleUploadedFile"
@@ -25,14 +25,14 @@
             </a-form-item>
 
             <div class="steps-area">
-              <div class="steps-area-label">测试步骤</div>
+              <div class="steps-area-label">{{ $t('qa.testCase.steps') }}</div>
               <div class="steps-scroll">
                 <div class="steps-table">
                   <div class="steps-table-header">
-                    <span class="col-index">序号</span>
-                    <span>步骤描述</span>
-                    <span>预期结果</span>
-                    <span class="col-actions">操作</span>
+                    <span class="col-index">{{ $t('qa.testCase.stepIndex') }}</span>
+                    <span>{{ $t('qa.testCase.stepDesc') }}</span>
+                    <span>{{ $t('qa.testCase.expected') }}</span>
+                    <span class="col-actions">{{ $t('qa.common.operation') }}</span>
                   </div>
                   <div
                     v-for="(step, index) in stepList"
@@ -56,14 +56,14 @@
                     <div class="col-step">
                       <a-textarea
                         v-model="step.step"
-                        :placeholder="`步骤${index + 1}`"
+                        :placeholder="$t('qa.testCase.stepN', { index: index + 1 })"
                         :auto-size="{ minRows: 1, maxRows: 6 }"
                       />
                     </div>
                     <div class="col-expected">
                       <a-textarea
                         v-model="step.expected"
-                        placeholder="预期结果"
+                        :placeholder="$t('qa.testCase.expected')"
                         :auto-size="{ minRows: 1, maxRows: 6 }"
                       />
                     </div>
@@ -92,7 +92,7 @@
               </div>
 
               <a-button v-permission="'qa:testcase:update'" type="dashed" long class="add-step-btn" @click="addStep">
-                <icon-plus /> 添加步骤
+                <icon-plus /> {{ $t('qa.testCase.addStep') }}
               </a-button>
             </div>
           </a-card>
@@ -101,22 +101,22 @@
         <!-- 右侧副栏：属性字段（平铺，不再按卡片分组；slim 模式隐藏，字段在列表行内修改） -->
         <a-col v-if="!slim" :xs="24" :lg="8" class="side-col">
           <a-scrollbar class="side-scrollbar">
-            <a-form-item v-if="fieldVis('moduleId')" label="所属模块" required>
+            <a-form-item v-if="fieldVis('moduleId')" :label="$t('qa.testCase.module')" required>
               <a-tree-select
                 v-model="formData.moduleId"
                 :data="moduleTreeData"
                 :fieldNames="{ key: 'id', title: 'moduleName' }"
-                placeholder="请选择所属模块"
+                :placeholder="$t('qa.testCase.selectModule')"
               />
             </a-form-item>
 
-            <a-form-item v-if="fieldVis('requirementId')" label="关联需求">
+            <a-form-item v-if="fieldVis('requirementId')" :label="$t('qa.testCase.relatedRequirement')">
               <a-select
                 v-model="formData.requirementIds"
                 multiple
                 allow-search
                 :filter-option="false"
-                placeholder="请输入关键词搜索需求（可多选）"
+                :placeholder="$t('qa.testCase.searchRequirementPlaceholder')"
                 @search="handleSearchRequirement"
                 @dropdown-visible-change="handleRequirementDropdownVisibleChange"
                 @dropdown-reach-bottom="loadMoreRequirement"
@@ -126,18 +126,18 @@
                   <div>
                     <VNodeRenderer :vnodes="menu" />
                     <div v-if="requirementPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                      滚动加载更多...
+                      {{ $t('qa.testCase.scrollLoadMore') }}
                     </div>
                     <div v-else-if="requirementOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                      没有更多了
+                      {{ $t('qa.testCase.noMore') }}
                     </div>
                   </div>
                 </template>
               </a-select>
             </a-form-item>
 
-            <a-form-item v-if="fieldVis('priority')" label="用例等级" required>
-              <a-select v-model="formData.priority" placeholder="请选择">
+            <a-form-item v-if="fieldVis('priority')" :label="$t('qa.testCase.priorityLevel')" required>
+              <a-select v-model="formData.priority" :placeholder="$t('qa.testCase.pleaseSelect')">
                 <a-option value="P0">
                   <span class="priority-dot" style="background: #f53f3f;" />P0
                 </a-option>
@@ -150,8 +150,8 @@
               </a-select>
             </a-form-item>
 
-            <a-form-item v-if="fieldVis('tags')" label="标签" style="margin-bottom: 0;">
-              <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear />
+            <a-form-item v-if="fieldVis('tags')" :label="$t('qa.testCase.tags')" style="margin-bottom: 0;">
+              <a-input-tag v-model="formData.tags" :placeholder="$t('qa.testCase.tagsPlaceholder')" allow-clear />
             </a-form-item>
           </a-scrollbar>
         </a-col>
@@ -162,6 +162,7 @@
 
 <script setup lang="ts">
 import {ref, watch, onMounted, computed} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
 import {
   IconPlus,
@@ -192,6 +193,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'saved'): void;
 }>();
+
+const {t} = useI18n();
 
 const projectStore = useProjectStore();
 const projectConfigStore = useProjectConfigStore();
@@ -259,7 +262,7 @@ const updateSnapshot = () => {
   initialSnapshot.value = JSON.stringify(buildComparable());
 };
 
-const moduleTreeData = ref<any[]>([{id: 0, moduleName: '全部用例', children: []}]);
+const moduleTreeData = ref<any[]>([{id: 0, moduleName: t('qa.testCase.allCases'), children: []}]);
 
 const requirementOptions = ref<any[]>([]);
 const requirementPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
@@ -268,7 +271,7 @@ const loadModuleTree = async () => {
   if (!projectStore.getProjectId) return;
   try {
     const res: any = await getQaModuleTree(projectStore.getProjectId);
-    moduleTreeData.value = res.data || [{id: 0, moduleName: '全部用例', children: []}];
+    moduleTreeData.value = res.data || [{id: 0, moduleName: t('qa.testCase.allCases'), children: []}];
   } catch (e) {
     console.error(e);
   }
@@ -456,15 +459,15 @@ const removeStep = (index: number) => {
 
 const save = async () => {
   if (!formData.value.caseName) {
-    Message.warning('请输入用例名称');
+    Message.warning(t('qa.testCase.namePlaceholder'));
     return false;
   }
   if (formData.value.moduleId === undefined || formData.value.moduleId === null || formData.value.moduleId === '') {
-    Message.warning('请选择所属模块');
+    Message.warning(t('qa.testCase.selectModule'));
     return false;
   }
   if (!formData.value.priority) {
-    Message.warning('请选择用例等级');
+    Message.warning(t('qa.testCase.priorityRequired'));
     return false;
   }
   const payload = {...formData.value};
@@ -482,7 +485,7 @@ const save = async () => {
     const api = isEdit.value ? updateTestCase : saveTestCase;
     const res: any = await api(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.testCase.saveSuccess'));
       // 计算并删除被移除的富文本图片
       const currentFileIds = new Set<string>();
       extractFileIds(formData.value.preCondition).forEach(id => currentFileIds.add(id));

@@ -14,7 +14,7 @@
     </a-button>
     <template #content>
       <template v-if="managedTeams.length">
-        <div class="team-group-title">我管理的团队</div>
+        <div class="team-group-title">{{ $t('components.teamSwitcher.managedTeams') }}</div>
         <a-doption
           v-for="team in managedTeams"
           :key="team.id"
@@ -26,12 +26,12 @@
           </template>
           <a-space>
             <span class="team-option-name">{{ team.teamName }}</span>
-            <a-tag size="mini" color="arcoblue">管理</a-tag>
+            <a-tag size="mini" color="arcoblue">{{ $t('components.teamSwitcher.managedTag') }}</a-tag>
           </a-space>
         </a-doption>
       </template>
       <template v-if="joinedTeams.length">
-        <div class="team-group-title">我加入的团队</div>
+        <div class="team-group-title">{{ $t('components.teamSwitcher.joinedTeams') }}</div>
         <a-doption
           v-for="team in joinedTeams"
           :key="team.id"
@@ -47,7 +47,7 @@
       <a-empty
         v-if="!teamList.length && !loading"
         style="padding: 12px 0"
-        description="暂无团队"
+        :description="$t('components.teamSwitcher.empty')"
       />
     </template>
   </a-dropdown>
@@ -56,6 +56,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import { useUserStore, useTeamStore } from '@/store';
 import useDataStore from '@/store/modules/nav';
@@ -64,6 +65,7 @@ import { Team } from '@/types/domain/Team';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const userStore = useUserStore();
 const teamStore = useTeamStore();
 const dataStore = useDataStore();
@@ -75,8 +77,8 @@ const loading = ref(false);
 
 const currentTeamName = computed(() => {
   if (teamStore.teamName) return teamStore.teamName;
-  const current = teamList.value.find((t) => t.id === teamStore.teamId);
-  return current?.teamName || '选择团队';
+  const current = teamList.value.find((team) => team.id === teamStore.teamId);
+  return current?.teamName || t('components.teamSwitcher.selectTeam');
 });
 
 const isManagedTeam = (team: Team) => {
@@ -84,8 +86,8 @@ const isManagedTeam = (team: Team) => {
   return team.manageable === true;
 };
 
-const managedTeams = computed(() => teamList.value.filter((t) => isManagedTeam(t)));
-const joinedTeams = computed(() => teamList.value.filter((t) => !isManagedTeam(t)));
+const managedTeams = computed(() => teamList.value.filter((team) => isManagedTeam(team)));
+const joinedTeams = computed(() => teamList.value.filter((team) => !isManagedTeam(team)));
 
 const loadTeams = async () => {
   if (!visible.value) return;
@@ -102,10 +104,10 @@ const loadTeams = async () => {
 
 const handleSelect = async (value: string | number | Record<string, any> | undefined) => {
   const teamId = Number(value);
-  const team = teamList.value.find((t) => t.id === teamId);
+  const team = teamList.value.find((team) => team.id === teamId);
   if (!team) return;
   if (team.status === 0) {
-    Message.warning('该团队已禁用，无法切换');
+    Message.warning(t('components.teamSwitcher.disabledWarning'));
     return;
   }
   await teamStore.setTeam(String(teamId), team.teamName || '');

@@ -37,7 +37,7 @@
           <icon-minus-circle v-else-if="debugStatus === 'SKIPPED'" style="color: #86909c; font-size: 16px;"/>
         </span>
         <!-- 打开抽屉：编辑「设置 / 关联提取 / 断言」等节点上不展示的内容 -->
-        <a-tooltip content="更多设置（设置 / 关联提取 / 断言）">
+        <a-tooltip :content="$t('scene.node.moreSettings')">
           <icon-settings class="node-setting-btn" @click.stop="handleClick"/>
         </a-tooltip>
       </div>
@@ -45,7 +45,7 @@
 
     <!-- 步骤名称（仅当主表单无字段，如 API 请求步骤时展示，其余由内联表单的「步骤名称」字段承载） -->
     <a-typography-text v-if="!hasInlineFields" class="node-name" :ellipsis="{rows: 1}">
-      {{ data.stepName || '未命名步骤' }}
+      {{ data.stepName || $t('scene.node.unnamedStep') }}
     </a-typography-text>
 
     <!-- 内联必填项编辑：复用抽屉的字段与交互逻辑 -->
@@ -60,19 +60,19 @@
     />
 
     <div class="node-meta-row">
-      <a-tooltip v-if="extractVars.length > 0" :content="`提取变量：${extractVars.map(v => '${' + v + '}').join(' ')}`">
+      <a-tooltip v-if="extractVars.length > 0" :content="$t('scene.step.extractVars') + extractVars.map(v => '${' + v + '}').join(' ')">
         <a-tag color="arcoblue" size="small" class="meta-tag">
           <template #icon><icon-export/></template>
           {{ extractVars.length }}
         </a-tag>
       </a-tooltip>
-      <a-tag v-if="isDisabled" color="gray" size="small" class="meta-tag">已禁用</a-tag>
-      <a-tag v-if="isDirty" color="orange" size="small" class="meta-tag">未保存</a-tag>
+      <a-tag v-if="isDisabled" color="gray" size="small" class="meta-tag">{{ $t('scene.step.disabled') }}</a-tag>
+      <a-tag v-if="isDirty" color="orange" size="small" class="meta-tag">{{ $t('scene.node.unsaved') }}</a-tag>
 
       <!-- 显式保存 / 撤销 -->
       <div v-if="isEditable && isDirty" class="node-actions" @click.stop @mousedown.stop>
-        <a-button size="mini" type="primary" :loading="saving" @click="handleSave">保存</a-button>
-        <a-button size="mini" :disabled="saving" @click="handleRevert">撤销</a-button>
+        <a-button size="mini" type="primary" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
+        <a-button size="mini" :disabled="saving" @click="handleRevert">{{ $t('scene.node.revert') }}</a-button>
       </div>
     </div>
 
@@ -83,6 +83,7 @@
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Handle, Position} from '@vue-flow/core';
 import {
   IconCode,
@@ -122,6 +123,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 const emits = defineEmits<{
   (e: 'nodeClick', step: StepVO): void;
   (e: 'viewResult', step: StepVO): void;
@@ -130,8 +132,8 @@ const emits = defineEmits<{
 }>();
 
 const isContainer = computed(() => {
-  const t = props.data.stepType;
-  return t === 'IF' || t === 'FOR' || t === 'WHILE';
+  const stepType = props.data.stepType;
+  return stepType === 'IF' || stepType === 'FOR' || stepType === 'WHILE';
 });
 
 const isDisabled = computed(() => props.data.isDisable === 1);
@@ -260,7 +262,7 @@ const handleSave = async () => {
   try {
     const result = await updateStep(testStep);
     if (result.data) {
-      Message.success({content: '保存成功', duration: 1000});
+      Message.success({content: t('scene.common.saveSuccess'), duration: 1000});
       draftDetail.value = null;
       detailDirty.value = false;
       emits('change', {
@@ -270,7 +272,7 @@ const handleSave = async () => {
       } as StepVO);
     }
   } catch (e) {
-    Message.error('保存失败');
+    Message.error(t('scene.common.saveFailed'));
   } finally {
     saving.value = false;
   }

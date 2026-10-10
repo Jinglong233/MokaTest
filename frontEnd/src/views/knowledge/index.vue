@@ -32,6 +32,12 @@
               </a-button>
             </template>
           </a-upload>
+          <a-popconfirm content="全量重建所有项目的知识库索引？耗时较长。" @ok="handleRebuildAll">
+            <a-button status="warning">
+              <template #icon><icon-refresh/></template>
+              全量重建
+            </a-button>
+          </a-popconfirm>
         </a-space>
       </div>
 
@@ -148,12 +154,23 @@ import {
   deleteKnowledgeDoc,
   listKnowledgeChunks,
   listKnowledgeDocs,
+  rebuildAllKnowledge,
   rebuildKnowledgeIndex,
   uploadKnowledgeDoc,
 } from '@/api/MyApi/knowledge';
 
 const projectStore = useProjectStore();
 const router = useRouter();
+
+async function handleRebuildAll() {
+    try {
+        const res: any = await rebuildAllKnowledge();
+        Message.success(res.msg || '已触发全量重建');
+        loadData();
+    } catch (e: any) {
+        Message.error(e.response?.data?.msg || '重建失败');
+    }
+}
 
 const list = ref<any[]>([]);
 const loading = ref(false);

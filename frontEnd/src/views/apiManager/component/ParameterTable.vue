@@ -16,7 +16,7 @@
           <a-select
               v-if="isHeaderLikeContext"
               v-model="record.name"
-              placeholder="参数名"
+              :placeholder="$t('api.param.namePlaceholder')"
               allow-create
               allow-search
               :disabled="disabled"
@@ -26,7 +26,7 @@
           <a-input
               v-else
               v-model="record.name"
-              placeholder="参数名"
+              :placeholder="$t('api.param.namePlaceholder')"
               :max-length="50"
               show-word-limit
               :disabled="disabled"
@@ -64,7 +64,7 @@
                 :disabled="disabled"
                 @click="openFileSelector(rowIndex)"
             >
-              {{ record.value ? '重新选择' : '选择文件' }}
+              {{ record.value ? $t('api.param.reselectFile') : $t('api.param.selectFile') }}
             </a-button>
             <span v-if="record.value" class="file-name" :title="getFileName(record.value)">
               {{ getFileName(record.value) }}
@@ -91,7 +91,7 @@
                 :model-value="record.value ? Number(record.value) : undefined"
                 :disabled="disabled"
                 :step="1"
-                placeholder="整数"
+                :placeholder="$t('api.param.integerPlaceholder')"
                 hide-button
                 @change="(val: number | string | undefined) => onIntegerChange(record, val)"
             >
@@ -112,7 +112,7 @@
                 :model-value="record.value ? Number(record.value) : undefined"
                 :disabled="disabled"
                 :step="0.01"
-                placeholder="数值"
+                :placeholder="$t('api.param.numberPlaceholder')"
                 hide-button
                 @change="(val: number | string | undefined) => onNumberChange(record, val)"
             >
@@ -132,7 +132,7 @@
               v-else-if="isJsonType(record)"
               v-model="record.value"
               :disabled="disabled"
-              placeholder='JSON，如 {&quot;key&quot;: &quot;value&quot;}'
+              :placeholder="$t('api.param.jsonPlaceholder')"
               :auto-size="{ minRows: 1, maxRows: 4 }"
               @input="onDataChange"
           />
@@ -144,7 +144,7 @@
             >
               <a-input
                   :model-value="item"
-                  placeholder="元素值"
+                  :placeholder="$t('api.param.itemPlaceholder')"
                   :disabled="disabled"
                   size="mini"
                   @input="(val: string) => onArrayItemChange(record, index, val)"
@@ -187,7 +187,7 @@
           <ExprSuggestInput
               v-else
               :model-value="record.value"
-              placeholder="参数值（输入 @ 可插入函数）"
+              :placeholder="$t('api.param.valuePlaceholder')"
               :disabled="disabled"
               @update:model-value="(val: string) => { record.value = val; onDataChange(); }"
           >
@@ -206,18 +206,18 @@
         <template #description="{ record }">
           <a-input
               v-model="record.description"
-              placeholder="说明"
+              :placeholder="$t('api.param.descPlaceholder')"
               :disabled="disabled"
               @input="onDataChange"
           />
         </template>
         <template #operation="{ rowIndex }">
-          <a-button type="text" status="danger" :disabled="disabled" @click="deleteRow(rowIndex)">删除</a-button>
+          <a-button type="text" status="danger" :disabled="disabled" @click="deleteRow(rowIndex)">{{ $t('qa.common.delete') }}</a-button>
         </template>
       </a-table>
     </div>
     <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">
-      + 添加参数
+      {{ $t('api.param.add') }}
     </a-button>
     <input
         ref="fileInputRef"
@@ -237,6 +237,9 @@ import ParameterMockActions from './ParameterMockActions.vue'
 import ExprSuggestInput from './ExprSuggestInput.vue'
 import {uploadFile} from '@/api/MyApi/fileUpload'
 import {Message} from '@arco-design/web-vue'
+import {useI18n} from 'vue-i18n'
+
+const {t} = useI18n()
 
 const parameterTypeOptions = [
   {value: ParameterType.STRING, label: 'string'},
@@ -307,20 +310,20 @@ const isHeaderLikeContext = computed(() =>
 const columns = computed(() => {
   if (props.context === 'header' || props.context === 'cookie' || props.context === 'mockHeader') {
     return [
-      {title: '状态', slotName: 'status', width: 60},
-      {title: '参数名', slotName: 'name', width: 200},
-      {title: '参数值', slotName: 'value', width: 240},
-      {title: '说明', slotName: 'description', width: 160},
-      {title: '操作', slotName: 'operation', width: 80}
+      {title: t('api.param.colStatus'), slotName: 'status', width: 60},
+      {title: t('api.param.colName'), slotName: 'name', width: 200},
+      {title: t('api.param.colValue'), slotName: 'value', width: 240},
+      {title: t('api.param.colDesc'), slotName: 'description', width: 160},
+      {title: t('qa.common.operation'), slotName: 'operation', width: 80}
     ]
   }
   return [
-    {title: '状态', slotName: 'status', width: 60},
-    {title: '类型', slotName: 'type', width: 100},
-    {title: '参数名', slotName: 'name', width: 160},
-    {title: '参数值', slotName: 'value', width: 220},
-    {title: '说明', slotName: 'description', width: 160},
-    {title: '操作', slotName: 'operation', width: 80}
+    {title: t('api.param.colStatus'), slotName: 'status', width: 60},
+    {title: t('api.param.colType'), slotName: 'type', width: 100},
+    {title: t('api.param.colName'), slotName: 'name', width: 160},
+    {title: t('api.param.colValue'), slotName: 'value', width: 220},
+    {title: t('api.param.colDesc'), slotName: 'description', width: 160},
+    {title: t('qa.common.operation'), slotName: 'operation', width: 80}
   ]
 })
 
@@ -633,12 +636,12 @@ const handleFileChange = async (event: Event) => {
     if (res.code === 200 && res.data) {
       record.value = res.data.fileId
       onDataChange()
-      Message.success('文件上传成功')
+      Message.success(t('api.param.uploadSuccess'))
     } else {
-      Message.error(res.msg || '文件上传失败')
+      Message.error(res.msg || t('api.param.uploadFailed'))
     }
   } catch (e) {
-    Message.error('文件上传异常')
+    Message.error(t('api.param.uploadError'))
   } finally {
     fileUploading.value = false
     input.value = ''
@@ -695,21 +698,21 @@ const validateAll = (): { valid: boolean; message: string } => {
 
     const name = record.name?.trim();
     if (!name) {
-      return { valid: false, message: `第 ${i + 1} 行参数名不能为空` };
+      return { valid: false, message: t('api.param.rowNameRequired', {row: i + 1}) };
     }
     if (name.length > 50) {
-      return { valid: false, message: `第 ${i + 1} 行参数名长度不能超过50个字符` };
+      return { valid: false, message: t('api.param.rowNameTooLong', {row: i + 1}) };
     }
     if (isHeaderLikeContext.value) {
       // HTTP header 名按 RFC 7230 token 规则校验：字母/数字 + !#$%&'*+-.^_`|~
       const headerRegex = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
       if (!headerRegex.test(name)) {
-        return { valid: false, message: `第 ${i + 1} 行参数名包含非法字符，HTTP Header 名只能包含字母、数字、连字符及标准符号` };
+        return { valid: false, message: t('api.param.rowNameInvalidHeader', {row: i + 1}) };
       }
     } else {
       const regex = /^[一-龥a-zA-Z0-9_]+$/;
       if (!regex.test(name)) {
-        return { valid: false, message: `第 ${i + 1} 行参数名只能包含中文、英文、数字、下划线` };
+        return { valid: false, message: t('api.param.rowNameInvalid', {row: i + 1}) };
       }
     }
 
@@ -717,17 +720,24 @@ const validateAll = (): { valid: boolean; message: string } => {
       try {
         const parsed = JSON.parse(record.value || '[]')
         if (!Array.isArray(parsed)) {
-          return { valid: false, message: `第 ${i + 1} 行数组类型参数值必须是 JSON 数组` };
+          return { valid: false, message: t('api.param.rowArrayNotArray', {row: i + 1}) };
         }
       } catch {
-        return { valid: false, message: `第 ${i + 1} 行数组类型参数值 JSON 格式非法` };
+        return { valid: false, message: t('api.param.rowArrayInvalidJson', {row: i + 1}) };
       }
     }
   }
   return { valid: true, message: '' };
 };
 
-const getData = () => tableData.value
+const getData = () => tableData.value.map(item => ({
+  ...item,
+  // 后端枚举按名称反序列化，前端 TypeScript enum 编译为数字，
+  // 保存时需转为字符串名称，否则后端 fastjson 报 "parse enum ParameterType error, value: 0.0"
+  type: typeof item.type === 'number' && item.type in ParameterType
+    ? (ParameterType as any)[item.type]
+    : item.type,
+}))
 const setData = (data: any[]) => {
   if (data && data.length) {
     tableData.value = data.map(item => {

@@ -13,7 +13,7 @@
 
     <!-- 右侧：函数列表面板 -->
     <div class="function-panel">
-      <div class="panel-title">内置函数</div>
+      <div class="panel-title">{{ $t('api.scriptFunc.builtIn') }}</div>
       <div class="panel-content">
         <div
           v-for="group in functionGroups"
@@ -45,6 +45,9 @@ import { ref, onMounted } from 'vue'
 import { CustomFunction } from '@/types/domain/api/CustomFunction'
 import { getCustomFunctionList } from '@/api/MyApi/customFunction'
 import useProjectStore from '@/store/modules/project'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const projectStore = useProjectStore()
 
@@ -84,107 +87,107 @@ interface FunctionGroup {
   functions: ScriptFunction[]
 }
 
-const preScriptFunctions: FunctionGroup[] = [
+const preScriptFunctions = (): FunctionGroup[] => [
   {
-    name: '变量操作',
+    name: t('api.scriptFunc.groupVar'),
     functions: [
-      { label: '获取变量', detail: '', template: 'context.getVariable("${1:变量名}")', desc: '获取指定变量值' },
-      { label: '设置变量', detail: '', template: 'context.setVariable("${1:变量名}", "${2:值}")', desc: '设置变量值' },
+      { label: t('api.scriptFunc.getVariable'), detail: '', template: `context.getVariable("\${1:${t('api.scriptFunc.phVarName')}}")`, desc: t('api.scriptFunc.getVariableDesc') },
+      { label: t('api.scriptFunc.setVariable'), detail: '', template: `context.setVariable("\${1:${t('api.scriptFunc.phVarName')}}", "\${2:${t('api.scriptFunc.phValue')}}")`, desc: t('api.scriptFunc.setVariableDesc') },
     ]
   },
   {
-    name: '请求信息',
+    name: t('api.scriptFunc.groupRequest'),
     functions: [
-      { label: '获取 URL', detail: '()', template: 'context.getUrl()', desc: '获取当前请求 URL' },
-      { label: '获取方法', detail: '()', template: 'context.getMethod()', desc: '获取请求方法（GET/POST 等）' },
-      { label: '获取 Body', detail: '()', template: 'context.getBody()', desc: '获取请求体内容' },
-      { label: '获取 Headers', detail: '()', template: 'context.getHeaders()', desc: '获取所有请求头（Map）' },
-      { label: '获取 Header', detail: '(name)', template: 'context.getHeader("${1:headerName}")', desc: '获取指定请求头' },
-      { label: '获取 Queries', detail: '()', template: 'context.getQueries()', desc: '获取所有 Query 参数（Map）' },
-      { label: '获取 Query', detail: '(name)', template: 'context.getQuery("${1:paramName}")', desc: '获取指定 Query 参数' },
-      { label: '获取 Cookies', detail: '()', template: 'context.getCookies()', desc: '获取所有 Cookie（Map）' },
-      { label: '获取 Cookie', detail: '(name)', template: 'context.getCookie("${1:cookieName}")', desc: '获取指定 Cookie' },
+      { label: t('api.scriptFunc.getUrl'), detail: '()', template: 'context.getUrl()', desc: t('api.scriptFunc.getUrlDesc') },
+      { label: t('api.scriptFunc.getMethod'), detail: '()', template: 'context.getMethod()', desc: t('api.scriptFunc.getMethodDesc') },
+      { label: t('api.scriptFunc.getBody'), detail: '()', template: 'context.getBody()', desc: t('api.scriptFunc.getBodyDesc') },
+      { label: t('api.scriptFunc.getHeaders'), detail: '()', template: 'context.getHeaders()', desc: t('api.scriptFunc.getHeadersDesc') },
+      { label: t('api.scriptFunc.getHeader'), detail: '(name)', template: 'context.getHeader("${1:headerName}")', desc: t('api.scriptFunc.getHeaderDesc') },
+      { label: t('api.scriptFunc.getQueries'), detail: '()', template: 'context.getQueries()', desc: t('api.scriptFunc.getQueriesDesc') },
+      { label: t('api.scriptFunc.getQuery'), detail: '(name)', template: 'context.getQuery("${1:paramName}")', desc: t('api.scriptFunc.getQueryDesc') },
+      { label: t('api.scriptFunc.getCookies'), detail: '()', template: 'context.getCookies()', desc: t('api.scriptFunc.getCookiesDesc') },
+      { label: t('api.scriptFunc.getCookie'), detail: '(name)', template: 'context.getCookie("${1:cookieName}")', desc: t('api.scriptFunc.getCookieDesc') },
     ]
   },
   {
-    name: '修改请求',
+    name: t('api.scriptFunc.groupModify'),
     functions: [
-      { label: '设置 Header', detail: '(name, value)', template: 'context.setHeader("${1:name}", "${2:value}")', desc: '设置/添加请求头' },
-      { label: '设置 Query', detail: '(name, value)', template: 'context.setQuery("${1:name}", "${2:value}")', desc: '设置/添加 Query 参数' },
-      { label: '设置 Cookie', detail: '(name, value)', template: 'context.setCookie("${1:name}", "${2:value}")', desc: '设置/添加 Cookie' },
-      { label: '设置 Body', detail: '(body)', template: 'context.setBody(${1:body})', desc: '设置请求体' },
-      { label: '设置 URL', detail: '(url)', template: 'context.setUrl("${1:url}")', desc: '设置请求 URL' },
+      { label: t('api.scriptFunc.setHeader'), detail: '(name, value)', template: 'context.setHeader("${1:name}", "${2:value}")', desc: t('api.scriptFunc.setHeaderDesc') },
+      { label: t('api.scriptFunc.setQuery'), detail: '(name, value)', template: 'context.setQuery("${1:name}", "${2:value}")', desc: t('api.scriptFunc.setQueryDesc') },
+      { label: t('api.scriptFunc.setCookie'), detail: '(name, value)', template: 'context.setCookie("${1:name}", "${2:value}")', desc: t('api.scriptFunc.setCookieDesc') },
+      { label: t('api.scriptFunc.setBody'), detail: '(body)', template: 'context.setBody(${1:body})', desc: t('api.scriptFunc.setBodyDesc') },
+      { label: t('api.scriptFunc.setUrl'), detail: '(url)', template: 'context.setUrl("${1:url}")', desc: t('api.scriptFunc.setUrlDesc') },
     ]
   },
   {
-    name: '日志断言',
+    name: t('api.scriptFunc.groupLog'),
     functions: [
-      { label: '输出日志', detail: '(msg)', template: 'context.log("${1:日志内容}")', desc: '输出信息日志到控制台' },
-      { label: '输出错误', detail: '(msg)', template: 'context.error("${1:错误内容}")', desc: '输出错误日志到控制台' },
-      { label: '断言', detail: '(condition, msg)', template: 'context.assertCondition(${1:条件}, "${2:失败提示}")', desc: '自定义断言' },
+      { label: t('api.scriptFunc.log'), detail: '(msg)', template: `context.log("\${1:${t('api.scriptFunc.phLogContent')}}")`, desc: t('api.scriptFunc.logDesc') },
+      { label: t('api.scriptFunc.logError'), detail: '(msg)', template: `context.error("\${1:${t('api.scriptFunc.phErrorContent')}}")`, desc: t('api.scriptFunc.logErrorDesc') },
+      { label: t('api.scriptFunc.assert'), detail: '(condition, msg)', template: `context.assertCondition(\${1:${t('api.scriptFunc.phCondition')}}, "\${2:${t('api.scriptFunc.phFailMsg')}}")`, desc: t('api.scriptFunc.assertDesc') },
     ]
   },
   {
-    name: '工具函数',
+    name: t('api.scriptFunc.groupUtil'),
     functions: [
-      { label: 'MD5', detail: '(str)', template: 'context.utils.md5("${1:字符串}")', desc: 'MD5 加密' },
-      { label: 'SHA256', detail: '(str)', template: 'context.utils.sha256("${1:字符串}")', desc: 'SHA256 加密' },
-      { label: 'Base64 编码', detail: '(str)', template: 'context.utils.base64Encode("${1:字符串}")', desc: 'Base64 编码' },
-      { label: 'URL 编码', detail: '(str)', template: 'context.utils.urlEncode("${1:字符串}")', desc: 'URL 编码' },
-      { label: 'UUID', detail: '()', template: 'context.utils.uuid()', desc: '生成 UUID' },
-      { label: '时间戳', detail: '()', template: 'context.utils.timestamp()', desc: '获取当前时间戳（毫秒）' },
-      { label: '当前时间', detail: '(pattern)', template: 'context.utils.now("${1:yyyy-MM-dd HH:mm:ss}")', desc: '获取当前日期时间' },
-      { label: '随机字符串', detail: '(length)', template: 'context.utils.randomString(${1:8})', desc: '生成随机字符串' },
+      { label: 'MD5', detail: '(str)', template: `context.utils.md5("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.md5Desc') },
+      { label: 'SHA256', detail: '(str)', template: `context.utils.sha256("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.sha256Desc') },
+      { label: t('api.scriptFunc.base64Label'), detail: '(str)', template: `context.utils.base64Encode("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.base64Desc') },
+      { label: t('api.scriptFunc.urlEncodeLabel'), detail: '(str)', template: `context.utils.urlEncode("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.urlEncodeDesc') },
+      { label: 'UUID', detail: '()', template: 'context.utils.uuid()', desc: t('api.scriptFunc.uuidDesc') },
+      { label: t('api.scriptFunc.timestampLabel'), detail: '()', template: 'context.utils.timestamp()', desc: t('api.scriptFunc.timestampDesc') },
+      { label: t('api.scriptFunc.nowLabel'), detail: '(pattern)', template: 'context.utils.now("${1:yyyy-MM-dd HH:mm:ss}")', desc: t('api.scriptFunc.nowDesc') },
+      { label: t('api.scriptFunc.randomStringLabel'), detail: '(length)', template: 'context.utils.randomString(${1:8})', desc: t('api.scriptFunc.randomStringDesc') },
     ]
   },
 ]
 
-const postScriptFunctions: FunctionGroup[] = [
+const postScriptFunctions = (): FunctionGroup[] => [
   {
-    name: '变量操作',
+    name: t('api.scriptFunc.groupVar'),
     functions: [
-      { label: '获取变量', detail: '', template: 'context.getVariable("${1:变量名}")', desc: '获取指定变量值' },
-      { label: '设置变量', detail: '', template: 'context.setVariable("${1:变量名}", "${2:值}")', desc: '设置变量值，供后续接口使用' },
+      { label: t('api.scriptFunc.getVariable'), detail: '', template: `context.getVariable("\${1:${t('api.scriptFunc.phVarName')}}")`, desc: t('api.scriptFunc.getVariableDesc') },
+      { label: t('api.scriptFunc.setVariable'), detail: '', template: `context.setVariable("\${1:${t('api.scriptFunc.phVarName')}}", "\${2:${t('api.scriptFunc.phValue')}}")`, desc: t('api.scriptFunc.setVariableDescPost') },
     ]
   },
   {
-    name: '响应信息',
+    name: t('api.scriptFunc.groupResponse'),
     functions: [
-      { label: '获取响应体', detail: '()', template: 'context.getResponseBody()', desc: '获取响应体字符串' },
-      { label: '获取状态码', detail: '()', template: 'context.getResponseStatus()', desc: '获取 HTTP 状态码' },
-      { label: '获取状态消息', detail: '()', template: 'context.getResponseStatusMessage()', desc: '获取 HTTP 状态消息' },
-      { label: '获取响应头', detail: '(name)', template: 'context.getResponseHeader("${1:headerName}")', desc: '获取指定响应头' },
-      { label: '获取所有响应头', detail: '()', template: 'context.getResponseHeaders()', desc: '获取所有响应头（Map）' },
-      { label: '获取响应时间', detail: '()', template: 'context.getResponseTime()', desc: '获取响应耗时（毫秒）' },
+      { label: t('api.scriptFunc.getResponseBody'), detail: '()', template: 'context.getResponseBody()', desc: t('api.scriptFunc.getResponseBodyDesc') },
+      { label: t('api.scriptFunc.getResponseStatus'), detail: '()', template: 'context.getResponseStatus()', desc: t('api.scriptFunc.getResponseStatusDesc') },
+      { label: t('api.scriptFunc.getResponseStatusMessage'), detail: '()', template: 'context.getResponseStatusMessage()', desc: t('api.scriptFunc.getResponseStatusMessageDesc') },
+      { label: t('api.scriptFunc.getResponseHeader'), detail: '(name)', template: 'context.getResponseHeader("${1:headerName}")', desc: t('api.scriptFunc.getResponseHeaderDesc') },
+      { label: t('api.scriptFunc.getResponseHeaders'), detail: '()', template: 'context.getResponseHeaders()', desc: t('api.scriptFunc.getResponseHeadersDesc') },
+      { label: t('api.scriptFunc.getResponseTime'), detail: '()', template: 'context.getResponseTime()', desc: t('api.scriptFunc.getResponseTimeDesc') },
     ]
   },
   {
-    name: '日志断言',
+    name: t('api.scriptFunc.groupLog'),
     functions: [
-      { label: '输出日志', detail: '(msg)', template: 'context.log("${1:日志内容}")', desc: '输出信息日志到控制台' },
-      { label: '输出错误', detail: '(msg)', template: 'context.error("${1:错误内容}")', desc: '输出错误日志到控制台' },
-      { label: '断言', detail: '(condition, msg)', template: 'context.assertCondition(${1:条件}, "${2:失败提示}")', desc: '自定义断言' },
+      { label: t('api.scriptFunc.log'), detail: '(msg)', template: `context.log("\${1:${t('api.scriptFunc.phLogContent')}}")`, desc: t('api.scriptFunc.logDesc') },
+      { label: t('api.scriptFunc.logError'), detail: '(msg)', template: `context.error("\${1:${t('api.scriptFunc.phErrorContent')}}")`, desc: t('api.scriptFunc.logErrorDesc') },
+      { label: t('api.scriptFunc.assert'), detail: '(condition, msg)', template: `context.assertCondition(\${1:${t('api.scriptFunc.phCondition')}}, "\${2:${t('api.scriptFunc.phFailMsg')}}")`, desc: t('api.scriptFunc.assertDesc') },
     ]
   },
   {
-    name: '工具函数',
+    name: t('api.scriptFunc.groupUtil'),
     functions: [
-      { label: 'MD5', detail: '(str)', template: 'context.utils.md5("${1:字符串}")', desc: 'MD5 加密' },
-      { label: 'SHA256', detail: '(str)', template: 'context.utils.sha256("${1:字符串}")', desc: 'SHA256 加密' },
-      { label: 'Base64 编码', detail: '(str)', template: 'context.utils.base64Encode("${1:字符串}")', desc: 'Base64 编码' },
-      { label: 'URL 编码', detail: '(str)', template: 'context.utils.urlEncode("${1:字符串}")', desc: 'URL 编码' },
-      { label: 'UUID', detail: '()', template: 'context.utils.uuid()', desc: '生成 UUID' },
-      { label: '时间戳', detail: '()', template: 'context.utils.timestamp()', desc: '获取当前时间戳（毫秒）' },
-      { label: '当前时间', detail: '(pattern)', template: 'context.utils.now("${1:yyyy-MM-dd HH:mm:ss}")', desc: '获取当前日期时间' },
-      { label: '随机字符串', detail: '(length)', template: 'context.utils.randomString(${1:8})', desc: '生成随机字符串' },
-      { label: 'JSON 解析', detail: '(str)', template: 'JSON.parse(${1:jsonString})', desc: 'JSON 字符串转对象' },
-      { label: 'JSON 序列化', detail: '(obj)', template: 'JSON.stringify(${1:obj})', desc: '对象转 JSON 字符串' },
+      { label: 'MD5', detail: '(str)', template: `context.utils.md5("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.md5Desc') },
+      { label: 'SHA256', detail: '(str)', template: `context.utils.sha256("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.sha256Desc') },
+      { label: t('api.scriptFunc.base64Label'), detail: '(str)', template: `context.utils.base64Encode("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.base64Desc') },
+      { label: t('api.scriptFunc.urlEncodeLabel'), detail: '(str)', template: `context.utils.urlEncode("\${1:${t('api.scriptFunc.phStr')}}")`, desc: t('api.scriptFunc.urlEncodeDesc') },
+      { label: 'UUID', detail: '()', template: 'context.utils.uuid()', desc: t('api.scriptFunc.uuidDesc') },
+      { label: t('api.scriptFunc.timestampLabel'), detail: '()', template: 'context.utils.timestamp()', desc: t('api.scriptFunc.timestampDesc') },
+      { label: t('api.scriptFunc.nowLabel'), detail: '(pattern)', template: 'context.utils.now("${1:yyyy-MM-dd HH:mm:ss}")', desc: t('api.scriptFunc.nowDesc') },
+      { label: t('api.scriptFunc.randomStringLabel'), detail: '(length)', template: 'context.utils.randomString(${1:8})', desc: t('api.scriptFunc.randomStringDesc') },
+      { label: t('api.scriptFunc.jsonParseLabel'), detail: '(str)', template: 'JSON.parse(${1:jsonString})', desc: t('api.scriptFunc.jsonParseDesc') },
+      { label: t('api.scriptFunc.jsonStringifyLabel'), detail: '(obj)', template: 'JSON.stringify(${1:obj})', desc: t('api.scriptFunc.jsonStringifyDesc') },
     ]
   },
 ]
 
 const functionGroups = computed(() => {
-  const base = props.scriptType === 'pre' ? preScriptFunctions : postScriptFunctions
+  const base = props.scriptType === 'pre' ? preScriptFunctions() : postScriptFunctions()
   if (customFunctionGroup.value) {
     return [...base, customFunctionGroup.value]
   }
@@ -198,13 +201,13 @@ const customFunctions = ref<CustomFunction[]>([])
 const customFunctionGroup = computed<FunctionGroup | null>(() => {
   if (!customFunctions.value.length) return null
   return {
-    name: '自定义函数',
+    name: t('api.scriptFunc.groupCustom'),
     functions: customFunctions.value.map(fn => ({
       label: fn.funcName || '',
       detail: fn.funcParams ? `(${fn.funcParams})` : '()',
       // fn.名称(参数占位) —— 与文本字段里的写法完全一致
       template: `fn.${fn.funcName}(${buildArgPlaceholders(fn.funcParams)})`,
-      desc: fn.description || '项目自定义函数',
+      desc: fn.description || t('api.scriptFunc.customDesc'),
     })),
   }
 })

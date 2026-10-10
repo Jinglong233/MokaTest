@@ -2,7 +2,7 @@
 
   <!--公共设置tab-->
   <a-tabs type="line" size="mini">
-    <a-tab-pane key="1" title="设置">
+    <a-tab-pane key="1" :title="$t('scene.setting.tabSetting')">
       <DynamicForm
           :layout="'horizontal'"
           :label-align="'left'"
@@ -19,7 +19,7 @@
             :offset="[10, -2]"
             :dot-style="{ background: '#E5E6EB', color: '#86909C' }"
         >
-          断言
+          {{ $t('scene.setting.tabAssert') }}
         </a-badge>
       </template>
       <a-collapse>
@@ -30,9 +30,9 @@
         >
           <template #header>
             <span :class="{ 'error-text': assertErrors[index] }">
-              断言 {{ index + 1 }}
+              {{ $t('scene.assert.itemTitle', { index: index + 1 }) }}
               <a-tag v-if="assertErrors[index]===false" color="red"
-                     size="small">校验失败</a-tag>
+                     size="small">{{ $t('scene.assert.validateFail') }}</a-tag>
             </span>
           </template>
           <template #extra>
@@ -51,7 +51,7 @@
           />
         </a-collapse-item>
       </a-collapse>
-      <a-button :disabled="disabled" style="width: 100%" @click="addAssert">添加断言</a-button>
+      <a-button :disabled="disabled" style="width: 100%" @click="addAssert">{{ $t('scene.assert.add') }}</a-button>
     </a-tab-pane>
     <a-tab-pane key="3" v-if="excludeExtractFields">
       <template #title>
@@ -60,7 +60,7 @@
             :offset="[10, -2]"
             :dot-style="{ background: '#E5E6EB', color: '#86909C' }"
         >
-          关联提取
+          {{ $t('scene.setting.tabExtract') }}
         </a-badge>
       </template>
       <a-collapse>
@@ -71,8 +71,8 @@
         >
           <template #header>
             <span :class="{ 'error-text': extractErrors[index] }">
-              提取 {{ index + 1 }}
-              <a-tag v-if="extractErrors[index]===false" color="red" size="small">校验失败</a-tag>
+              {{ $t('scene.extract.itemTitle', { index: index + 1 }) }}
+              <a-tag v-if="extractErrors[index]===false" color="red" size="small">{{ $t('scene.assert.validateFail') }}</a-tag>
             </span>
           </template>
           <template #extra>
@@ -91,13 +91,14 @@
           />
         </a-collapse-item>
       </a-collapse>
-      <a-button :disabled="disabled" style="width: 100%" @click="addExtract">添加抽取</a-button>
+      <a-button :disabled="disabled" style="width: 100%" @click="addExtract">{{ $t('scene.extract.add') }}</a-button>
     </a-tab-pane>
   </a-tabs>
 </template>
 
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {assertSchema} from "@/schema/operationSchema/assertOperation/AssertSchema";
 import {AssertStepDTO} from "@/types/dto/stepDTO/AssertStepDTO";
 import {PostAssert, PostExtract, StepSetting} from "@/schema/stepFormConfig/FormConfig";
@@ -151,6 +152,7 @@ const emit = defineEmits([
 ]);
 
 // 本地数据
+const { t } = useI18n();
 const localAssertList = ref([...props.assertList]);
 const localExtractList = ref([...props.extractList]);
 const localSetting = ref<Setting>({...props.setting} as Setting);
@@ -242,7 +244,7 @@ const validate = async () => {
   assertErrors.value = assertResults;
 
   if (assertResults.find((val) => !val)) {
-    Message.error('存在无效的断言配置');
+    Message.error(t('scene.assert.invalidConfig'));
     return;
   }
 
@@ -256,7 +258,7 @@ const validate = async () => {
   );
   extractErrors.value = extractResults;
   if (extractResults.find((val) => !val)) {
-    Message.error('存在无效的提取配置');
+    Message.error(t('scene.extract.invalidConfig'));
     return;
   }
 

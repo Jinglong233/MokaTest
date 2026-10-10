@@ -4,12 +4,12 @@
     <div
         v-if="line"
         class="indicator-line"
-        :class="{ 'is-container': label === '放入容器' }"
+        :class="{ 'is-container': label === $t('scene.workflow.dropIntoContainer') }"
         :style="lineStyle"
     >
       <div class="indicator-arrow indicator-arrow-top"/>
       <div class="indicator-arrow indicator-arrow-bottom"/>
-      <div class="indicator-label">{{ label }}</div>
+      <div class="indicator-label">{{ label || $t('scene.workflow.dropInsert') }}</div>
     </div>
 
     <!-- 容器作为父节点的高亮壳 -->
@@ -18,7 +18,7 @@
         class="indicator-container"
         :style="containerStyle"
     >
-      <div class="indicator-container-label">放入容器
+      <div class="indicator-container-label">{{ $t('scene.workflow.dropIntoContainer') }}
       </div>
     </div>
   </div>
@@ -37,7 +37,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  label: '插入',
+  label: '',
 });
 
 const lineStyle = computed(() => {

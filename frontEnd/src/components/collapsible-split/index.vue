@@ -20,7 +20,7 @@
       </template>
     </a-split>
     <!-- 收起后的恢复按钮：悬浮在左边缘 -->
-    <a-tooltip v-if="collapsed" content="展开侧栏" position="right">
+    <a-tooltip v-if="collapsed" :content="$t('components.collapsibleSplit.expand')" position="right">
       <a-button class="cs-expand-btn" size="mini" @click="expand">
         <template #icon><icon-right /></template>
       </a-button>

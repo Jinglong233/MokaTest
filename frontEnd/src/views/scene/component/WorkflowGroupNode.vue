@@ -29,11 +29,11 @@
       </div>
       <a-tag :color="stepTagColor" size="small" class="group-type-tag">{{ stepTypeChinese }}</a-tag>
       <a-typography-text class="group-name" :ellipsis="{rows: 1}">
-        {{ data.stepName || '未命名' }}
+        {{ data.stepName || $t('scene.node.unnamed') }}
       </a-typography-text>
       <a-tag color="gray" size="small" class="group-summary">{{ summary }}</a-tag>
       <a-tag v-if="isCollapsed && childCount > 0" color="arcoblue" size="small" class="group-collapsed-count">
-        {{ childCount }} 步
+        {{ $t('scene.node.childSteps', { count: childCount }) }}
       </a-tag>
 
       <div class="group-header-right">
@@ -43,8 +43,8 @@
           <icon-close-circle-fill v-else-if="debugStatus === 'FAILURE'" style="color: #f53f3f; font-size: 16px;"/>
           <icon-minus-circle v-else-if="debugStatus === 'SKIPPED'" style="color: #86909c; font-size: 16px;"/>
         </span>
-        <a-tag v-if="isDisabled" color="gray" size="small">已禁用</a-tag>
-        <a-tooltip content="编辑条件 / 设置（抽屉）">
+        <a-tag v-if="isDisabled" color="gray" size="small">{{ $t('scene.step.disabled') }}</a-tag>
+        <a-tooltip :content="$t('scene.node.editCondition')">
           <icon-settings class="group-setting-btn" @click.stop="handleClick"/>
         </a-tooltip>
       </div>
@@ -54,7 +54,7 @@
     <div v-if="!isCollapsed" class="group-body">
       <div v-if="childCount === 0" class="group-empty">
         <icon-drag-arrow class="group-empty-icon"/>
-        <span>拖拽步骤到此处</span>
+        <span>{{ $t('scene.node.dropHere') }}</span>
       </div>
     </div>
 
@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import {computed, inject} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Handle, Position} from '@vue-flow/core';
 import {IconDragArrow, IconRefresh, IconSwap, IconSettings, IconRight, IconDown} from '@arco-design/web-vue/es/icon';
 import {getStepTypeChinese} from "@/types/enum/StepType";
@@ -86,6 +87,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 const emits = defineEmits<{
   (e: 'nodeClick', step: StepVO): void;
   (e: 'viewResult', step: StepVO): void;
@@ -132,15 +134,15 @@ const summary = computed(() => {
   const condCount = Array.isArray(d.conditionList) ? d.conditionList.length : 0;
   switch (props.data.stepType) {
     case 'FOR':
-      return d.cycleTimes != null ? `循环 ${d.cycleTimes} 次` : '循环';
+      return d.cycleTimes != null ? t('scene.node.summaryForTimes', { count: d.cycleTimes }) : t('scene.node.summaryFor');
     case 'WHILE': {
       const parts: string[] = [];
-      if (d.maxLoopCount != null) parts.push(`最多 ${d.maxLoopCount} 次`);
-      if (condCount) parts.push(`${condCount} 条件`);
-      return parts.join(' · ') || 'while 循环';
+      if (d.maxLoopCount != null) parts.push(t('scene.node.summaryWhileMax', { count: d.maxLoopCount }));
+      if (condCount) parts.push(t('scene.node.summaryCond', { count: condCount }));
+      return parts.join(' · ') || t('scene.node.summaryWhile');
     }
     case 'IF':
-      return condCount ? `${condCount} 个条件` : 'if 判断';
+      return condCount ? t('scene.node.summaryIfConds', { count: condCount }) : t('scene.node.summaryIf');
     default:
       return '';
   }

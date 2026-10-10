@@ -3,7 +3,7 @@
     <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan']"/>
     <a-tabs v-model:active-key="activeMainTab" class="plan-main-tabs" :lazy-load="true">
         <!-- Tab: 测试计划列表 -->
-        <a-tab-pane key="list" title="测试计划列表">
+        <a-tab-pane key="list" :title="$t('qa.testPlan.tab.list')">
       <div class="main-row">
         <!-- 左侧模块树 -->
         <div class="col side-col" :style="sideColStyle">
@@ -12,7 +12,7 @@
               <ModuleTreeManager
                   ref="moduleTreeRef"
                   module-type="PLAN"
-                  root-name="全部计划"
+                  :root-name="$t('qa.testPlan.allPlans')"
                   :show-search="true"
                   :show-virtual-root="true"
                   :selected-keys="selectedModuleKeys"
@@ -20,7 +20,7 @@
                   @select="handleModuleSelect"
               >
                 <template #search-extra>
-                  <a-button v-permission="'qa:testplan:create'" type="primary" size="small" @click="handleAdd">新建</a-button>
+                  <a-button v-permission="'qa:testplan:create'" type="primary" size="small" @click="handleAdd">{{ $t('qa.testPlan.createBtn') }}</a-button>
                 </template>
               </ModuleTreeManager>
             </div>
@@ -45,25 +45,25 @@
       <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">计划名称</label>
+            <label class="filter-label">{{ $t('qa.testPlan.name') }}</label>
             <a-input v-model="searchKeyword" :placeholder="$t('qa.testPlan.name')" allow-clear />
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">计划状态</label>
+            <label class="filter-label">{{ $t('qa.testPlan.status') }}</label>
             <a-select v-model="searchStatus" :placeholder="$t('qa.testPlan.status')" allow-clear>
-              <a-option value="DRAFT">草稿</a-option>
-              <a-option value="READY">就绪</a-option>
-              <a-option value="RUNNING">执行中</a-option>
-              <a-option value="COMPLETED">已完成</a-option>
+              <a-option value="DRAFT">{{ $t('qa.testPlan.status.draft') }}</a-option>
+              <a-option value="READY">{{ $t('qa.testPlan.status.ready') }}</a-option>
+              <a-option value="RUNNING">{{ $t('qa.testPlan.status.running') }}</a-option>
+              <a-option value="COMPLETED">{{ $t('qa.testPlan.status.completed') }}</a-option>
             </a-select>
           </div>
         </a-col>
         <a-col flex="auto">
           <div class="filter-actions">
-            <a-button type="primary" :loading="loading" @click="handleSearch">搜索</a-button>
-            <a-button @click="handleReset">重置</a-button>
+            <a-button type="primary" :loading="loading" @click="handleSearch">{{ $t('qa.common.search') }}</a-button>
+            <a-button @click="handleReset">{{ $t('qa.common.reset') }}</a-button>
           </div>
         </a-col>
       </a-row>
@@ -152,13 +152,13 @@
         </a-tab-pane>
 
         <!-- Tab: 测试计划报告 -->
-        <a-tab-pane key="report" title="测试计划报告">
+        <a-tab-pane key="report" :title="$t('qa.testPlan.tab.report')">
           <a-card class="list-card" :bordered="false">
           <a-row class="list-toolbar" justify="space-between" align="center" style="margin-bottom: 12px">
             <div class="search-items">
               <div class="search-item">
-                <span class="search-label">报告名称</span>
-                <a-input v-model="reportKeyword" placeholder="搜索报告名称" allow-clear class="search-control" @change="loadReportList" />
+                <span class="search-label">{{ $t('qa.testPlan.report.name') }}</span>
+                <a-input v-model="reportKeyword" :placeholder="$t('qa.testPlan.report.searchPlaceholder')" allow-clear class="search-control" @change="loadReportList" />
               </div>
             </div>
           </a-row>
@@ -178,7 +178,7 @@
                 <span class="plan-name-link" @click="handleViewReport(record)">{{ record.reportName }}</span>
               </a-tooltip>
             </template>
-            <template #reportType="{ record }">{{ record.reportType === 'PLAN' ? '计划报告' : record.reportType || '-' }}</template>
+            <template #reportType="{ record }">{{ record.reportType === 'PLAN' ? $t('qa.testPlan.report.typePlan') : record.reportType || '-' }}</template>
             <template #reportExecResult="{ record }">
               <a-tag v-if="record.execResult && record.execResult !== 'NONE'" :color="execResultColor(record.execResult)" size="small">
                 <template #icon><component :is="execResultIcon(record.execResult)" /></template>
@@ -188,17 +188,17 @@
             </template>
             <template #reportPassRate="{ record }">{{ record.passRate != null ? (record.passRate + '%') : '-' }}</template>
             <template #triggerType="{ record }">
-              <a-tag size="small" :color="record.triggerType === 'AUTO' ? 'arcoblue' : 'gray'">{{ record.triggerType === 'AUTO' ? '自动' : '手动' }}</a-tag>
+              <a-tag size="small" :color="record.triggerType === 'AUTO' ? 'arcoblue' : 'gray'">{{ record.triggerType === 'AUTO' ? $t('qa.testPlan.report.triggerAuto') : $t('qa.testPlan.report.triggerManual') }}</a-tag>
             </template>
-            <template #reportCreateUserName="{ record }">{{ record.createUserName || (record.triggerType === 'AUTO' ? '系统' : '-') }}</template>
+            <template #reportCreateUserName="{ record }">{{ record.createUserName || (record.triggerType === 'AUTO' ? $t('qa.testPlan.report.system') : '-') }}</template>
             <template #reportActions="{ record }">
               <a-space>
-                <a-tooltip content="导出PDF">
+                <a-tooltip :content="$t('qa.testPlan.report.exportPdf')">
                   <a-button v-permission="'qa:testplan:view'" type="text" size="small" @click="handleExportReport(record)">
                     <template #icon><icon-download /></template>
                   </a-button>
                 </a-tooltip>
-                <a-popconfirm content="确认删除该报告吗？" type="warning" @ok="handleDeleteReport(record.id)">
+                <a-popconfirm :content="$t('qa.testPlan.report.deleteConfirm')" type="warning" @ok="handleDeleteReport(record.id)">
                   <a-button v-permission="'qa:testplan:delete'" type="text" size="small" status="danger">
                     <template #icon><icon-delete /></template>
                   </a-button>
@@ -216,45 +216,45 @@
         :title="modalTitle"
         width="560px"
         @ok="handleSave"
-        @cancel="modalVisible = false"
+        @cancel="handleModalCancel"
         :mask-closable="false"
     >
       <a-form :model="formData" layout="vertical">
-        <a-form-item label="计划名称" required>
-          <a-input v-model="formData.planName" placeholder="请输入计划名称"/>
+        <a-form-item :label="$t('qa.testPlan.name')" required>
+          <a-input v-model="formData.planName" :placeholder="$t('qa.testPlan.namePlaceholder')"/>
         </a-form-item>
-        <a-form-item label="所属模块">
+        <a-form-item :label="$t('qa.testPlan.module')">
           <a-tree-select
               v-model="formData.moduleId"
               :data="moduleTreeData"
               :field-names="{ key: 'id', title: 'moduleName', children: 'children' }"
               allow-clear
-              placeholder="选择所属模块"
+              :placeholder="$t('qa.testPlan.modulePlaceholder')"
               style="width: 100%"
           />
         </a-form-item>
-        <a-form-item label="计划描述">
-          <a-textarea v-model="formData.description" :auto-size="{ minRows: 3 }" placeholder="请输入计划描述"/>
+        <a-form-item :label="$t('qa.testPlan.description')">
+          <a-textarea v-model="formData.description" :auto-size="{ minRows: 3 }" :placeholder="$t('qa.testPlan.descPlaceholder')"/>
         </a-form-item>
-        <a-form-item label="标签">
-          <a-input-tag v-model="formData.tags" placeholder="输入后回车添加标签" allow-clear style="width: 100%"/>
+        <a-form-item :label="$t('qa.testPlan.tags')">
+          <a-input-tag v-model="formData.tags" :placeholder="$t('qa.testPlan.tagsPlaceholder')" allow-clear style="width: 100%"/>
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item :label="$t('qa.testPlan.status')">
           <a-select v-model="formData.status">
-            <a-option value="DRAFT">草稿</a-option>
-            <a-option value="READY">就绪</a-option>
-            <a-option value="RUNNING">执行中</a-option>
-            <a-option value="COMPLETED">已完成</a-option>
+            <a-option value="DRAFT">{{ $t('qa.testPlan.status.draft') }}</a-option>
+            <a-option value="READY">{{ $t('qa.testPlan.status.ready') }}</a-option>
+            <a-option value="RUNNING">{{ $t('qa.testPlan.status.running') }}</a-option>
+            <a-option value="COMPLETED">{{ $t('qa.testPlan.status.completed') }}</a-option>
           </a-select>
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="开始时间">
+            <a-form-item :label="$t('qa.testPlan.startTime')">
               <a-date-picker v-model="formData.startTime" show-time style="width: 100%;"/>
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="结束时间">
+            <a-form-item :label="$t('qa.testPlan.endTime')">
               <a-date-picker v-model="formData.endTime" show-time style="width: 100%;"/>
             </a-form-item>
           </a-col>
@@ -271,8 +271,9 @@
 </script>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, onActivated, onBeforeUnmount, watch} from 'vue';
+import {ref, computed, onMounted, onBeforeUnmount, watch, nextTick} from 'vue';
 import {useRouter} from 'vue-router';
+import {useI18n} from 'vue-i18n';
 import {Message, Modal} from '@arco-design/web-vue';
 import {IconPlus, IconSearch, IconDelete, IconDownload, IconRight} from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
@@ -280,9 +281,11 @@ import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue'
 import ModuleTreeManager from '@/views/qa/components/ModuleTreeManager.vue';
 import {useProjectStore} from '@/store';
 import {getTestPlanList, getTestPlanStats, saveTestPlan, updateTestPlan, deleteTestPlan, getTestPlanDetail, addCasesToPlan, getQaModuleTree, getPlanReportList, deletePlanReport} from '@/api/MyApi/qa';
+import {useDirtyGuard, confirmIfDirty} from '@/hooks/useDirtyGuard';
 
 const router = useRouter();
 const projectStore = useProjectStore();
+const {t} = useI18n();
 
 const loading = ref(false);
 const activeMainTab = ref('list');
@@ -389,6 +392,7 @@ const startResizeSidebar = (e: MouseEvent) => {
 const modalVisible = ref(false);
 const modalTitle = ref('');
 const formData = ref<any>({});
+const initialFormData = ref('');
 const isEdit = ref(false);
 
 // 统计卡片：后端全项目口径聚合，不再只数当前页
@@ -451,7 +455,7 @@ const handlePageSizeChange = (pageSize: number) => {
 
 const handleAdd = () => {
   isEdit.value = false;
-  modalTitle.value = '新建测试计划';
+  modalTitle.value = t('qa.testPlan.modal.create');
   formData.value = {
     projectId: projectStore.getProjectId,
     status: 'DRAFT',
@@ -459,19 +463,21 @@ const handleAdd = () => {
   };
   loadModuleOptions();
   modalVisible.value = true;
+  nextTick(() => { initialFormData.value = JSON.stringify(formData.value); });
 };
 
 const handleEdit = (record: any) => {
   isEdit.value = true;
-  modalTitle.value = '编辑测试计划';
+  modalTitle.value = t('qa.testPlan.modal.edit');
   formData.value = {...record, tags: record.tags ? String(record.tags).split(',').filter(Boolean) : []};
   loadModuleOptions();
   modalVisible.value = true;
+  nextTick(() => { initialFormData.value = JSON.stringify(formData.value); });
 };
 
 const handleSave = async () => {
   if (!formData.value.planName || formData.value.planName.trim() === '') {
-    Message.warning('请输入计划名称');
+    Message.warning(t('qa.testPlan.namePlaceholder'));
     return;
   }
   try {
@@ -480,7 +486,7 @@ const handleSave = async () => {
     const api = isEdit.value ? updateTestPlan : saveTestPlan;
     const res: any = await api(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.testPlan.saveSuccess'));
       modalVisible.value = false;
       if (!isEdit.value && res.data?.id) {
         // 新建计划后自动跳转详情页（对标 MeterSphere v3）
@@ -494,12 +500,18 @@ const handleSave = async () => {
   }
 };
 
+const handleModalCancel = () => {
+  confirmIfDirty(JSON.stringify(formData.value) !== initialFormData.value, () => { modalVisible.value = false; });
+};
+
+useDirtyGuard(() => modalVisible.value && JSON.stringify(formData.value) !== initialFormData.value);
+
 const handleCopy = async (record: any) => {
   try {
     // 获取计划详情（含关联用例）
     const detailRes: any = await getTestPlanDetail(record.id);
     if (detailRes.code !== 200 || !detailRes.data?.plan) {
-      Message.error('获取计划详情失败');
+      Message.error(t('qa.testPlan.loadDetailFail'));
       return;
     }
     const sourcePlan = detailRes.data.plan;
@@ -507,7 +519,7 @@ const handleCopy = async (record: any) => {
     // 构造新计划对象
     const newPlan = {
       projectId: sourcePlan.projectId,
-      planName: `${sourcePlan.planName}（副本）`,
+      planName: `${sourcePlan.planName}${t('qa.testPlan.copySuffix')}`,
       description: sourcePlan.description,
       status: 'DRAFT',
       startTime: null,
@@ -515,7 +527,7 @@ const handleCopy = async (record: any) => {
     };
     const createRes: any = await saveTestPlan(newPlan);
     if (createRes.code !== 200 || !createRes.data?.id) {
-      Message.error('复制计划失败');
+      Message.error(t('qa.testPlan.copyFail'));
       return;
     }
     const newPlanId = createRes.data.id;
@@ -524,11 +536,11 @@ const handleCopy = async (record: any) => {
       const caseIds = sourceCases.map((c: any) => c.testCaseId);
       await addCasesToPlan(newPlanId, caseIds);
     }
-    Message.success('复制成功');
+    Message.success(t('qa.testPlan.copySuccess'));
     await loadData();
   } catch (e) {
     console.error(e);
-    Message.error('复制计划失败');
+    Message.error(t('qa.testPlan.copyFail'));
   }
 };
 
@@ -536,7 +548,7 @@ const handleDelete = async (id: number) => {
   try {
     const res: any = await deleteTestPlan(id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success(t('qa.testPlan.deleteSuccess'));
       await loadData();
     }
   } catch (e) {
@@ -556,26 +568,26 @@ const handleExecute = (record: any) => {
 // 删除（更多下拉内，用 Modal 确认）
 const handleDeleteConfirm = (id: number) => {
   Modal.confirm({
-    title: '删除测试计划',
-    content: '确认删除该测试计划吗？',
+    title: t('qa.testPlan.deleteTitle'),
+    content: t('qa.testPlan.deleteConfirm'),
     onOk: async () => { await handleDelete(id); },
   });
 };
 
 // 主表列定义
-const columns = [
-  { title: '计划编号', dataIndex: 'planCode', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true },
-  { title: '计划名称', dataIndex: 'planName', width: 260, ellipsis: true, headerAlign: 'left', slotName: 'planName' },
-  { title: '计划状态', dataIndex: 'status', width: 90, align: 'center', headerAlign: 'center', slotName: 'status' },
-  { title: '创建人', dataIndex: 'createUserName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'createUserName' },
-  { title: '通过率', dataIndex: 'passRate', width: 130, align: 'center', headerAlign: 'center', slotName: 'passRate' },
-  { title: '执行结果', dataIndex: 'execResult', width: 100, align: 'center', headerAlign: 'center', slotName: 'execResult' },
-  { title: '用例数', dataIndex: 'caseCount', width: 80, align: 'center', headerAlign: 'center', slotName: 'caseCount' },
-  { title: '标签', dataIndex: 'tags', headerAlign: 'left', slotName: 'tags' },
-  { title: '所属模块', dataIndex: 'moduleName', width: 120, headerAlign: 'left', ellipsis: true, tooltip: true, slotName: 'moduleName' },
-  { title: '创建时间', dataIndex: 'createTime', width: 180, ellipsis: true, align: 'center', headerAlign: 'center' },
-  { title: '操作', width: 200, fixed: 'right' as const, align: 'center', headerAlign: 'center', slotName: 'actions' },
-];
+const columns = computed(() => [
+  { title: t('qa.testPlan.code'), dataIndex: 'planCode', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.name'), dataIndex: 'planName', width: 260, ellipsis: true, headerAlign: 'left', slotName: 'planName' },
+  { title: t('qa.testPlan.status'), dataIndex: 'status', width: 90, align: 'center', headerAlign: 'center', slotName: 'status' },
+  { title: t('qa.testPlan.creator'), dataIndex: 'createUserName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'createUserName' },
+  { title: t('qa.testPlan.passRate'), dataIndex: 'passRate', width: 130, align: 'center', headerAlign: 'center', slotName: 'passRate' },
+  { title: t('qa.testPlan.execResult'), dataIndex: 'execResult', width: 100, align: 'center', headerAlign: 'center', slotName: 'execResult' },
+  { title: t('qa.testPlan.caseCount'), dataIndex: 'caseCount', width: 80, align: 'center', headerAlign: 'center', slotName: 'caseCount' },
+  { title: t('qa.testPlan.tags'), dataIndex: 'tags', headerAlign: 'left', slotName: 'tags' },
+  { title: t('qa.testPlan.module'), dataIndex: 'moduleName', width: 120, headerAlign: 'left', ellipsis: true, tooltip: true, slotName: 'moduleName' },
+  { title: t('qa.testPlan.createTime'), dataIndex: 'createTime', width: 180, ellipsis: true, align: 'center', headerAlign: 'center' },
+  { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, align: 'center', headerAlign: 'center', slotName: 'actions' },
+]);
 
 // 操作列：统一文字按钮，前 2 个常显，第 3 个起收入「更多」下拉
 interface TestPlanOp {
@@ -586,17 +598,17 @@ interface TestPlanOp {
   handler: (record: any) => void;
 }
 const opsFor = (record: any): TestPlanOp[] => [
-  { key: 'execute', label: '执行', permission: 'qa:testplan:execute', handler: handleExecute },
-  { key: 'edit', label: '编辑', permission: 'qa:testplan:update', handler: handleEdit },
-  { key: 'copy', label: '复制', permission: 'qa:testplan:create', handler: handleCopy },
-  { key: 'delete', label: '删除', danger: true, permission: 'qa:testplan:delete', handler: (record) => handleDeleteConfirm(record.id) },
+  { key: 'execute', label: t('qa.testPlan.execute'), permission: 'qa:testplan:execute', handler: handleExecute },
+  { key: 'edit', label: t('qa.testPlan.action.edit'), permission: 'qa:testplan:update', handler: handleEdit },
+  { key: 'copy', label: t('qa.testPlan.action.copy'), permission: 'qa:testplan:create', handler: handleCopy },
+  { key: 'delete', label: t('qa.common.delete'), danger: true, permission: 'qa:testplan:delete', handler: (record) => handleDeleteConfirm(record.id) },
 ];
 const visibleOps = (record: any) => opsFor(record).slice(0, 2);
 const overflowOps = (record: any) => opsFor(record).slice(2);
 
 // 执行结果汇总展示：NONE 显示 -
 const execResultText = (r: string) => ({
-  ALL_PASS: '通过', NOT_PASS: '未通过',
+  ALL_PASS: t('qa.testPlan.result.pass'), NOT_PASS: t('qa.testPlan.result.notPass'),
 } as Record<string, string>)[r] || '-';
 const execResultColor = (r: string) => ({
   ALL_PASS: 'green', NOT_PASS: 'red',
@@ -611,17 +623,17 @@ const reportLoading = ref(false);
 const reportKeyword = ref('');
 const reportPagination = ref({ current: 1, pageSize: 10, total: 0, showTotal: true });
 
-const reportColumns = [
-  { title: '报告名称', dataIndex: 'reportName', width: 260, ellipsis: true, slotName: 'reportName' },
-  { title: '报告类型', dataIndex: 'reportType', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportType' },
-  { title: '计划名称', dataIndex: 'planName', width: 200, ellipsis: true },
-  { title: '执行结果', dataIndex: 'execResult', width: 100, align: 'center', headerAlign: 'center', slotName: 'reportExecResult' },
-  { title: '通过率', dataIndex: 'passRate', width: 90, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportPassRate' },
-  { title: '触发方式', dataIndex: 'triggerType', width: 100, align: 'center', headerAlign: 'center', slotName: 'triggerType' },
-  { title: '创建人', dataIndex: 'createUserName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportCreateUserName' },
-  { title: '创建时间', dataIndex: 'createTime', width: 160, ellipsis: true, align: 'center', headerAlign: 'center' },
-  { title: '操作', width: 120, fixed: 'right' as const, align: 'center', headerAlign: 'center', slotName: 'reportActions' },
-];
+const reportColumns = computed(() => [
+  { title: t('qa.testPlan.report.name'), dataIndex: 'reportName', width: 260, ellipsis: true, slotName: 'reportName' },
+  { title: t('qa.testPlan.report.type'), dataIndex: 'reportType', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportType' },
+  { title: t('qa.testPlan.name'), dataIndex: 'planName', width: 200, ellipsis: true },
+  { title: t('qa.testPlan.execResult'), dataIndex: 'execResult', width: 100, align: 'center', headerAlign: 'center', slotName: 'reportExecResult' },
+  { title: t('qa.testPlan.passRate'), dataIndex: 'passRate', width: 90, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportPassRate' },
+  { title: t('qa.testPlan.report.triggerType'), dataIndex: 'triggerType', width: 100, align: 'center', headerAlign: 'center', slotName: 'triggerType' },
+  { title: t('qa.testPlan.creator'), dataIndex: 'createUserName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'reportCreateUserName' },
+  { title: t('qa.testPlan.createTime'), dataIndex: 'createTime', width: 160, ellipsis: true, align: 'center', headerAlign: 'center' },
+  { title: t('qa.common.operation'), width: 120, fixed: 'right' as const, align: 'center', headerAlign: 'center', slotName: 'reportActions' },
+]);
 
 const loadReportList = async () => {
   if (!projectStore.getProjectId) return;
@@ -655,7 +667,7 @@ const handleDeleteReport = async (id: number) => {
   try {
     const res: any = await deletePlanReport(id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success(t('qa.testPlan.deleteSuccess'));
       await loadReportList();
     }
   } catch (e) {
@@ -694,15 +706,11 @@ const statusColor = (status: string) => {
 };
 
 const statusText = (status: string) => {
-  const map: Record<string, string> = { DRAFT: '草稿', READY: '就绪', RUNNING: '执行中', COMPLETED: '已完成' };
+  const map: Record<string, string> = { DRAFT: t('qa.testPlan.status.draft'), READY: t('qa.testPlan.status.ready'), RUNNING: t('qa.testPlan.status.running'), COMPLETED: t('qa.testPlan.status.completed') };
   return map[status] || status;
 };
 
 onMounted(() => {
-  loadData();
-});
-// keep-alive 激活时刷新（新建/编辑计划返回后列表同步）
-onActivated(() => {
   loadData();
 });
 

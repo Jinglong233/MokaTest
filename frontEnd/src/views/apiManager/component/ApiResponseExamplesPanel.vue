@@ -8,11 +8,11 @@
         @click="addExample"
       >
         <template #icon><icon-plus /></template>
-        新增响应示例
+        {{ $t('api.respExample.add') }}
       </a-button>
     </div>
 
-    <a-empty v-if="!displayExamples.length" description="暂无响应示例" />
+    <a-empty v-if="!displayExamples.length" :description="$t('api.respExample.empty')" />
     <template v-else>
       <a-tabs v-model:active-key="activeKey" type="line" class="response-tabs">
         <a-tab-pane
@@ -37,7 +37,7 @@
           </template>
           <div class="response-form">
             <div class="response-form-row">
-              <a-form-item label="状态码" class="compact-form-item status-code-form-item">
+              <a-form-item :label="$t('api.mockConfig.statusCode')" class="compact-form-item status-code-form-item">
                 <a-input-number
                   v-model="item.statusCode"
                   :min="100"
@@ -51,7 +51,7 @@
               <a-form-item label="Content-Type" class="compact-form-item content-type-form-item">
                 <a-select
                   v-model="item.contentType"
-                  placeholder="请选择"
+                  :placeholder="$t('api.common.pleaseSelect')"
                   :disabled="disabled"
                   :options="contentTypeOptions"
                   allow-create
@@ -59,10 +59,10 @@
                   class="content-type-select"
                 />
               </a-form-item>
-              <a-form-item label="描述" class="compact-form-item description-form-item">
+              <a-form-item :label="$t('api.sqlAssertion.colDesc')" class="compact-form-item description-form-item">
                 <a-input
                   v-model="item.description"
-                  placeholder="响应描述"
+                  :placeholder="$t('api.respExample.descPlaceholder')"
                   :disabled="disabled"
                   @input="onChange"
                   class="description-input"
@@ -76,13 +76,13 @@
                 @click="removeExample(item)"
               >
                 <template #icon><icon-delete /></template>
-                删除
+                {{ $t('qa.common.delete') }}
               </a-button>
             </div>
           </div>
 
           <div class="response-section">
-            <div class="section-title">响应头</div>
+            <div class="section-title">{{ $t('api.mockConfig.responseHeader') }}</div>
             <a-scrollbar
               v-if="item.headers?.length"
               style="height: 180px; overflow: auto;"
@@ -95,14 +95,14 @@
                 >
                   <a-input
                     v-model="header.name"
-                    placeholder="Header 名"
+                    :placeholder="$t('api.respExample.headerName')"
                     :disabled="disabled"
                     @input="onChange"
                     class="header-input"
                   />
                   <a-input
                     v-model="header.value"
-                    placeholder="Header 值"
+                    :placeholder="$t('api.respExample.headerValue')"
                     :disabled="disabled"
                     @input="onChange"
                     class="header-input"
@@ -126,12 +126,12 @@
               @click="addHeader(item)"
             >
               <template #icon><icon-plus /></template>
-              添加响应头
+              {{ $t('api.respExample.addHeader') }}
             </a-button>
           </div>
 
           <div class="response-section response-body-section">
-            <div class="section-title">响应体</div>
+            <div class="section-title">{{ $t('api.mockConfig.responseBody') }}</div>
             <div class="response-body-editor">
               <BodyCodeEditor
                 :model-value="item.body || ''"
@@ -154,10 +154,13 @@ import { IconPlus, IconDelete } from '@arco-design/web-vue/es/icon';
 import { ApiResponseExample } from '@/types/domain/api/requestModel/ApiResponseExample';
 import { RequestParameter } from '@/types/domain/api/requestModel/RequestParameter';
 import BodyCodeEditor from './BodyCodeEditor.vue';
+import { useI18n } from 'vue-i18n';
 
 interface InternalExample extends ApiResponseExample {
   _key: string;
 }
+
+const { t } = useI18n();
 
 const props = defineProps<{
   examples?: ApiResponseExample[];
@@ -255,7 +258,7 @@ const updateBody = (item: InternalExample, value: string) => {
 const addExample = () => {
   const example: InternalExample = {
     statusCode: 200,
-    description: '成功',
+    description: t('api.respExample.defaultDesc'),
     contentType: 'application/json',
     headers: [],
     body: '{}',

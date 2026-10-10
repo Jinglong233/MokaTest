@@ -4,14 +4,14 @@
       :visible="visible"
       @ok="handleOk"
       @cancel="handleCancel"
-      :ok-text="okText"
-      :cancel-text="cancelText"
+      :ok-text="okText || $t('scene.common.ok')"
+      :cancel-text="cancelText || $t('qa.common.cancel')"
       :mask-closable="maskClosable"
       :ok-button-props="{ disabled: submitDisabled }"
   >
     <template #title>
       <a-badge v-if="formData.orderIndex" :count="formData.orderIndex"/>
-      {{title}}
+      {{ title || $t('scene.drawer.defaultTitle') }}
     </template>
     <a-space direction="vertical" fill>
       <a-scrollbar :style="`height:${scrollHeight};overflow-y:auto;overflow-x:hidden`">
@@ -74,6 +74,7 @@
 
 <script setup lang="ts">
 import {ref, watch, computed} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Modal} from '@arco-design/web-vue';
 import DynamicForm from './DynamicForm.vue';
 import SettingTab from './SettingTab.vue';
@@ -94,15 +95,15 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: '操作详情'
+    default: ''
   },
   okText: {
     type: String,
-    default: '确定'
+    default: ''
   },
   cancelText: {
     type: String,
-    default: '取消'
+    default: ''
   },
   maskClosable: {
     type: Boolean,
@@ -157,6 +158,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:visible', 'submit', 'cancel', 'update:formData', 'validate']);
+
+const { t } = useI18n();
 
 // 本地数据副本
 const localStepDetail = ref<StepType>({...props.formData});
@@ -235,11 +238,11 @@ const handleCancel = () => {
   if (useDedicatedEditor.value) {
     if (currentEditorRef.value.value?.isDirty?.()) {
       Modal.confirm({
-        title: '未保存的修改',
-        content: '当前步骤有未保存的修改，关闭后将丢失，确定关闭吗？',
-        okText: '放弃修改',
+        title: t('scene.drawer.unsavedTitle'),
+        content: t('scene.drawer.unsavedContent'),
+        okText: t('scene.drawer.unsavedOk'),
         okButtonProps: {status: 'danger'},
-        cancelText: '继续编辑',
+        cancelText: t('scene.drawer.unsavedCancel'),
         onOk: () => {
           localStepDetail.value = {...props.formData};
           emit('cancel');

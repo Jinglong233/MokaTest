@@ -1,4 +1,5 @@
 import localeMessageBox from '@/components/message-box/locale/zh-CN';
+import localeComponents from '@/components/locale/zh-CN';
 import localeLogin from '@/views/login/locale/zh-CN';
 
 
@@ -13,6 +14,13 @@ import localePlan from '@/views/plan/locale/zh-CN';
 import localeApi from '@/views/apiManager/locale/zh-CN';
 import localeQa from '@/views/qa/locale/zh-CN';
 import localeDataTemplate from '@/views/dataTemplate/locale/zh-CN';
+import localeAiConfig from '@/views/aiConfig/locale/zh-CN';
+import localeCustomFunction from '@/views/customFunction/locale/zh-CN';
+import localeEnv from '@/views/env/locale/zh-CN';
+import localeKnowledge from '@/views/knowledge/locale/zh-CN';
+import localeProjectConfig from '@/views/projectConfig/locale/zh-CN';
+import localeSystem from '@/views/system/locale/zh-CN';
+import localeTeamManager from '@/views/teamManager/locale/zh-CN';
 
 
 
@@ -43,6 +51,7 @@ export default {
     'menu.project': '项目概览',
     'menu.projectMember': '项目成员',
     'menu.projectConfig': '项目配置',
+    'menu.aiConfig': 'AI 配置',
     'menu.knowledge': '知识库',
 
     'menu.interfaceTest': '接口测试',
@@ -66,6 +75,7 @@ export default {
     'navbar.action.locale': '切换为中文',
     ...localeSettings,
     ...localeMessageBox,
+    ...localeComponents,
     ...localeLogin,
     ...locale403,
     ...localeUserSetting,
@@ -76,5 +86,12 @@ export default {
     ...localePlan,
     ...localeApi,
     ...localeQa,
-    ...localeDataTemplate
+    ...localeDataTemplate,
+    ...localeAiConfig,
+    ...localeCustomFunction,
+    ...localeEnv,
+    ...localeKnowledge,
+    ...localeProjectConfig,
+    ...localeSystem,
+    ...localeTeamManager
 };

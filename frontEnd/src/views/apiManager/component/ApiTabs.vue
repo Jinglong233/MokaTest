@@ -15,7 +15,7 @@
       <a-tab-pane
         v-for="tab in tabList"
         :key="tab.key"
-        :title="tab.apiName || '未命名接口'"
+        :title="tab.apiName || $t('api.tabs.unnamed')"
         :closable="false"
       >
         <template #title>
@@ -23,7 +23,7 @@
             class="tab-title-wrapper"
             @contextmenu.prevent="(e) => openContextMenu(e, tab)"
           >
-            <span>{{ tab.apiName || '未命名接口' }}</span>
+            <span>{{ tab.apiName || $t('api.tabs.unnamed') }}</span>
             <span
               class="tab-close"
               :class="{ 'has-changes': tab.unsavedChanges }"
@@ -57,12 +57,12 @@
     >
       <div class="menu-item" @click="handleMenuClick('close')">
         <icon-close />
-        <span>关闭当前标签页</span>
+        <span>{{ $t('api.tabs.closeCurrent') }}</span>
         <span v-if="currentTab?.unsavedChanges" class="unsaved-badge">●</span>
       </div>
       <div class="menu-item" @click="handleMenuClick('closeOthers')">
         <icon-minus-circle />
-        <span>关闭其他标签页</span>
+        <span>{{ $t('api.tabs.closeOthers') }}</span>
         <span
           v-if="hasOtherUnsavedChanges(currentTab?.key)"
           class="unsaved-badge"
@@ -71,7 +71,7 @@
       </div>
       <div class="menu-item" @click="handleMenuClick('closeLeft')">
         <icon-arrow-left />
-        <span>关闭左侧标签页</span>
+        <span>{{ $t('api.tabs.closeLeft') }}</span>
         <span
           v-if="hasLeftUnsavedChanges(currentTab?.key)"
           class="unsaved-badge"
@@ -80,7 +80,7 @@
       </div>
       <div class="menu-item" @click="handleMenuClick('closeRight')">
         <icon-arrow-right />
-        <span>关闭右侧标签页</span>
+        <span>{{ $t('api.tabs.closeRight') }}</span>
         <span
           v-if="hasRightUnsavedChanges(currentTab?.key)"
           class="unsaved-badge"
@@ -90,7 +90,7 @@
       <div class="menu-divider" />
       <div class="menu-item" @click="handleMenuClick('closeAll')">
         <icon-delete />
-        <span>关闭所有标签页</span>
+        <span>{{ $t('api.tabs.closeAll') }}</span>
         <span v-if="hasAnyUnsavedChanges()" class="unsaved-badge">●</span>
       </div>
     </div>
@@ -118,6 +118,9 @@
   } from '@arco-design/web-vue/es/icon';
   import { ApiRequest } from '@/types/domain/api/ApiRequest';
   import usePermission from '@/hooks/permission';
+  import { useI18n } from 'vue-i18n';
+
+  const { t } = useI18n();
 
   const permission = usePermission();
   const hasApiCreatePermission = computed(() => permission.hasPermission('auto:api:create'));
@@ -156,7 +159,7 @@
   });
 
   const updateUnsavedChanges = (key: string, hasChanges: boolean) => {
-    const tab = tabList.value.find((t) => t.key === key);
+    const tab = tabList.value.find((tab) => tab.key === key);
     if (tab && tab.unsavedChanges !== hasChanges) {
       tab.unsavedChanges = hasChanges;
       emit('update:tabs', [...tabList.value]);
@@ -290,7 +293,7 @@
 
   const showConfirm = (type: string, targetKeys: string[]) => {
     const unsavedKeys = targetKeys.filter(
-      (key) => tabList.value.find((t) => t.key === key)?.unsavedChanges
+      (key) => tabList.value.find((tab) => tab.key === key)?.unsavedChanges
     );
     if (unsavedKeys.length === 0) {
       executeClose(type, targetKeys);
@@ -299,13 +302,13 @@
 
     const unsavedTabs = unsavedKeys
       .map(
-        (key) => tabList.value.find((t) => t.key === key)?.apiName || '未命名'
+        (key) => tabList.value.find((tab) => tab.key === key)?.apiName || t('api.common.unnamed')
       )
       .join('、');
     confirmModal.value = {
       visible: true,
-      title: '提示',
-      message: `以下标签页有未保存的修改：${unsavedTabs}\n确定关闭吗？`,
+      title: t('api.tabs.confirmTitle'),
+      message: t('api.tabs.confirmClose', {names: unsavedTabs}),
       type,
       targetKeys,
     };

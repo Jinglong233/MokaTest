@@ -7,14 +7,14 @@
           <a-card class="main-card">
             <a-form-item
               field="title"
-              label="BUG名称"
-              :rules="[{ required: true, message: '请输入BUG名称' }]"
+              :label="$t('qa.bug.bugName')"
+              :rules="[{ required: true, message: $t('qa.bug.titleInput') }]"
               :validate-trigger="['change', 'blur']"
               class="title-form-item"
             >
               <a-input
                 v-model="formData.title"
-                placeholder="请输入BUG名称"
+                :placeholder="$t('qa.bug.titleInput')"
                 size="large"
                 class="title-input"
                 allow-clear
@@ -23,20 +23,20 @@
 
             <a-row :gutter="16" class="editors-row">
               <a-col :xs="24" :md="12" class="editor-col">
-                <a-form-item field="description" label="BUG描述" class="description-item">
+                <a-form-item field="description" :label="$t('qa.bug.description')" class="description-item">
                   <RichEditor
                     v-model="formData.description"
-                    placeholder="请输入BUG描述"
+                    :placeholder="$t('qa.bug.descriptionInput')"
                     :height="editorHeight"
                     @uploaded="handleUploadedFile"
                   />
                 </a-form-item>
               </a-col>
               <a-col :xs="24" :md="12" class="editor-col">
-                <a-form-item field="reproduceSteps" label="复现步骤" class="description-item">
+                <a-form-item field="reproduceSteps" :label="$t('qa.bug.reproduce')" class="description-item">
                   <RichEditor
                     v-model="formData.reproduceSteps"
-                    placeholder="请输入复现步骤"
+                    :placeholder="$t('qa.bug.reproduceInput')"
                     :height="editorHeight"
                     @uploaded="handleUploadedFile"
                   />
@@ -53,41 +53,41 @@
               <template #title>
                 <div class="card-title">
                   <div class="card-title-dot" style="background: #f53f3f;" />
-                  属性与状态
+                  {{ $t('qa.bug.attributesCard') }}
                 </div>
               </template>
 
-              <a-form-item field="severity" label="严重程度" :rules="[{ required: true, message: '请选择严重程度' }]" :validate-trigger="['change', 'blur']">
-                <a-select v-model="formData.severity" placeholder="请选择严重程度">
-                  <a-option value="FATAL" class="severity-option severity-fatal">致命</a-option>
-                  <a-option value="SERIOUS" class="severity-option severity-serious">严重</a-option>
-                  <a-option value="NORMAL">一般</a-option>
-                  <a-option value="TIPS">提示</a-option>
+              <a-form-item field="severity" :label="$t('qa.bug.severity')" :rules="[{ required: true, message: $t('qa.bug.severityRequired') }]" :validate-trigger="['change', 'blur']">
+                <a-select v-model="formData.severity" :placeholder="$t('qa.bug.severityRequired')">
+                  <a-option value="FATAL" class="severity-option severity-fatal">{{ $t('qa.bug.severity.fatal') }}</a-option>
+                  <a-option value="SERIOUS" class="severity-option severity-serious">{{ $t('qa.bug.severity.serious') }}</a-option>
+                  <a-option value="NORMAL">{{ $t('qa.bug.severity.normal') }}</a-option>
+                  <a-option value="TIPS">{{ $t('qa.bug.severity.tips') }}</a-option>
                 </a-select>
               </a-form-item>
 
-              <a-form-item field="status" label="BUG状态" :rules="[{ required: true, message: '请选择BUG状态' }]" :validate-trigger="['change', 'blur']">
+              <a-form-item field="status" :label="$t('qa.bug.bugStatus')" :rules="[{ required: true, message: $t('qa.bug.statusRequired') }]" :validate-trigger="['change', 'blur']">
                 <a-select
                   v-model="formData.status"
                   class="status-select"
                   :class="{ 'status-readonly': !isEdit }"
-                  placeholder="新建"
+                  :placeholder="$t('qa.bug.status.new')"
                   :disabled="!isEdit"
                 >
-                  <a-option v-if="!isEdit" value="NEW">新建</a-option>
+                  <a-option v-if="!isEdit" value="NEW">{{ $t('qa.bug.status.new') }}</a-option>
                   <template v-else>
                     <a-option v-for="s in allBugStatuses" :key="s.value" :value="s.value">{{ s.label }}</a-option>
                   </template>
                 </a-select>
               </a-form-item>
 
-              <a-form-item field="assigneeId" label="处理人" :rules="[{ required: true, message: '请选择处理人' }]" :validate-trigger="['change', 'blur']">
+              <a-form-item field="assigneeId" :label="$t('qa.bug.handler')" :rules="[{ required: true, message: $t('qa.bug.assigneeRequired') }]" :validate-trigger="['change', 'blur']">
                 <a-select
                   v-model="formData.assigneeId"
                   allow-clear
                   allow-search
                   :filter-option="false"
-                  placeholder="请输入关键词搜索用户"
+                  :placeholder="$t('qa.bug.searchUserPlaceholder')"
                   @search="handleSearchUser"
                   @dropdown-visible-change="handleUserDropdownVisibleChange"
                   @dropdown-reach-bottom="loadMoreUser"
@@ -100,18 +100,18 @@
                     <div>
                       <VNodeRenderer :vnodes="menu" />
                       <div v-if="userPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
+                        {{ $t('qa.bug.loadMore') }}
                       </div>
                       <div v-else-if="userOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
+                        {{ $t('qa.bug.noMore') }}
                       </div>
                     </div>
                   </template>
                 </a-select>
               </a-form-item>
 
-              <a-form-item field="tags" label="标签">
-                <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear class="bug-tags-input" />
+              <a-form-item field="tags" :label="$t('qa.bug.tags')">
+                <a-input-tag v-model="formData.tags" :placeholder="$t('qa.bug.tagsPlaceholder')" allow-clear class="bug-tags-input" />
               </a-form-item>
             </a-card>
           </a-scrollbar>
@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import {ref, watch, onMounted, onBeforeUnmount, computed} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
 import { IconBug, IconBulb, IconUser } from '@arco-design/web-vue/es/icon';
 import RichEditor from '@/components/rich-editor/index.vue';
@@ -145,6 +146,7 @@ const emit = defineEmits<{
 }>();
 
 const projectStore = useProjectStore();
+const {t} = useI18n();
 
 // 编辑器高度跟随浏览器自适应：
 // - 宽屏（a-col lg ≥1200px，左右双栏）：100%，由 flex 布局填满弹窗剩余空间
@@ -195,7 +197,7 @@ const handleUploadedFile = (fileId: string) => {
 };
 
 const fillReproduceTemplate = () => {
-  formData.value.reproduceSteps = '<ol><li>进入页面</li><li>点击按钮</li><li>出现报错</li></ol>';
+  formData.value.reproduceSteps = t('qa.bug.reproduceTemplate');
 };
 
 const buildComparable = () => {
@@ -218,15 +220,15 @@ const updateSnapshot = () => {
 const userOptions = ref<any[]>([]);
 const userPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
 
-const allBugStatuses = [
-  { value: 'NEW', label: '新建' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'FIXING', label: '修复中' },
-  { value: 'FIXED', label: '已修复' },
-  { value: 'VERIFIED', label: '已验证' },
-  { value: 'CLOSED', label: '已关闭' },
-  { value: 'REJECTED', label: '已驳回' }
-];
+const allBugStatuses = computed(() => [
+  { value: 'NEW', label: t('qa.bug.status.new') },
+  { value: 'CONFIRMED', label: t('qa.bug.status.confirmed') },
+  { value: 'FIXING', label: t('qa.bug.status.fixing') },
+  { value: 'FIXED', label: t('qa.bug.status.fixed') },
+  { value: 'VERIFIED', label: t('qa.bug.status.verified') },
+  { value: 'CLOSED', label: t('qa.bug.status.closed') },
+  { value: 'REJECTED', label: t('qa.bug.status.rejected') }
+]);
 
 const resetForm = () => {
   formData.value = {
@@ -313,19 +315,19 @@ const handleUserDropdownVisibleChange = (visible: boolean) => {
 
 const save = async () => {
   if (!formData.value.title) {
-    Message.warning('请输入BUG名称');
+    Message.warning(t('qa.bug.titleInput'));
     return false;
   }
   if (!formData.value.severity) {
-    Message.warning('请选择严重程度');
+    Message.warning(t('qa.bug.severityRequired'));
     return false;
   }
   if (!formData.value.status) {
-    Message.warning('请选择BUG状态');
+    Message.warning(t('qa.bug.statusRequired'));
     return false;
   }
   if (!formData.value.assigneeId) {
-    Message.warning('请选择处理人');
+    Message.warning(t('qa.bug.assigneeRequired'));
     return false;
   }
   const payload = {...formData.value};
@@ -336,7 +338,7 @@ const save = async () => {
     const api = isEdit.value ? updateBug : saveBug;
     const res: any = await api(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.bug.saveSuccess'));
       // 存储后端返回的 BUG ID
       if (res.data) {
         formData.value.id = res.data;

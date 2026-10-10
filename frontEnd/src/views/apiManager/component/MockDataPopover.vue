@@ -25,8 +25,8 @@
     />
     <div class="popover-footer">
       <a-space>
-        <a-button type="primary" size="small" :disabled="!canInsert" @click="handleInsert">插入</a-button>
-        <a-button size="small" @click="handleCancel">取消</a-button>
+        <a-button type="primary" size="small" :disabled="!canInsert" @click="handleInsert">{{ $t('api.mock.insert') }}</a-button>
+        <a-button size="small" @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
       </a-space>
     </div>
   </div>

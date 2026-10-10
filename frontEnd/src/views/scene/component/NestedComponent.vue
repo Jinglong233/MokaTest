@@ -2,7 +2,7 @@
   <div>
     <div style="padding: 10px;width: 100%">
       <a-row style="align-items: center; gap: 12px;">
-        <a-checkbox v-if="hasStepUpdatePermission || hasStepDeletePermission" style="margin-left: 18px;margin-bottom: 20px" :disabled="mutationsLocked" @change="checkAllNode">全选</a-checkbox>
+        <a-checkbox v-if="hasStepUpdatePermission || hasStepDeletePermission" style="margin-left: 18px;margin-bottom: 20px" :disabled="mutationsLocked" @change="checkAllNode">{{ $t('scene.export.selectAll') }}</a-checkbox>
         <a-tree
             ref="treeRef"
             style="width: 100%"
@@ -57,9 +57,9 @@
                       style="flex: 1;min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">
                     {{ el.stepName }}
                   </a-typography-text>
-                  <a-tag v-if="el.isDisable === 1" color="gray" size="small" style="flex-shrink: 0;">已禁用</a-tag>
+                  <a-tag v-if="el.isDisable === 1" color="gray" size="small" style="flex-shrink: 0;">{{ $t('scene.step.disabled') }}</a-tag>
                   <!-- 本步提取的变量（数据流可见） -->
-                  <a-tooltip v-if="getStepExtractVars(el).length" :content="'提取变量：' + getStepExtractVars(el).map((v) => '${'+v+'}').join('  ')">
+                  <a-tooltip v-if="getStepExtractVars(el).length" :content="$t('scene.step.extractVars') + getStepExtractVars(el).map((v) => '${'+v+'}').join('  ')">
                     <a-tag color="arcoblue" size="small" style="flex-shrink: 0;">
                       <template #icon><icon-export/></template>
                       {{ getStepExtractVars(el).length }}
@@ -83,7 +83,7 @@
                         :image-style="{border: '1px solid #e5e5e5', borderRadius: '2px'}"
                     />
                     <!-- 有调试状态时：状态图标 + 查看结果，整体可点击 -->
-                    <a-tooltip v-if="getStepDebugStatus(el.id)" content="点击查看调试结果">
+                    <a-tooltip v-if="getStepDebugStatus(el.id)" :content="$t('scene.step.viewDebugResultTip')">
                       <div class="debug-result-trigger" @click.stop="checkCurrentDebugResult(el.id, el.stepType)">
                         <icon-check-circle-fill v-if="getStepDebugStatus(el.id) === 'SUCCESS'"
                                                 class="debug-status-icon debug-status-success"/>
@@ -91,14 +91,14 @@
                                                 class="debug-status-icon debug-status-failure"/>
                         <icon-minus-circle v-if="getStepDebugStatus(el.id) === 'SKIPPED'"
                                            class="debug-status-icon debug-status-skipped"/>
-                        <span class="debug-result-text">查看结果</span>
+                        <span class="debug-result-text">{{ $t('scene.step.viewResult') }}</span>
                       </div>
                     </a-tooltip>
                   </template>
                 </div>
                 <div>
                   <a-dropdown position="left">
-                    <a-tooltip :content="mutationsLocked ? '调试运行中，暂停后可新增步骤' : '添加步骤'">
+                    <a-tooltip :content="mutationsLocked ? $t('scene.debug.lockedAdd') : $t('scene.workflow.addStep')">
                       <a-button v-permission="'auto:step:create'" @click.stop="" shape="circle" type="text"
                                 :disabled="mutationsLocked">
                         <icon-plus-circle style="font-size: 20px"/>
@@ -108,168 +108,168 @@
                       <!-- API场景：级联子菜单 -->
                       <template v-if="props.isApiScene">
                         <a-dsubmenu position="lt" value="添加相邻步骤">
-                          <template #default>添加相邻步骤</template>
+                          <template #default>{{ $t('scene.workflow.addAdjacent') }}</template>
                           <template #content>
                             <a-dsubmenu position="lt" value="api_request_adj">
-                              <template #default>HTTP请求</template>
+                              <template #default>{{ $t('scene.action.httpRequest') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'new')">新建接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'import')">引入已有用例</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'new')">{{ $t('scene.action.newApi') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'import')">{{ $t('scene.action.importApiCase') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="sql_adj">
-                              <template #default>SQL查询</template>
+                              <template #default>{{ $t('scene.action.sqlQuery') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'new')">新建SQL接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'import')">引入已有SQL接口</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'new')">{{ $t('scene.action.newSql') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'import')">{{ $t('scene.action.importSql') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'for',false)">for循环</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'while',false)">while循环</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'if',false)">if判断</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'wait',false)">等待</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'script',false)">脚本</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'for',false)">{{ $t('scene.action.forLoop') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'while',false)">{{ $t('scene.action.whileLoop') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'if',false)">{{ $t('scene.action.if') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'wait',false)">{{ $t('scene.action.wait') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'script',false)">{{ $t('scene.action.script') }}</a-doption>
                           </template>
                         </a-dsubmenu>
                         <!-- FOR/WHILE/IF 才能添加子步骤，再次联动出步骤类型 -->
                         <a-dsubmenu
                             v-if="el.stepType === 'WHILE' || el.stepType === 'FOR' || el.stepType === 'IF'"
                             position="lt" value="添加子步骤">
-                          <template #default>添加子步骤</template>
+                          <template #default>{{ $t('scene.workflow.addChild') }}</template>
                           <template #content>
                             <a-dsubmenu position="lt" value="api_request_child">
-                              <template #default>HTTP请求</template>
+                              <template #default>{{ $t('scene.action.httpRequest') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'new')">新建接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'import')">引入已有用例</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'new')">{{ $t('scene.action.newApi') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'import')">{{ $t('scene.action.importApiCase') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="sql_child">
-                              <template #default>SQL查询</template>
+                              <template #default>{{ $t('scene.action.sqlQuery') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'new')">新建SQL接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'import')">引入已有SQL接口</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'new')">{{ $t('scene.action.newSql') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'import')">{{ $t('scene.action.importSql') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'for',true)">for循环</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'while',true)">while循环</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'if',true)">if判断</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'wait',true)">等待</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'script',true)">脚本</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'for',true)">{{ $t('scene.action.forLoop') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'while',true)">{{ $t('scene.action.whileLoop') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'if',true)">{{ $t('scene.action.if') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'wait',true)">{{ $t('scene.action.wait') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'script',true)">{{ $t('scene.action.script') }}</a-doption>
                           </template>
                         </a-dsubmenu>
                       </template>
                       <!-- UI场景：原有菜单 -->
                       <template v-else>
                         <a-dsubmenu position="lt" value="添加相邻操作">
-                          <template #default>添加相邻操作</template>
+                          <template #default>{{ $t('scene.workflow.addAdjacentOp') }}</template>
                           <template #content>
                             <a-dsubmenu position="lt" value="浏览器操作">
-                              <template #default>浏览器操作</template>
+                              <template #default>{{ $t('scene.action.browserOp') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'open_page',false)">打开网页</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'close_page',false)">关闭网页</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'switch_tab',false)">切换tab</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'forward',false)">前进</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'back',false)">后退</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'refresh',false)">刷新</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'open_page',false)">{{ $t('scene.action.openPage') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'close_page',false)">{{ $t('scene.action.closePage') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'switch_tab',false)">{{ $t('scene.action.switchTab') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'forward',false)">{{ $t('scene.action.forward') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'back',false)">{{ $t('scene.action.back') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'refresh',false)">{{ $t('scene.action.refresh') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="鼠标操作">
-                              <template #default>鼠标操作</template>
+                              <template #default>{{ $t('scene.action.mouseOp') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'click',false)">点击</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'hover',false)">悬停</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'drag',false)">鼠标拖拽</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'click',false)">{{ $t('scene.action.click') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'hover',false)">{{ $t('scene.action.hover') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'drag',false)">{{ $t('scene.action.drag') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="循环">
-                              <template #default>循环</template>
+                              <template #default>{{ $t('scene.action.loop') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'for',false)">for循环</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'while',false)">while循环</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'for',false)">{{ $t('scene.action.forLoop') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'while',false)">{{ $t('scene.action.whileLoop') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'wait',false)">等待</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'wait',false)">{{ $t('scene.action.wait') }}</a-doption>
                             <a-dsubmenu position="lt" value="api_request_adj_ui">
-                              <template #default>HTTP请求</template>
+                              <template #default>{{ $t('scene.action.httpRequest') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'new')">新建接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'import')">引入已有用例</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'new')">{{ $t('scene.action.newApi') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',false,'import')">{{ $t('scene.action.importApiCase') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="sql_adj_ui">
-                              <template #default>SQL查询</template>
+                              <template #default>{{ $t('scene.action.sqlQuery') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'new')">新建SQL接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'import')">引入已有SQL接口</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'new')">{{ $t('scene.action.newSql') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',false,'import')">{{ $t('scene.action.importSql') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'extract',false)">关联提取</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'keyboard',false)">键盘操作</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'element_dom_operation',false)">元素DOM操作</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'file_upload',false)">上传文件</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'assert',false)">断言</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'if',false)">if判断</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'script',false)">脚本</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'iframe',false)">iframe切换</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'dialog',false)">对话框</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'extract',false)">{{ $t('scene.action.extract') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'keyboard',false)">{{ $t('scene.action.keyboardOp') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'element_dom_operation',false)">{{ $t('scene.action.elementDom') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'file_upload',false)">{{ $t('scene.action.fileUpload') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'assert',false)">{{ $t('scene.action.assert') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'if',false)">{{ $t('scene.action.if') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'script',false)">{{ $t('scene.action.script') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'iframe',false)">{{ $t('scene.action.iframe') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'dialog',false)">{{ $t('scene.action.dialog') }}</a-doption>
                           </template>
                         </a-dsubmenu>
                         <a-dsubmenu v-if="el.stepType === 'WHILE' || el.stepType === 'FOR' || el.stepType === 'IF'"
                                     position="lt" value="添加子操作">
-                          <template #default>添加子操作</template>
+                          <template #default>{{ $t('scene.workflow.addChildOp') }}</template>
                           <template #content>
                             <a-dsubmenu position="lt" value="浏览器操作">
-                              <template #default>浏览器操作</template>
+                              <template #default>{{ $t('scene.action.browserOp') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'open_page',true)">打开网页</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'close_page',true)">关闭网页</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'switch_tab',true)">切换tab</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'forward',true)">前进</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'back',true)">后退</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'refresh',true)">刷新</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'open_page',true)">{{ $t('scene.action.openPage') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'close_page',true)">{{ $t('scene.action.closePage') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'switch_tab',true)">{{ $t('scene.action.switchTab') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'forward',true)">{{ $t('scene.action.forward') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'back',true)">{{ $t('scene.action.back') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'refresh',true)">{{ $t('scene.action.refresh') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="鼠标操作">
-                              <template #default>鼠标操作</template>
+                              <template #default>{{ $t('scene.action.mouseOp') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'click',true)">点击</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'hover',true)">悬停</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'drag',true)">鼠标拖拽</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'click',true)">{{ $t('scene.action.click') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'hover',true)">{{ $t('scene.action.hover') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'drag',true)">{{ $t('scene.action.drag') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="循环">
-                              <template #default>循环</template>
+                              <template #default>{{ $t('scene.action.loop') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'for',true)">for循环</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'while',true)">while循环</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'for',true)">{{ $t('scene.action.forLoop') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'while',true)">{{ $t('scene.action.whileLoop') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'wait',true)">等待</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'wait',true)">{{ $t('scene.action.wait') }}</a-doption>
                             <a-dsubmenu position="lt" value="api_request_child_ui">
-                              <template #default>HTTP请求</template>
+                              <template #default>{{ $t('scene.action.httpRequest') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'new')">新建接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'import')">引入已有用例</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'new')">{{ $t('scene.action.newApi') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'api_request',true,'import')">{{ $t('scene.action.importApiCase') }}</a-doption>
                               </template>
                             </a-dsubmenu>
                             <a-dsubmenu position="lt" value="sql_child_ui">
-                              <template #default>SQL查询</template>
+                              <template #default>{{ $t('scene.action.sqlQuery') }}</template>
                               <template #content>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'new')">新建SQL接口</a-doption>
-                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'import')">引入已有SQL接口</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'new')">{{ $t('scene.action.newSql') }}</a-doption>
+                                <a-doption @click="emits('addAdjacentStep',el,'sql',true,'import')">{{ $t('scene.action.importSql') }}</a-doption>
                               </template>
                             </a-dsubmenu>
-                            <a-doption @click="emits('addAdjacentStep',el,'extract',true)">关联提取</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'keyboard',true)">键盘操作</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'element_dom_operation',true)">元素DOM操作</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'file_upload',true)">上传文件</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'assert',true)">断言</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'if',true)">if判断</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'script',true)">脚本</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'iframe',true)">iframe切换</a-doption>
-                            <a-doption @click="emits('addAdjacentStep',el,'dialog',true)">对话框</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'extract',true)">{{ $t('scene.action.extract') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'keyboard',true)">{{ $t('scene.action.keyboardOp') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'element_dom_operation',true)">{{ $t('scene.action.elementDom') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'file_upload',true)">{{ $t('scene.action.fileUpload') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'assert',true)">{{ $t('scene.action.assert') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'if',true)">{{ $t('scene.action.if') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'script',true)">{{ $t('scene.action.script') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'iframe',true)">{{ $t('scene.action.iframe') }}</a-doption>
+                            <a-doption @click="emits('addAdjacentStep',el,'dialog',true)">{{ $t('scene.action.dialog') }}</a-doption>
                           </template>
                         </a-dsubmenu>
                       </template>
@@ -280,7 +280,7 @@
                 <div style="display: flex; align-items: center; flex-shrink: 0;">
                   <!-- UI 场景：执行到此步骤（未调试从头跑并停在该步骤前；暂停中继续跑到该步骤前再停） -->
                   <a-tooltip v-if="!props.isApiScene"
-                             :content="isStepLocked(el.id) ? '该步骤已执行，无法作为目标' : '执行到此步骤'">
+                             :content="isStepLocked(el.id) ? $t('scene.step.lockedTarget') : $t('scene.workflow.runUntil')">
                     <a-button v-permission="'auto:scene:execute'" type="text" shape="circle" size="small"
                               :disabled="mutationsLocked || isStepLocked(el.id)"
                               @click.stop="emits('runUntilStep', el)">
@@ -292,7 +292,7 @@
                   <!-- API 场景顶级步骤：单步 / 从此处执行 -->
                   <a-dropdown v-if="props.isApiScene && (el.parentId == null || el.parentId === 0)"
                               position="left">
-                    <a-tooltip content="单步 / 从此处执行">
+                    <a-tooltip :content="$t('scene.step.runSingleTooltip')">
                       <a-button v-permission="'auto:scene:execute'" type="text" shape="circle" size="small" :disabled="isDebugging" @click.stop>
                         <template #icon>
                           <icon-play-circle style="color: #00b42a"/>
@@ -300,11 +300,11 @@
                       </a-button>
                     </a-tooltip>
                     <template #content>
-                      <a-doption @click="emits('runSingleStep', el)">仅执行此步骤</a-doption>
-                      <a-doption @click="emits('runFromStep', el)">从此步骤开始执行</a-doption>
+                      <a-doption @click="emits('runSingleStep', el)">{{ $t('scene.step.runOnlyThis') }}</a-doption>
+                      <a-doption @click="emits('runFromStep', el)">{{ $t('scene.step.runFromThis') }}</a-doption>
                     </template>
                   </a-dropdown>
-                  <a-tooltip :content="isStepLocked(el.id) ? '调试中，已执行步骤不可修改' : (el.isDisable === 0 ? '禁用该步骤' : '启用该步骤')">
+                  <a-tooltip :content="isStepLocked(el.id) ? $t('scene.step.lockedModifyExecuted') : (el.isDisable === 0 ? $t('scene.step.disableThis') : $t('scene.step.enableThis'))">
                     <a-button v-permission="'auto:step:update'" type="text" shape="circle" size="small"
                               :disabled="isStepLocked(el.id)"
                               @click.stop="disableStep(el.id)">
@@ -314,7 +314,7 @@
                       </template>
                     </a-button>
                   </a-tooltip>
-                  <a-tooltip :content="mutationsLocked ? '调试运行中，暂停后可复制步骤' : '复制该步骤'">
+                  <a-tooltip :content="mutationsLocked ? $t('scene.step.lockedCopy') : $t('scene.step.copyThis')">
                     <a-button v-permission="'auto:step:create'" type="text" shape="circle" size="small"
                               :disabled="mutationsLocked"
                               @click.stop="copyStep(el.id)">
@@ -323,7 +323,7 @@
                       </template>
                     </a-button>
                   </a-tooltip>
-                  <a-tooltip :content="isStepLocked(el.id) ? '调试中，已执行步骤不可删除' : '删除该步骤'">
+                  <a-tooltip :content="isStepLocked(el.id) ? $t('scene.workflow.lockedDelete') : $t('scene.step.deleteThis')">
                     <a-button v-permission="'auto:step:delete'" type="text" shape="circle" size="small" status="danger"
                               :disabled="isStepLocked(el.id)"
                               @click.stop="deleteStep(el.id)">
@@ -344,7 +344,7 @@
         :width="520"
         ref="stepDetailFormRef"
         v-model:visible="stepFormVisible"
-        :title="`${getStepTypeChinese(currentStepDetail.stepType)}${!hasStepUpdatePermission ? '（只读）' : (isCurrentStepLocked ? '（调试中只读）' : '')}`"
+        :title="`${getStepTypeChinese(currentStepDetail.stepType)}${!hasStepUpdatePermission ? $t('scene.workflow.readonly') : (isCurrentStepLocked ? $t('scene.workflow.debugReadonly') : '')}`"
         :form-fields="currentOperationFormConfig"
         :form-data="currentStepDetail"
         :show-setting-tab="showSettingTab"
@@ -371,6 +371,7 @@
 
 <script setup lang="ts">
 import {computed, nextTick, ref, toRaw, toRef, watch} from 'vue'
+import {useI18n} from 'vue-i18n';
 import {Message, Modal} from "@arco-design/web-vue";
 import {
   addStep,
@@ -433,6 +434,7 @@ const treeRef = ref();
 
 const projectStore = useProjectStore();
 const permission = usePermission();
+const { t } = useI18n();
 
 const hasStepCreatePermission = computed(() => permission.hasPermission('auto:step:create'));
 const hasStepUpdatePermission = computed(() => permission.hasPermission('auto:step:update'));
@@ -732,27 +734,27 @@ const checkCurrentDebugResult = (stepId: string | number, stepType?: string) => 
 
 const deleteStep = (id: number) => {
   if (isStepLocked(id)) {
-    Message.warning('调试中，已执行步骤不可删除')
+    Message.warning(t('scene.workflow.lockedDelete'))
     return;
   }
   Modal.warning({
-    title: '确认删除？',
-    content: () => '确认删除该步骤？删除后，步骤不可恢复！',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('qa.common.confirmDelete'),
+    content: () => t('scene.step.deleteContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       const result = await deleteStepById(id);
       if (result.data) {
         Message.success({
-          content: '删除成功',
+          content: t('scene.common.deleteSuccess'),
           duration: 1000
         })
         // 重新加载步骤列表
         emits('refreshSceneStepList')
       } else {
         Message.error({
-          content: '删除失败',
+          content: t('scene.common.deleteFailed'),
           duration: 1000
         })
       }
@@ -762,7 +764,7 @@ const deleteStep = (id: number) => {
 
 const disableStep = async (id: number) => {
   if (isStepLocked(id)) {
-    Message.warning('调试中，已执行步骤不可修改')
+    Message.warning(t('scene.step.lockedModifyExecuted'))
     return;
   }
   // 获取当前步骤详情
@@ -772,12 +774,12 @@ const disableStep = async (id: number) => {
   const update = await updateDisableStatus(id);
   if (update.data === true) {
     Message.success({
-      content: name === 0 ? '禁用成功' : '启用成功',
+      content: name === 0 ? t('scene.step.disableSuccess') : t('scene.step.enableSuccess'),
       duration: 1000
     })
   } else {
     Message.error({
-      content: name === 0 ? '禁用失败' : '启用失败',
+      content: name === 0 ? t('scene.step.disableFailed') : t('scene.step.enableFailed'),
       duration: 1000
     })
   }
@@ -803,7 +805,7 @@ const editStep = async (stepId: number[]) => {
 const handleSubmit = async (stepDetail: any) => {
   // 调试锁定兜底：运行中或已执行步骤不允许保存
   if (mutationsLocked.value || isCurrentStepLocked.value) {
-    Message.warning('调试中，该步骤不可修改')
+    Message.warning(t('scene.debug.lockedModify'))
     return;
   }
   let testStep = new TestStep();
@@ -822,7 +824,7 @@ const handleSubmit = async (stepDetail: any) => {
     const result = await updateStep(testStep);
     if (result.data) {
       Message.success({
-        content: '更新成功',
+        content: t('scene.common.updateSuccess'),
         duration: 1000
       })
       // 重新加载步骤列表
@@ -837,7 +839,7 @@ const handleSubmit = async (stepDetail: any) => {
 
     if (result.data) {
       Message.success({
-        content: '添加成功',
+        content: t('scene.common.addSuccess'),
         duration: 1000
       })
       // 重新加载步骤列表
@@ -861,7 +863,7 @@ const onDrop = async (params: any) => {
 const doDrop = async (params: any) => {
   // 调试期间禁止拖拽排序（模板中 draggable 已禁用，这里兜底）
   if (props.isDebugging) {
-    Message.warning('调试期间不可调整步骤顺序')
+    Message.warning(t('scene.debug.lockedReorder'))
     return;
   }
   const {dragNode, dropNode, dropPosition} = params
@@ -921,7 +923,7 @@ const doDrop = async (params: any) => {
   // 判断目标节点是不是允许拖拽的
   if (dropPosition === 0 && !isSpecifiedStepType(dropNode.stepType)) {
     Message.warning({
-      content: '不支持的拖拽',
+      content: t('scene.step.unsupportedDrag'),
       duration: 1000
     })
     return;
@@ -930,7 +932,7 @@ const doDrop = async (params: any) => {
     console.log("node", node);
     if (dragNode.parentId === 0 && node && node?.parentId !== 0 && !isSpecifiedStepType(node?.stepType)) {
       Message.warning({
-        content: '不支持的拖拽',
+        content: t('scene.step.unsupportedDrag'),
         duration: 1000
       })
       return;
@@ -1041,12 +1043,12 @@ const doDrop = async (params: any) => {
   const axiosResponse = await updateStepSort(data)
   if (axiosResponse.data) {
     Message.success({
-      content: "更新成功",
+      content: t('scene.common.updateSuccess'),
       duration: 1000,
     })
   } else {
     Message.error({
-      content: "更新失败",
+      content: t('scene.common.updateFailed'),
       duration: 1000,
     })
   }
@@ -1056,19 +1058,19 @@ const doDrop = async (params: any) => {
 const copyStep = async (copyId: number) => {
   if (!copyId) return;
   if (mutationsLocked.value) {
-    Message.warning('调试运行中，暂停后可复制步骤')
+    Message.warning(t('scene.step.lockedCopy'))
     return;
   }
   const result = await copyStepById(copyId);
   if (result.data) {
     Message.success({
-      content: '复制成功',
+      content: t('scene.common.copySuccess'),
       duration: 1000
     })
     emits('refreshSceneStepList',)
   } else {
     Message.error({
-      content: '复制失败',
+      content: t('scene.common.copyFailed'),
       duration: result.msg
     })
   }

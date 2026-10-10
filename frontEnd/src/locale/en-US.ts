@@ -1,4 +1,5 @@
 import localeMessageBox from '@/components/message-box/locale/en-US';
+import localeComponents from '@/components/locale/en-US';
 import localeLogin from '@/views/login/locale/en-US';
 
 
@@ -14,6 +15,13 @@ import localeElement from '@/views/element/locale/en-US';
 import localeApi from '@/views/apiManager/locale/en-US';
 import localeQa from '@/views/qa/locale/en-US';
 import localeDataTemplate from '@/views/dataTemplate/locale/en-US';
+import localeAiConfig from '@/views/aiConfig/locale/en-US';
+import localeCustomFunction from '@/views/customFunction/locale/en-US';
+import localeEnv from '@/views/env/locale/en-US';
+import localeKnowledge from '@/views/knowledge/locale/en-US';
+import localeProjectConfig from '@/views/projectConfig/locale/en-US';
+import localeSystem from '@/views/system/locale/en-US';
+import localeTeamManager from '@/views/teamManager/locale/en-US';
 
 import locale403 from '@/views/exception/403/locale/en-US';
 
@@ -42,6 +50,7 @@ export default {
     'menu.project': 'Project Overview',
     'menu.projectMember': 'Project Members',
     'menu.projectConfig': 'Project Config',
+    'menu.aiConfig': 'AI Config',
     'menu.knowledge': 'Knowledge Base',
 
     'menu.interfaceTest': 'Interface Test',
@@ -65,6 +74,7 @@ export default {
     'navbar.action.locale': 'Switch to English',
     ...localeSettings,
     ...localeMessageBox,
+    ...localeComponents,
     ...localeLogin,
 
     ...locale403,
@@ -76,5 +86,12 @@ export default {
     ...localePlan,
     ...localeApi,
     ...localeQa,
-    ...localeDataTemplate
+    ...localeDataTemplate,
+    ...localeAiConfig,
+    ...localeCustomFunction,
+    ...localeEnv,
+    ...localeKnowledge,
+    ...localeProjectConfig,
+    ...localeSystem,
+    ...localeTeamManager
 };

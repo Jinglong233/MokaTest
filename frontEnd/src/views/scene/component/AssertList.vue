@@ -8,8 +8,8 @@
       >
         <template #header>
             <span :class="{ 'error-text': assertErrors[index] }">
-              断言 {{ index + 1 }}
-              <a-tag v-if="assertErrors[index] === false" color="red" size="small">校验失败</a-tag>
+              {{ $t('scene.assert.itemTitle', { index: index + 1 }) }}
+              <a-tag v-if="assertErrors[index] === false" color="red" size="small">{{ $t('scene.assert.validateFail') }}</a-tag>
             </span>
         </template>
         <template #extra>
@@ -31,7 +31,7 @@
       <template #icon>
         <icon-plus/>
       </template>
-      添加断言
+      {{ $t('scene.assert.add') }}
     </a-button>
   </div>
 </template>

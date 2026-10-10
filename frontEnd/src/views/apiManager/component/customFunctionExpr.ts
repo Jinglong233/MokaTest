@@ -5,6 +5,8 @@
  * 显示层：@fn.请求签名('a', 'b')（名称仅用于展示，不参与解析；脚本里写 fn.请求签名(...)）
  */
 
+import i18n from '@/locale';
+
 export interface CustomExpr {
     id: number;
     args: string[];
@@ -39,7 +41,7 @@ export const buildCustomExpr = (id: number, args: string[]): string => {
  * 生成显示文本：@fn.请求签名('a')（文本字段统一 @ 前缀；脚本里用 fn.请求签名('a')）
  */
 export const buildFnDisplay = (funcName: string | undefined, id: number, args: string[]): string => {
-    const name = funcName || `已失效:${id}`;
+    const name = funcName || i18n.global.t('api.customExpr.invalid', {id});
     const parts = (args || []).map(a => `'${a}'`);
     return `@fn.${name}(${parts.join(', ')})`;
 };

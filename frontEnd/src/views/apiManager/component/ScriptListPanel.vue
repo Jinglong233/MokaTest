@@ -3,11 +3,11 @@
     <!-- 顶部操作栏 -->
     <div class="script-list-header">
       <div class="script-tip">
-        {{ scriptType === 'pre' ? '前置脚本在请求发送前执行，可用于动态设置变量（如时间戳、签名等）' : '后置脚本在收到响应后执行，可用于提取数据、自定义断言' }}
+        {{ scriptType === 'pre' ? $t('api.script.preTip') : $t('api.script.postTip') }}
       </div>
       <a-button type="primary" size="small" :disabled="disabled" @click="addScript">
         <template #icon><icon-plus /></template>
-        添加脚本
+        {{ $t('api.script.add') }}
       </a-button>
     </div>
 
@@ -30,7 +30,7 @@
               v-model="item.name"
               size="mini"
               class="script-name-input"
-              placeholder="脚本名称"
+              :placeholder="$t('api.script.namePlaceholder')"
               :disabled="disabled"
               @click.stop
               @input="onChange"
@@ -69,7 +69,7 @@
       </div>
 
       <!-- 空状态 -->
-      <a-empty v-if="scriptList.length === 0" description="暂无脚本，点击上方按钮添加" />
+      <a-empty v-if="scriptList.length === 0" :description="$t('api.script.empty')" />
       </div>
     </div>
   </div>
@@ -79,6 +79,7 @@
 import { ref, computed, watch } from 'vue'
 import { IconPlus, IconDelete, IconDown, IconRight } from '@arco-design/web-vue/es/icon'
 import ScriptEditor from './ScriptEditor.vue'
+import { useI18n } from 'vue-i18n'
 import { ScriptItem } from '@/types/domain/api/requestModel/ScriptItem'
 
 interface Props {
@@ -86,6 +87,8 @@ interface Props {
   scriptType: 'pre' | 'post'
   disabled?: boolean
 }
+
+const { t } = useI18n()
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
@@ -116,7 +119,7 @@ const addScript = () => {
   const list = [...scriptList.value]
   const newItem: ScriptItem = {
     id: generateId(),
-    name: `${props.scriptType === 'pre' ? '前置' : '后置'}脚本 ${list.length + 1}`,
+    name: t('api.script.defaultName', {type: props.scriptType === 'pre' ? t('api.script.typePre') : t('api.script.typePost'), index: list.length + 1}),
     content: '',
     enabled: true,
     sort: list.length

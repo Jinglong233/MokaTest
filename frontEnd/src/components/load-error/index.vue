@@ -3,25 +3,31 @@
     <div class="load-error-icon">
       <icon-exclamation-circle-fill />
     </div>
-    <div class="load-error-title">{{ title }}</div>
-    <div class="load-error-desc">{{ description }}</div>
+    <div class="load-error-title">{{ displayTitle }}</div>
+    <div class="load-error-desc">{{ displayDescription }}</div>
     <a-button type="outline" @click="emit('retry')">
       <template #icon><icon-refresh /></template>
-      重新加载
+      {{ $t('components.loadError.retry') }}
     </a-button>
   </div>
 </template>
 
 <script setup lang="ts">
-  withDefaults(
-    defineProps<{
-      title?: string;
-      description?: string;
-    }>(),
-    {
-      title: '加载失败',
-      description: '数据加载失败，请检查网络连接后重试',
-    }
+  import { computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
+
+  const props = defineProps<{
+    title?: string;
+    description?: string;
+  }>();
+
+  const { t } = useI18n();
+
+  const displayTitle = computed(
+    () => props.title || t('components.loadError.title')
+  );
+  const displayDescription = computed(
+    () => props.description || t('components.loadError.description')
   );
 
   const emit = defineEmits<{

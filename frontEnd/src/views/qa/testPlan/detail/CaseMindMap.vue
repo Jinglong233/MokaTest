@@ -3,7 +3,7 @@
     <div ref="mapRef" class="case-mindmap-canvas"></div>
     <!-- 画布右上角悬浮工具栏：加载提示 + 主题切换 -->
     <div class="case-mindmap-toolbar-top">
-      <span v-if="loadingDetail" class="hint loading">用例详情加载中…</span>
+      <span v-if="loadingDetail" class="hint loading">{{ $t('qa.testPlan.mindmap.loadingDetail') }}</span>
       <a-select v-model="currentTheme" size="mini" style="width: 96px" @change="onThemeChange">
         <a-option v-for="t in THEME_OPTIONS" :key="t.value" :value="t.value">{{ t.label }}</a-option>
       </a-select>
@@ -14,12 +14,12 @@
       class="case-hover-group"
       :style="{ left: hoverBtn.x + 'px', top: hoverBtn.y + 'px' }"
     >
-      <a-tooltip content="评定执行结果" :mini="true">
+      <a-tooltip :content="$t('qa.testPlan.mindmap.assess')" :mini="true">
         <a-button v-permission="'qa:testplan:execute'" type="primary" shape="circle" size="mini" @click.stop="openExecModal(hoverBtn.node)">
           <icon-check-circle />
         </a-button>
       </a-tooltip>
-      <a-tooltip content="详情" :mini="true">
+      <a-tooltip :content="$t('qa.testPlan.mindmap.detail')" :mini="true">
         <a-button shape="circle" size="mini" @click.stop="openDetailDrawer">
           <icon-eye />
         </a-button>
@@ -32,17 +32,17 @@
           </a-button>
         </a-tooltip>
         <template #content>
-          <a-doption v-permission="'qa:bug:create'" value="new">新建BUG</a-doption>
-          <a-doption v-permission="'qa:bug:view'" value="bind">关联BUG</a-doption>
+          <a-doption v-permission="'qa:bug:create'" value="new">{{ $t('qa.bug.add') }}</a-doption>
+          <a-doption v-permission="'qa:bug:view'" value="bind">{{ $t('qa.testPlan.mindmap.bindBug') }}</a-doption>
         </template>
       </a-dropdown>
-      <a-tooltip content="修改执行人" :mini="true">
+      <a-tooltip :content="$t('qa.testPlan.mindmap.changeExecutor')" :mini="true">
         <a-button v-permission="'qa:testplan:update'" shape="circle" size="mini" @click.stop="openExecutorModal">
           <icon-user />
         </a-button>
       </a-tooltip>
-      <a-popconfirm content="确认将该用例移出本计划？" type="warning" @ok="handleRemoveCase">
-        <a-tooltip content="取消关联用例" :mini="true">
+      <a-popconfirm :content="$t('qa.testPlan.mindmap.removeConfirm')" type="warning" @ok="handleRemoveCase">
+        <a-tooltip :content="$t('qa.testPlan.mindmap.unrelateCase')" :mini="true">
           <a-button v-permission="'qa:testplan:update'" status="danger" shape="circle" size="mini" @click.stop>
             <icon-delete />
           </a-button>
@@ -53,17 +53,17 @@
     <!-- 右键用例节点：完整执行评定面板（对齐执行页详情 tab + 底部执行面板） -->
     <a-modal
       v-model:visible="execModal.visible"
-      :title="`执行评定 - ${execModal.caseName}`"
+      :title="$t('qa.testPlan.mindmap.execTitle', { name: execModal.caseName })"
       :width="900"
       :mask-closable="false"
       @cancel="execModal.visible = false"
     >
       <div>
-        <div class="dd-section-title">前置条件</div>
+        <div class="dd-section-title">{{ $t('qa.testCase.preCondition') }}</div>
         <div v-if="execModal.detail?.preCondition" class="pre-view" v-html="execModal.detail.preCondition"></div>
-        <div v-else class="pre-empty">无</div>
+        <div v-else class="pre-empty">{{ $t('qa.testPlan.none') }}</div>
 
-        <div class="dd-section-title">测试步骤</div>
+        <div class="dd-section-title">{{ $t('qa.testCase.steps') }}</div>
         <a-table
           v-if="execModal.stepEdits.length"
           :data="execModal.stepEdits"
@@ -86,39 +86,39 @@
             <a-textarea
               v-model="record.actualResult"
               :auto-size="{ minRows: 1, maxRows: 4 }"
-              placeholder="填写实际结果"
+              :placeholder="$t('qa.testPlan.actualResultPlaceholder')"
               allow-clear
             />
           </template>
           <template #stepResult="{ record }">
-            <a-select v-model="record.stepResult" placeholder="未执行" allow-clear size="small">
-              <a-option value="PASS">成功</a-option>
-              <a-option value="FAIL">失败</a-option>
-              <a-option value="BLOCK">阻塞</a-option>
+            <a-select v-model="record.stepResult" :placeholder="$t('qa.testPlan.result.unexecuted')" allow-clear size="small">
+              <a-option value="PASS">{{ $t('qa.testPlan.result.success') }}</a-option>
+              <a-option value="FAIL">{{ $t('qa.testPlan.result.fail') }}</a-option>
+              <a-option value="BLOCK">{{ $t('qa.testPlan.result.block') }}</a-option>
             </a-select>
           </template>
         </a-table>
-        <a-empty v-else description="暂无测试步骤" />
+        <a-empty v-else :description="$t('qa.testPlan.noSteps')" />
 
-        <div class="dd-section-title">执行结果</div>
+        <div class="dd-section-title">{{ $t('qa.testPlan.execResult') }}</div>
         <div class="exec-form-row">
           <a-radio-group v-model="execModal.result">
-            <a-radio value="PASS"><span class="result-text pass">成功</span></a-radio>
-            <a-radio value="FAIL"><span class="result-text fail">失败</span></a-radio>
-            <a-radio value="BLOCK"><span class="result-text block">阻塞</span></a-radio>
+            <a-radio value="PASS"><span class="result-text pass">{{ $t('qa.testPlan.result.success') }}</span></a-radio>
+            <a-radio value="FAIL"><span class="result-text fail">{{ $t('qa.testPlan.result.fail') }}</span></a-radio>
+            <a-radio value="BLOCK"><span class="result-text block">{{ $t('qa.testPlan.result.block') }}</span></a-radio>
           </a-radio-group>
           <a-textarea
             v-model="execModal.remark"
             :auto-size="{ minRows: 2, maxRows: 4 }"
-            placeholder="执行备注（选填）"
+            :placeholder="$t('qa.testPlan.exec.remarkPlaceholder')"
             style="flex: 1"
           />
         </div>
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="execModal.visible = false">取消</a-button>
-          <a-button v-permission="'qa:testplan:execute'" type="primary" :loading="execModal.submitting" @click="handleExecSubmit">提交</a-button>
+          <a-button @click="execModal.visible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button v-permission="'qa:testplan:execute'" type="primary" :loading="execModal.submitting" @click="handleExecSubmit">{{ $t('qa.testPlan.exec.submit') }}</a-button>
         </a-space>
       </template>
     </a-modal>
@@ -132,7 +132,7 @@
     <!-- 新建BUG抽屉（同执行页：BugForm，planCaseId/testCaseId 通过 initialData 带入） -->
     <a-drawer
       v-model:visible="newBugVisible"
-      title="新建BUG"
+      :title="$t('qa.bug.add')"
       :width="920"
       :footer="true"
       :body-style="{ padding: '0', height: '100%', overflow: 'hidden' }"
@@ -156,8 +156,8 @@
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="newBugVisible = false">取消</a-button>
-          <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">保存</a-button>
+          <a-button @click="newBugVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
@@ -165,7 +165,7 @@
     <!-- 修改执行人弹窗 -->
     <a-modal
       v-model:visible="executorModal.visible"
-      title="修改执行人"
+      :title="$t('qa.testPlan.mindmap.changeExecutor')"
       :width="420"
       :mask-closable="false"
       @cancel="executorModal.visible = false"
@@ -175,7 +175,7 @@
         allow-search
         allow-clear
         :filter-option="false"
-        placeholder="输入关键词搜索用户"
+        :placeholder="$t('qa.testPlan.userSearchPlaceholder')"
         style="width: 100%"
         @search="loadExecutorOptions"
       >
@@ -183,8 +183,8 @@
       </a-select>
       <template #footer>
         <a-space>
-          <a-button @click="executorModal.visible = false">取消</a-button>
-          <a-button type="primary" :loading="executorModal.saving" @click="handleExecutorSave">保存</a-button>
+          <a-button @click="executorModal.visible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="executorModal.saving" @click="handleExecutorSave">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
     </a-modal>
@@ -196,34 +196,34 @@
       :footer="false"
     >
       <a-tabs v-model:active-key="detailDrawer.tab">
-        <a-tab-pane key="info" title="基本信息">
+        <a-tab-pane key="info" :title="$t('qa.testPlan.exec.tab.basic')">
           <a-descriptions
             :data="[
-              { label: '用例编号', value: detailDrawer.detail?.caseCode || '-' },
-              { label: '用例类型', value: caseTypeText(detailDrawer.detail?.caseType) },
-              { label: '优先级', value: detailDrawer.detail?.priority || '-' },
-              { label: '执行结果', value: resultText(detailDrawer.caseInfo?.executeResult) },
+              { label: $t('qa.testCase.code'), value: detailDrawer.detail?.caseCode || '-' },
+              { label: $t('qa.testCase.type'), value: caseTypeText(detailDrawer.detail?.caseType) },
+              { label: $t('qa.testCase.priority'), value: detailDrawer.detail?.priority || '-' },
+              { label: $t('qa.testPlan.execResult'), value: resultText(detailDrawer.caseInfo?.executeResult) },
             ]"
             layout="inline-vertical" :column="2" :label-style="{ fontWeight: 'bold' }"
           />
           <a-divider/>
-          <h4 style="margin-bottom: 8px;">前置条件</h4>
-          <div class="rich-text-preview" v-html="renderHtml(detailDrawer.detail?.preCondition, '无')"/>
+          <h4 style="margin-bottom: 8px;">{{ $t('qa.testCase.preCondition') }}</h4>
+          <div class="rich-text-preview" v-html="renderHtml(detailDrawer.detail?.preCondition, $t('qa.testPlan.none'))"/>
           <a-divider/>
-          <h4 style="margin-bottom: 8px;">测试步骤</h4>
+          <h4 style="margin-bottom: 8px;">{{ $t('qa.testCase.steps') }}</h4>
           <div v-if="detailSteps.length">
             <div v-for="(step, index) in detailSteps" :key="index" style="margin-bottom: 12px;">
-              <div style="font-weight: bold; color: #86909c; margin-bottom: 4px;">步骤 {{ index + 1 }}</div>
+              <div style="font-weight: bold; color: #86909c; margin-bottom: 4px;">{{ $t('qa.testCase.step') }} {{ index + 1 }}</div>
               <div class="rich-text-preview" v-html="renderHtml(step.step, '-')"/>
-              <div style="color: #86909c; margin-top: 4px;">预期结果：</div>
+              <div style="color: #86909c; margin-top: 4px;">{{ $t('qa.testCase.expected') }}：</div>
               <div class="rich-text-preview" v-html="renderHtml(step.expected, '-')"/>
             </div>
           </div>
-          <div v-else style="color: #86909c;">暂无测试步骤</div>
+          <div v-else style="color: #86909c;">{{ $t('qa.testPlan.noSteps') }}</div>
         </a-tab-pane>
         <a-tab-pane key="bugs">
           <template #title>
-            缺陷列表
+            {{ $t('qa.testPlan.tab.bugs') }}
             <span class="tab-count-badge">{{ detailDrawer.bugs.length }}</span>
           </template>
           <a-table :data="detailDrawer.bugs" :columns="bugColumns" row-key="id" size="small" :pagination="false">
@@ -234,11 +234,11 @@
               <a-tag :color="severityColor(record.severity)" size="small">{{ severityText(record.severity) }}</a-tag>
             </template>
           </a-table>
-          <a-empty v-if="!detailDrawer.bugs.length" description="暂无关联BUG" style="padding: 40px 0;" />
+          <a-empty v-if="!detailDrawer.bugs.length" :description="$t('qa.testPlan.noLinkedBugs')" style="padding: 40px 0;" />
         </a-tab-pane>
         <a-tab-pane key="history">
           <template #title>
-            执行历史
+            {{ $t('qa.testPlan.tab.history') }}
             <span class="tab-count-badge">{{ detailDrawer.history.length }}</span>
           </template>
           <a-table :data="detailDrawer.history" :columns="historyColumns" row-key="id" size="small" :pagination="false">
@@ -246,7 +246,7 @@
               <a-tag :color="resultColor(record.executeResult)" size="small">{{ resultText(record.executeResult) }}</a-tag>
             </template>
           </a-table>
-          <a-empty v-if="!detailDrawer.history.length" description="暂无执行记录" style="padding: 40px 0;" />
+          <a-empty v-if="!detailDrawer.history.length" :description="$t('qa.testPlan.noHistory')" style="padding: 40px 0;" />
         </a-tab-pane>
       </a-tabs>
     </a-drawer>
@@ -255,9 +255,10 @@
 
 <script setup lang="ts">
 import {ref, computed, onMounted, onBeforeUnmount, nextTick, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
 import {getTestPoints, getTestCaseDetail, executePlanCaseWithSteps, assignPlanCaseExecutor, removeCaseFromPlan, getTestCaseExecutionHistory, getBugListByPlanCase} from '@/api/MyApi/qa';
 import {getUserListByPage} from '@/api/MyApi/user';
 import {useProjectStore} from '@/store';
@@ -265,6 +266,7 @@ import BugForm from '@/views/qa/bug/components/BugForm.vue';
 import BugBindDrawer from '@/views/qa/components/BugBindDrawer.vue';
 
 const projectStore = useProjectStore();
+const {t} = useI18n();
 
 const props = defineProps<{
   planId: number;
@@ -323,18 +325,18 @@ if (Array.isArray((MindMap as any).iconList) && !(MindMap as any).iconList.some(
 }
 
 // 执行结果 → tag 文案/配色（用例节点与步骤节点共用）
-const RESULT_TAG: Record<string, {text: string; color: string}> = {
-  PASS: {text: '通过', color: '#00b42a'},
-  FAIL: {text: '失败', color: '#f53f3f'},
-  BLOCK: {text: '阻塞', color: '#ff7d00'},
-};
+const resultTagOf = (r: string): {text: string; color: string} | undefined => ({
+  PASS: {text: t('qa.testPlan.result.pass'), color: '#00b42a'},
+  FAIL: {text: t('qa.testPlan.result.fail'), color: '#f53f3f'},
+  BLOCK: {text: t('qa.testPlan.result.block'), color: '#ff7d00'},
+} as Record<string, {text: string; color: string}>)[r];
 
 // 当前选中的用例节点 uid（点击/评定时高亮）
 let selectedCaseUid: string | null = null;
 
 // 用例节点文本（quill 会剥掉 div/class，只能用最简 span）
 function buildCaseText(c: any): string {
-  return `<span>${escapeHtml(c.caseName || `用例 ${c.testCaseId}`)}</span>`;
+  return `<span>${escapeHtml(c.caseName || t('qa.testPlan.mindmap.caseFallback', { id: c.testCaseId }))}</span>`;
 }
 
 function buildCaseNode(c: any) {
@@ -352,7 +354,7 @@ function buildCaseNode(c: any) {
     P1: {color: '#ff7d00'},
     P2: {color: '#165dff'},
   };
-  const r = RESULT_TAG[c.executeResult];
+  const r = resultTagOf(c.executeResult);
   const p = PRIORITY_STYLE[c.priority];
   return {
     data: {
@@ -394,7 +396,7 @@ function buildMindData(tpData: any) {
   const match = (c: any) => !filter || filter.has(c.testCaseId);
 
   const root: any = {
-    data: {text: props.rootLabel || '功能用例', uid: 'root', expand: true},
+    data: {text: props.rootLabel || t('qa.testPlan.tab.cases'), uid: 'root', expand: true},
     children: [],
   };
 
@@ -421,7 +423,7 @@ function buildMindData(tpData: any) {
     });
     // 未归属任何模块/模块已被删的用例，归到「未选择模块」
     const orphans = all.filter((c: any) => !knownIds.has(c.moduleId ?? 0));
-    if (orphans.length) root.children.push(buildTpNode('mod-0', '未选择模块', orphans));
+    if (orphans.length) root.children.push(buildTpNode('mod-0', t('qa.testPlan.mindmap.noModule'), orphans));
     return root;
   }
 
@@ -429,12 +431,12 @@ function buildMindData(tpData: any) {
   const tpNodes = tps
     .map((tp: any) => ({tp, shown: (tp.cases || []).filter(match)}))
     .filter(({tp, shown}: any) => shown.length > 0 || (tp.cases || []).length === 0)
-    .map(({tp, shown}: any) => buildTpNode(`tp-${tp.id}`, tp.name || '默认测试点', shown));
+    .map(({tp, shown}: any) => buildTpNode(`tp-${tp.id}`, tp.name || t('qa.testPlan.defaultTestPoint'), shown));
 
   root.children = tpNodes;
   const filteredUnassigned = unassigned.filter(match);
   if (filteredUnassigned.length > 0) {
-    root.children.push(buildTpNode('tp-unassigned', '未分配', filteredUnassigned));
+    root.children.push(buildTpNode('tp-unassigned', t('qa.testPlan.unassigned'), filteredUnassigned));
   }
   return root;
 }
@@ -442,10 +444,10 @@ function buildMindData(tpData: any) {
 // 详情节点视觉规范（与用例库脑图一致）：tag 标识类型 + 底色/文字色；文本为纯文本转义，不再用富文本前缀
 const mkTag = (text: string, fill: string) => ({text, style: {fill, radius: 3, fontSize: 12, height: 20, paddingX: 8}});
 const DETAIL_TAG = {
-  pre: () => mkTag('前置', '#86909c'),
-  step: (index: number) => mkTag(`步骤 ${index}`, '#722ed1'),
-  expect: () => mkTag('预期', '#00b42a'),
-  actual: () => mkTag('实际', '#ff7d00'),
+  pre: () => mkTag(t('qa.testPlan.mindmap.tag.pre'), '#86909c'),
+  step: (index: number) => mkTag(`${t('qa.testCase.step')} ${index}`, '#722ed1'),
+  expect: () => mkTag(t('qa.testPlan.mindmap.tag.expect'), '#00b42a'),
+  actual: () => mkTag(t('qa.testPlan.mindmap.tag.actual'), '#ff7d00'),
 };
 const DETAIL_NODE_STYLE = {
   pre: {fillColor: '#f2f3f5', color: '#4e5969'},
@@ -473,7 +475,7 @@ function buildDetailNodes(detail: any, savedSteps: any[]): any[] {
     const stepText = stripHtml(s.step);
     const expected = stripHtml(s.expected);
     // 步骤执行状态 tag（在「步骤 N」tag 之后；未填写不显示）
-    const sr = RESULT_TAG[savedSteps?.[i]?.stepResult];
+    const sr = resultTagOf(savedSteps?.[i]?.stepResult);
     const stepNode: any = {
       data: {
         text: escapeHtml(stepText),
@@ -509,7 +511,7 @@ function buildDetailNodes(detail: any, savedSteps: any[]): any[] {
   });
   if (nodes.length === 0) {
     nodes.push({
-      data: {text: '（暂无前置条件与步骤）', uid: `empty-${detail.id}`, fillColor: '#f7f8fa', color: '#86909c'},
+      data: {text: t('qa.testPlan.mindmap.emptyDetail'), uid: `empty-${detail.id}`, fillColor: '#f7f8fa', color: '#86909c'},
       children: [],
     });
   }
@@ -643,11 +645,11 @@ function applyOtherSelection() {
 }
 
 // ===== 主题切换（打包版只内置 default，用 setThemeConfig 深度合入自定义配色） =====
-const THEME_OPTIONS = [
-  {label: '默认', value: 'default'},
-  {label: '护眼绿', value: 'eyeCare'},
-  {label: '暗夜', value: 'dark'},
-];
+const THEME_OPTIONS = computed(() => [
+  {label: t('qa.testPlan.mindmap.theme.default'), value: 'default'},
+  {label: t('qa.testPlan.mindmap.theme.eyeCare'), value: 'eyeCare'},
+  {label: t('qa.testPlan.mindmap.theme.dark'), value: 'dark'},
+]);
 const THEME_CONFIGS: Record<string, any> = {
   default: {
     backgroundColor: '#ffffff',
@@ -733,7 +735,7 @@ async function openExecModal(node: any) {
     loading: true,
     submitting: false,
     caseInfo: info,
-    caseName: info.caseName || `用例 ${info.testCaseId}`,
+    caseName: info.caseName || t('qa.testPlan.mindmap.caseFallback', { id: info.testCaseId }),
     detail: null,
     // 已执行的回填结果与备注；未执行保持空
     result: ['PASS', 'FAIL', 'BLOCK'].includes(info.executeResult) ? info.executeResult : '',
@@ -767,7 +769,7 @@ async function openExecModal(node: any) {
     }));
   } catch (err) {
     console.error('[CaseMindMap] 加载用例详情失败:', err);
-    Message.error('用例详情加载失败');
+    Message.error(t('qa.testPlan.mindmap.loadDetailFail'));
   } finally {
     execModal.value.loading = false;
   }
@@ -789,7 +791,7 @@ async function handleExecSubmit() {
   const m = execModal.value;
   if (!m.caseInfo) return;
   if (!m.result) {
-    Message.warning('请选择执行结果');
+    Message.warning(t('qa.testPlan.exec.selectResult'));
     return;
   }
   m.submitting = true;
@@ -802,7 +804,7 @@ async function handleExecSubmit() {
       m.stepEdits.map(s => ({actualResult: s.actualResult, stepResult: s.stepResult}))
     );
     if (res.code === 200) {
-      Message.success('执行结果已记录');
+      Message.success(t('qa.testPlan.exec.recorded'));
       m.visible = false;
       // refreshMindData 内部会保持所有节点的展开/折叠状态（含本用例已展开的详情）
       await refreshMindData();
@@ -852,7 +854,7 @@ async function handleNewBugSave() {
   try {
     const ok = await newBugFormRef.value.save();
     if (ok) {
-      Message.success('BUG已创建并关联');
+      Message.success(t('qa.testPlan.exec.bugCreated'));
       newBugVisible.value = false;
     }
   } catch (e) {
@@ -886,7 +888,7 @@ async function openDetailDrawer() {
   if (!info) return;
   detailDrawer.value = {
     visible: true, tab: 'info', caseInfo: info,
-    caseName: info.caseName || `用例 ${info.testCaseId}`,
+    caseName: info.caseName || t('qa.testPlan.mindmap.caseFallback', { id: info.testCaseId }),
     detail: null, bugs: [], history: [],
   };
   try {
@@ -903,26 +905,27 @@ async function openDetailDrawer() {
   }
 }
 
-function renderHtml(content: string | undefined, defaultText: string = '暂无') {
-  if (!content || content.trim() === '') return defaultText;
+function renderHtml(content: string | undefined, defaultText?: string) {
+  const fallback = defaultText ?? t('qa.testPlan.empty');
+  if (!content || content.trim() === '') return fallback;
   if (/<[a-z][\s\S]*?>/i.test(content)) return content;
   return content.replace(/\n/g, '<br>');
 }
 
 const caseTypeText = (type?: string) => {
-  const map: Record<string, string> = { FUNCTION: '功能', API: '接口', PERFORMANCE: '性能', COMPATIBILITY: '兼容', SMOKE: '冒烟' };
+  const map: Record<string, string> = { FUNCTION: t('qa.testPlan.caseType.function'), API: t('qa.testPlan.caseType.api'), PERFORMANCE: t('qa.testPlan.caseType.performance'), COMPATIBILITY: t('qa.testPlan.caseType.compatibility'), SMOKE: t('qa.testPlan.caseType.smoke') };
   return map[type || ''] || type || '-';
 };
 const resultText = (r?: string) => {
-  const map: Record<string, string> = { PASS: '成功', FAIL: '失败', BLOCK: '阻塞', NA: '不适用', UNEXECUTED: '未执行' };
-  return map[r || ''] || '未执行';
+  const map: Record<string, string> = { PASS: t('qa.testPlan.result.success'), FAIL: t('qa.testPlan.result.fail'), BLOCK: t('qa.testPlan.result.block'), NA: t('qa.testPlan.result.na'), UNEXECUTED: t('qa.testPlan.result.unexecuted') };
+  return map[r || ''] || t('qa.testPlan.result.unexecuted');
 };
 const resultColor = (r?: string) => {
   const map: Record<string, string> = { PASS: 'green', FAIL: 'red', BLOCK: 'orange' };
   return map[r || ''] || 'gray';
 };
 const bugStatusText = (s?: string) => {
-  const map: Record<string, string> = { NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中', FIXED: '已修复', VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回' };
+  const map: Record<string, string> = { NEW: t('qa.testPlan.bugStatus.new'), CONFIRMED: t('qa.testPlan.bugStatus.confirmed'), FIXING: t('qa.testPlan.bugStatus.fixing'), FIXED: t('qa.testPlan.bugStatus.fixed'), VERIFIED: t('qa.testPlan.bugStatus.verified'), CLOSED: t('qa.testPlan.bugStatus.closed'), REJECTED: t('qa.testPlan.bugStatus.rejected') };
   return map[s || ''] || s || '-';
 };
 const bugStatusColor = (s?: string) => {
@@ -930,7 +933,7 @@ const bugStatusColor = (s?: string) => {
   return map[s || ''] || 'gray';
 };
 const severityText = (s?: string) => {
-  const map: Record<string, string> = { FATAL: '致命', SERIOUS: '严重', NORMAL: '一般', TIPS: '提示' };
+  const map: Record<string, string> = { FATAL: t('qa.testPlan.severity.fatal'), SERIOUS: t('qa.testPlan.severity.serious'), NORMAL: t('qa.testPlan.severity.normal'), TIPS: t('qa.testPlan.severity.tips') };
   return map[s || ''] || s || '-';
 };
 const severityColor = (s?: string) => {
@@ -940,27 +943,27 @@ const severityColor = (s?: string) => {
 
 // ===== 表格列定义（:columns 数组 + slotName 自定义渲染） =====
 // 执行评定弹窗 - 测试步骤表
-const stepColumns = [
+const stepColumns = computed(() => [
   { title: '#', width: 50, align: 'center', slotName: 'stepNo' },
-  { title: '步骤', ellipsis: true, tooltip: true, slotName: 'stepDesc' },
-  { title: '预期结果', ellipsis: true, tooltip: true, slotName: 'stepExpected' },
-  { title: '实际结果', width: 220, slotName: 'stepActual' },
-  { title: '步骤执行结果', width: 130, slotName: 'stepResult' },
-];
+  { title: t('qa.testCase.step'), ellipsis: true, tooltip: true, slotName: 'stepDesc' },
+  { title: t('qa.testCase.expected'), ellipsis: true, tooltip: true, slotName: 'stepExpected' },
+  { title: t('qa.testPlan.actualResult'), width: 220, slotName: 'stepActual' },
+  { title: t('qa.testPlan.stepResult'), width: 130, slotName: 'stepResult' },
+]);
 // 用例详情抽屉 - 缺陷列表表
-const bugColumns = [
-  { title: 'BUG编号', dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true },
-  { title: 'BUG名称', dataIndex: 'title', width: 200, ellipsis: true, tooltip: true },
-  { title: '状态', dataIndex: 'status', width: 90, align: 'center', slotName: 'bugStatus' },
-  { title: '严重程度', dataIndex: 'severity', width: 90, align: 'center', slotName: 'bugSeverity' },
-];
+const bugColumns = computed(() => [
+  { title: t('qa.bug.code'), dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.exec.bugName'), dataIndex: 'title', width: 200, ellipsis: true, tooltip: true },
+  { title: t('qa.bug.status'), dataIndex: 'status', width: 90, align: 'center', slotName: 'bugStatus' },
+  { title: t('qa.bug.severity'), dataIndex: 'severity', width: 90, align: 'center', slotName: 'bugSeverity' },
+]);
 // 用例详情抽屉 - 执行历史表
-const historyColumns = [
-  { title: '执行结果', dataIndex: 'executeResult', width: 90, slotName: 'historyResult' },
-  { title: '执行人', dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
-  { title: '执行时间', dataIndex: 'executeTime', width: 180, ellipsis: true, tooltip: true },
-  { title: '备注', dataIndex: 'executeRemark', ellipsis: true, tooltip: true },
-];
+const historyColumns = computed(() => [
+  { title: t('qa.testPlan.execResult'), dataIndex: 'executeResult', width: 90, slotName: 'historyResult' },
+  { title: t('qa.testPlan.executor'), dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.execTime'), dataIndex: 'executeTime', width: 180, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.remark'), dataIndex: 'executeRemark', ellipsis: true, tooltip: true },
+]);
 
 // ===== 修改执行人 =====
 const executorModal = ref<{ visible: boolean; saving: boolean; caseInfo: any; executorId: number | undefined }>(
@@ -993,23 +996,23 @@ async function handleExecutorSave() {
   const m = executorModal.value;
   if (!m.caseInfo) return;
   if (!m.executorId) {
-    Message.warning('请选择执行人');
+    Message.warning(t('qa.testPlan.mindmap.selectExecutor'));
     return;
   }
   m.saving = true;
   try {
     const res: any = await assignPlanCaseExecutor(m.caseInfo.planCaseId, m.executorId);
     if (res.code === 200) {
-      Message.success('执行人已更新');
+      Message.success(t('qa.testPlan.mindmap.executorUpdated'));
       m.visible = false;
       await refreshMindData();
       emit('refresh');
     } else {
-      Message.error(res.msg || '保存失败');
+      Message.error(res.msg || t('qa.testPlan.saveFail'));
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '保存失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.saveFail'));
   } finally {
     m.saving = false;
   }
@@ -1022,17 +1025,17 @@ async function handleRemoveCase() {
   try {
     const res: any = await removeCaseFromPlan(info.planCaseId);
     if (res.code === 200) {
-      Message.success('已移出计划');
+      Message.success(t('qa.testPlan.mindmap.removed'));
       hoverBtn.value.visible = false;
       selectedCaseUid = null;
       await refreshMindData();
       emit('refresh');
     } else {
-      Message.error(res.msg || '移除失败');
+      Message.error(res.msg || t('qa.testPlan.mindmap.removeFail'));
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '移除失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.mindmap.removeFail'));
   }
 }
 

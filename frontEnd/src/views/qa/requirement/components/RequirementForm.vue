@@ -7,24 +7,24 @@
           <a-card class="main-card">
             <a-form-item
               field="title"
-              label="需求名称"
-              :rules="[{ required: true, message: '请输入需求名称' }]"
+              :label="$t('qa.requirement.name')"
+              :rules="[{ required: true, message: $t('qa.requirement.nameRequired') }]"
               :validate-trigger="['change', 'blur']"
               class="title-form-item"
             >
               <a-input
                 v-model="formData.title"
-                placeholder="请输入需求名称"
+                :placeholder="$t('qa.requirement.nameRequired')"
                 size="large"
                 class="title-input"
                 allow-clear
               />
             </a-form-item>
 
-            <a-form-item field="description" label="需求描述" class="description-item">
+            <a-form-item field="description" :label="$t('qa.requirement.description')" class="description-item">
               <RichEditor
                 v-model="formData.description"
-                placeholder="请输入需求描述，支持图文混排"
+                :placeholder="$t('qa.requirement.descriptionPlaceholder')"
                 height="100%"
                 @uploaded="handleUploadedFile"
               />
@@ -40,27 +40,27 @@
               <template #title>
                 <div class="card-title">
                   <div class="card-title-dot" style="background: #165dff;" />
-                  分类属性
+                  {{ $t('qa.requirement.section.category') }}
                 </div>
               </template>
 
-              <a-form-item v-if="fieldVis('moduleId')" field="moduleId" label="所属模块">
+              <a-form-item v-if="fieldVis('moduleId')" field="moduleId" :label="$t('qa.requirement.module')">
                 <a-select
                   v-model="formData.moduleId"
-                  placeholder="请选择所属模块"
+                  :placeholder="$t('qa.requirement.modulePlaceholder')"
                   allow-clear
                 >
                   <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
                 </a-select>
               </a-form-item>
 
-              <a-form-item v-if="fieldVis('parentId')" field="parentId" label="父需求">
+              <a-form-item v-if="fieldVis('parentId')" field="parentId" :label="$t('qa.requirement.parent')">
                 <a-select
                   v-model="formData.parentId"
                   allow-clear
                   allow-search
                   :filter-option="false"
-                  placeholder="请输入关键词搜索需求"
+                  :placeholder="$t('qa.requirement.parentPlaceholder')"
                   @search="handleSearchParent"
                   @dropdown-visible-change="handleParentDropdownVisibleChange"
                   @dropdown-reach-bottom="loadMoreParent"
@@ -70,10 +70,10 @@
                     <div>
                       <VNodeRenderer :vnodes="menu" />
                       <div v-if="parentPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
+                        {{ $t('qa.requirement.scrollMore') }}
                       </div>
                       <div v-else-if="parentOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
+                        {{ $t('qa.requirement.noMore') }}
                       </div>
                     </div>
                   </template>
@@ -82,22 +82,22 @@
 
               <a-row :gutter="16">
                 <a-col :span="12">
-                  <a-form-item v-if="fieldVis('reqType')" field="reqType" label="需求类型">
-                    <a-select v-model="formData.reqType" placeholder="请选择需求类型">
-                      <a-option value="FEATURE">功能需求</a-option>
-                      <a-option value="BUGFIX">缺陷修复</a-option>
-                      <a-option value="OPTIMIZE">优化</a-option>
-                      <a-option value="TECH_DEBT">技术债务</a-option>
+                  <a-form-item v-if="fieldVis('reqType')" field="reqType" :label="$t('qa.requirement.reqType')">
+                    <a-select v-model="formData.reqType" :placeholder="$t('qa.requirement.reqTypePlaceholder')">
+                      <a-option value="FEATURE">{{ $t('qa.requirement.type.feature') }}</a-option>
+                      <a-option value="BUGFIX">{{ $t('qa.requirement.type.bugfix') }}</a-option>
+                      <a-option value="OPTIMIZE">{{ $t('qa.requirement.type.optimize') }}</a-option>
+                      <a-option value="TECH_DEBT">{{ $t('qa.requirement.type.techDebt') }}</a-option>
                     </a-select>
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">
-                  <a-form-item v-if="fieldVis('source')" field="source" label="来源">
-                    <a-select v-model="formData.source" placeholder="请选择来源">
-                      <a-option value="CLIENT">客户反馈</a-option>
-                      <a-option value="INTERNAL">内部规划</a-option>
-                      <a-option value="COMPETITOR">竞品分析</a-option>
-                      <a-option value="ONLINE">线上问题</a-option>
+                  <a-form-item v-if="fieldVis('source')" field="source" :label="$t('qa.requirement.source')">
+                    <a-select v-model="formData.source" :placeholder="$t('qa.requirement.sourcePlaceholder')">
+                      <a-option value="CLIENT">{{ $t('qa.requirement.source.client') }}</a-option>
+                      <a-option value="INTERNAL">{{ $t('qa.requirement.source.internal') }}</a-option>
+                      <a-option value="COMPETITOR">{{ $t('qa.requirement.source.competitor') }}</a-option>
+                      <a-option value="ONLINE">{{ $t('qa.requirement.source.online') }}</a-option>
                     </a-select>
                   </a-form-item>
                 </a-col>
@@ -105,8 +105,8 @@
 
               <a-row :gutter="16">
                 <a-col :span="12">
-                  <a-form-item field="priority" label="优先级">
-                    <a-select v-model="formData.priority" placeholder="请选择优先级">
+                  <a-form-item field="priority" :label="$t('qa.requirement.priority')">
+                    <a-select v-model="formData.priority" :placeholder="$t('qa.requirement.priorityPlaceholder')">
                       <a-option value="P0">
                         <span class="priority-dot" style="background: #f53f3f;" />P0
                       </a-option>
@@ -123,11 +123,11 @@
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">
-                  <a-form-item v-if="fieldVis('expectReleaseTime')" field="expectReleaseTime" label="期望上线时间">
+                  <a-form-item v-if="fieldVis('expectReleaseTime')" field="expectReleaseTime" :label="$t('qa.requirement.expectReleaseTime')">
                     <a-date-picker
                       v-model="formData.expectReleaseTime"
                       value-format="YYYY-MM-DD"
-                      placeholder="请选择"
+                      :placeholder="$t('qa.requirement.selectPlaceholder')"
                       style="width: 100%;"
                     />
                   </a-form-item>
@@ -140,16 +140,16 @@
               <template #title>
                 <div class="card-title">
                   <div class="card-title-dot" style="background: #00b42a;" />
-                  状态与协作
+                  {{ $t('qa.requirement.section.collab') }}
                 </div>
               </template>
 
               <a-row :gutter="16">
                 <a-col :span="12">
-                  <a-form-item field="status" label="当前状态">
+                  <a-form-item field="status" :label="$t('qa.requirement.currentStatus')">
                     <a-select
                       v-model="formData.status"
-                      placeholder="草稿"
+                      :placeholder="$t('qa.requirement.status.draft')"
                       :disabled="!isEdit"
                       class="status-select"
                     >
@@ -158,19 +158,19 @@
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">
-                  <a-form-item v-if="fieldVis('version')" field="version" label="版本">
-                    <a-input v-model="formData.version" placeholder="如 v1.0.0" />
+                  <a-form-item v-if="fieldVis('version')" field="version" :label="$t('qa.requirement.version')">
+                    <a-input v-model="formData.version" :placeholder="$t('qa.requirement.versionPlaceholder')" />
                   </a-form-item>
                 </a-col>
               </a-row>
 
-              <a-form-item v-if="fieldVis('ownerId')" field="ownerId" label="负责人">
+              <a-form-item v-if="fieldVis('ownerId')" field="ownerId" :label="$t('qa.requirement.owner')">
                 <a-select
                   v-model="formData.ownerId"
                   allow-clear
                   allow-search
                   :filter-option="false"
-                  placeholder="请输入关键词搜索用户"
+                  :placeholder="$t('qa.requirement.userSearchPlaceholder')"
                   @search="handleSearchUser"
                   @dropdown-visible-change="handleUserDropdownVisibleChange"
                   @dropdown-reach-bottom="loadMoreUser"
@@ -180,24 +180,24 @@
                     <div>
                       <VNodeRenderer :vnodes="menu" />
                       <div v-if="userPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
+                        {{ $t('qa.requirement.scrollMore') }}
                       </div>
                       <div v-else-if="userOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
+                        {{ $t('qa.requirement.noMore') }}
                       </div>
                     </div>
                   </template>
                 </a-select>
               </a-form-item>
 
-              <a-form-item v-if="fieldVis('participants')" field="participants" label="参与人">
+              <a-form-item v-if="fieldVis('participants')" field="participants" :label="$t('qa.requirement.participants')">
                 <a-select
                   v-model="participantIds"
                   multiple
                   allow-clear
                   allow-search
                   :filter-option="false"
-                  placeholder="请输入关键词搜索用户"
+                  :placeholder="$t('qa.requirement.userSearchPlaceholder')"
                   @search="handleSearchUser"
                   @dropdown-visible-change="handleUserDropdownVisibleChange"
                   @dropdown-reach-bottom="loadMoreUser"
@@ -207,18 +207,18 @@
                     <div>
                       <VNodeRenderer :vnodes="menu" />
                       <div v-if="userPage.hasMore" style="padding: 8px; text-align: center; color: #86909c;">
-                        滚动加载更多...
+                        {{ $t('qa.requirement.scrollMore') }}
                       </div>
                       <div v-else-if="userOptions.length > 0" style="padding: 8px; text-align: center; color: #86909c;">
-                        没有更多了
+                        {{ $t('qa.requirement.noMore') }}
                       </div>
                     </div>
                   </template>
                 </a-select>
               </a-form-item>
 
-              <a-form-item v-if="fieldVis('tags')" field="tags" label="标签">
-                <a-input-tag v-model="formData.tags" placeholder="输入标签后按回车" allow-clear />
+              <a-form-item v-if="fieldVis('tags')" field="tags" :label="$t('qa.requirement.tags')">
+                <a-input-tag v-model="formData.tags" :placeholder="$t('qa.requirement.tagsPlaceholder')" allow-clear />
               </a-form-item>
             </a-card>
           </a-scrollbar>
@@ -230,6 +230,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import RichEditor from '@/components/rich-editor/index.vue';
 import {useProjectStore} from '@/store';
@@ -255,6 +256,7 @@ const emit = defineEmits<{
 
 const projectStore = useProjectStore();
 const projectConfigStore = useProjectConfigStore();
+const { t } = useI18n();
 const fieldVis = (key: string) => projectConfigStore.isFieldVisible('requirement', key);
 
 
@@ -314,15 +316,15 @@ const parentPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', l
 const userOptions = ref<any[]>([]);
 const userPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
 
-const allStatuses = [
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'REVIEWING', label: '评审中' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'DEVELOPING', label: '开发中' },
-  { value: 'TESTING', label: '测试中' },
-  { value: 'RELEASED', label: '已上线' },
-  { value: 'CLOSED', label: '已关闭' }
-];
+const allStatuses = computed(() => [
+  { value: 'DRAFT', label: t('qa.requirement.status.draft') },
+  { value: 'REVIEWING', label: t('qa.requirement.status.reviewing') },
+  { value: 'CONFIRMED', label: t('qa.requirement.status.confirmed') },
+  { value: 'DEVELOPING', label: t('qa.requirement.status.developing') },
+  { value: 'TESTING', label: t('qa.requirement.status.testing') },
+  { value: 'RELEASED', label: t('qa.requirement.status.released') },
+  { value: 'CLOSED', label: t('qa.requirement.status.closed') }
+]);
 
 const loadModuleOptions = async () => {
   if (!projectStore.getProjectId) return;
@@ -503,7 +505,7 @@ const handleUserDropdownVisibleChange = (visible: boolean) => {
 
 const save = async () => {
   if (!formData.value.title) {
-    Message.warning('请输入需求标题');
+    Message.warning(t('qa.requirement.nameRequired'));
     return false;
   }
   const payload = {...formData.value};
@@ -515,7 +517,7 @@ const save = async () => {
     const api = isEdit.value ? updateRequirement : saveRequirement;
     const res: any = await api(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.requirement.saveSuccess'));
       // 计算并删除被移除的富文本图片
       const currentFileIds = extractFileIds(formData.value.description);
       const allSessionFileIds = new Set<string>([...initialFileIds.value, ...uploadedFileIds.value]);

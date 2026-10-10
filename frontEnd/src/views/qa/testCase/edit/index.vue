@@ -1,12 +1,12 @@
 <template>
   <div class="test-case-edit-page" v-if="projectStore.hasProjectSelected">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.testCase', isEdit ? '编辑用例' : '新建用例']"/>
-    <a-card class="edit-card" :bordered="false" :title="isEdit ? '编辑用例' : '新建用例'">
+    <Breadcrumb :items="['menu.qa', 'menu.qa.testCase', isEdit ? 'qa.testCase.edit' : 'qa.testCase.add']"/>
+    <a-card class="edit-card" :bordered="false" :title="isEdit ? $t('qa.testCase.edit') : $t('qa.testCase.add')">
       <template #extra>
         <a-space>
-          <a-button @click="handleCancel">取消</a-button>
-          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">保存继续创建</a-button>
-          <a-button type="primary" :loading="saving" @click="handleSave">保存</a-button>
+          <a-button @click="handleCancel">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button v-if="!isEdit" :loading="savingContinue" @click="handleSaveAndContinue">{{ $t('qa.testCase.saveAndContinue') }}</a-button>
+          <a-button type="primary" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
       <TestCaseForm

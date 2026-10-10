@@ -2,28 +2,28 @@
   <div ref="rootRef" style="height: 100%; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
     <!-- ========== 请求未发送成功（仅 HTTP）：只展示错误详情 ========== -->
     <template v-if="isRequestError && !isSqlApi">
-      <a-alert type="error" :title="'请求执行失败'" style="margin-bottom: 16px; flex-shrink: 0">
+      <a-alert type="error" :title="$t('api.result.requestFailed')" style="margin-bottom: 16px; flex-shrink: 0">
         <a-typography-text type="danger" style="font-size: 14px; white-space: pre-wrap; word-break: break-all">
-          {{ props.debugResult?.errorMessage || '未知错误' }}
+          {{ props.debugResult?.errorMessage || $t('api.result.unknownError') }}
         </a-typography-text>
       </a-alert>
 
       <!-- 请求信息（用于排查问题） -->
-      <a-card title="请求信息" size="small" style="flex-shrink: 0; margin-bottom: 12px">
+      <a-card :title="$t('api.result.requestInfo')" size="small" style="flex-shrink: 0; margin-bottom: 12px">
         <a-descriptions :column="1" size="small">
-          <a-descriptions-item label="请求 URL">
+          <a-descriptions-item :label="$t('api.result.requestUrl')">
             <a-typography-text copyable style="word-break: break-all">
               {{ props.debugResult?.requestUrl || '-' }}
             </a-typography-text>
           </a-descriptions-item>
-          <a-descriptions-item label="请求方法">
+          <a-descriptions-item :label="$t('api.result.requestMethod')">
             <a-tag>{{ props.debugResult?.requestMethod || '-' }}</a-tag>
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
 
       <!-- 请求头 -->
-      <a-card v-if="hasRequestHeaders" title="请求头" size="small" style="flex-shrink: 0; margin-bottom: 12px">
+      <a-card v-if="hasRequestHeaders" :title="$t('api.result.requestHeaders')" size="small" style="flex-shrink: 0; margin-bottom: 12px">
         <a-descriptions :column="1" size="small">
           <a-descriptions-item v-for="(value, key) in props.debugResult?.requestHeaders" :key="key" :label="key">
             {{ value }}
@@ -32,7 +32,7 @@
       </a-card>
 
       <!-- 请求体 -->
-      <a-card v-if="props.debugResult?.requestBody" title="请求体" size="small"
+      <a-card v-if="props.debugResult?.requestBody" :title="$t('api.result.requestBody')" size="small"
               style="flex-shrink: 0; margin-bottom: 12px">
         <pre class="request-body" style="max-height: 30vh">{{ formatRequestBody(props.debugResult?.requestBody) }}</pre>
       </a-card>
@@ -44,15 +44,15 @@
       <div v-if="!isSqlApi"
            style="display: flex; align-items: center; gap: 20px; padding: 6px 12px; margin-bottom: 8px; background: var(--color-fill-2); border-radius: 4px; flex-shrink: 0; font-size: 13px;">
         <span style="display: inline-flex; align-items: center; gap: 6px;">
-          <span style="color: var(--color-text-3);">状态码</span>
+          <span style="color: var(--color-text-3);">{{ $t('api.mockConfig.statusCode') }}</span>
           <a-tag :color="statusColor" size="small">{{ statusCode != null ? statusCode : '-' }}</a-tag>
         </span>
         <span style="display: inline-flex; align-items: center; gap: 6px;">
-          <span style="color: var(--color-text-3);">耗时</span>
+          <span style="color: var(--color-text-3);">{{ $t('api.result.duration') }}</span>
           <span style="font-weight: 600;">{{ responseTimeMs != null ? responseTimeMs + ' ms' : '-' }}</span>
         </span>
         <span style="display: inline-flex; align-items: center; gap: 6px;">
-          <span style="color: var(--color-text-3);">大小</span>
+          <span style="color: var(--color-text-3);">{{ $t('api.result.size') }}</span>
           <span style="font-weight: 600;">{{ formattedSize }}</span>
         </span>
         <span
@@ -70,54 +70,54 @@
             <a-dropdown v-if="sqlTableData.length > 0" trigger="hover" @select="copySqlResult">
               <a-button type="text" size="mini">
                 <template #icon><icon-copy /></template>
-                复制
+                {{ $t('api.result.copy') }}
               </a-button>
               <template #content>
-                <a-doption value="json">JSON 格式</a-doption>
-                <a-doption value="csv">CSV 格式</a-doption>
+                <a-doption value="json">{{ $t('api.result.copyJson') }}</a-doption>
+                <a-doption value="csv">{{ $t('api.result.copyCsv') }}</a-doption>
               </template>
             </a-dropdown>
             <a-button v-if="sqlTableData.length > 0" type="text" size="mini" :loading="exportingExcel" @click="exportSqlResultExcel">
               <template #icon><icon-download /></template>
-              导出 Excel
+              {{ $t('api.result.exportExcel') }}
             </a-button>
-            <template v-if="isDmlExecuted">影响 {{ sqlAffectedRows }} 行</template>
+            <template v-if="isDmlExecuted">{{ $t('api.result.affectedRows', {count: sqlAffectedRows}) }}</template>
             <template v-else-if="sqlRowCount != null">
-              共 {{ sqlRowCount }} 条<template v-if="sqlTruncated">（已截断：达到最大返回行数上限）</template>
+              {{ $t('api.result.totalRows', {count: sqlRowCount}) }}<template v-if="sqlTruncated">{{ $t('api.result.truncated') }}</template>
             </template>
-            <template v-if="sqlElapsedMs != null">，耗时 {{ sqlElapsedMs }}ms</template>
+            <template v-if="sqlElapsedMs != null">{{ $t('api.result.elapsedMs', {ms: sqlElapsedMs}) }}</template>
           </span>
         </template>
         <!-- SQL 执行结果：查询展示结果表格，DML/DDL 展示影响行数，失败展示错误详情 -->
-        <a-tab-pane v-if="isSqlApi" :key="0" title="执行结果">
+        <a-tab-pane v-if="isSqlApi" :key="0" :title="$t('api.result.execResult')">
           <!-- 执行失败 -->
           <template v-if="isRequestError">
-            <a-alert type="error" title="SQL 执行失败" style="margin-bottom: 16px;">
+            <a-alert type="error" :title="$t('api.result.sqlFailed')" style="margin-bottom: 16px;">
               <a-typography-text type="danger" style="font-size: 14px; white-space: pre-wrap; word-break: break-all">
-                {{ props.debugResult?.errorMessage || '未知错误' }}
+                {{ props.debugResult?.errorMessage || $t('api.result.unknownError') }}
               </a-typography-text>
             </a-alert>
-            <a-card v-if="props.debugResult?.requestUrl" title="请求信息" size="small" style="margin-bottom: 12px">
+            <a-card v-if="props.debugResult?.requestUrl" :title="$t('api.result.requestInfo')" size="small" style="margin-bottom: 12px">
               <a-descriptions :column="1" size="small">
-                <a-descriptions-item label="数据库">
+                <a-descriptions-item :label="$t('api.result.database')">
                   <a-typography-text copyable style="word-break: break-all">
                     {{ props.debugResult?.requestUrl }}
                   </a-typography-text>
                 </a-descriptions-item>
-                <a-descriptions-item label="请求方法">
+                <a-descriptions-item :label="$t('api.result.requestMethod')">
                   <a-tag>{{ props.debugResult?.requestMethod || 'SQL' }}</a-tag>
                 </a-descriptions-item>
               </a-descriptions>
             </a-card>
-            <a-card v-if="failedSql" title="执行的 SQL" size="small" style="margin-bottom: 12px">
+            <a-card v-if="failedSql" :title="$t('api.result.executedSql')" size="small" style="margin-bottom: 12px">
               <pre class="request-body" style="max-height: 30vh">{{ failedSql }}</pre>
             </a-card>
           </template>
           <!-- DML / DDL -->
           <div v-else-if="isDmlExecuted" style="padding: 12px;">
-            <a-result status="success" title="执行成功">
+            <a-result status="success" :title="$t('api.result.execSuccess')">
               <template #subtitle>
-                影响 <span style="font-weight: 600; color: rgb(var(--primary-6));">{{ sqlAffectedRows }}</span> 行
+                {{ $t('api.result.affectedRowsPrefix') }} <span style="font-weight: 600; color: rgb(var(--primary-6));">{{ sqlAffectedRows }}</span> {{ $t('api.result.affectedRowsSuffix') }}
               </template>
             </a-result>
           </div>
@@ -150,10 +150,10 @@
                 />
               </vxe-table>
             </div>
-            <a-empty v-else description="无数据"/>
+            <a-empty v-else :description="$t('api.result.noData')"/>
           </template>
         </a-tab-pane>
-        <a-tab-pane v-if="!isSqlApi" :key="1" title="实时响应">
+        <a-tab-pane v-if="!isSqlApi" :key="1" :title="$t('api.result.realtimeResponse')">
           <ResponseViewer
               :content="props.debugResult?.bodyAsString"
               :content-type="responseContentType"
@@ -162,17 +162,17 @@
               show-download
           />
         </a-tab-pane>
-        <a-tab-pane v-if="!isSqlApi" :key="2" title="请求头">
+        <a-tab-pane v-if="!isSqlApi" :key="2" :title="$t('api.result.requestHeaders')">
           <a-descriptions :column="1">
             <a-descriptions-item v-for="(value, key) in props.debugResult?.requestHeaders" :key="key" :label="key">
               {{ value }}
             </a-descriptions-item>
           </a-descriptions>
         </a-tab-pane>
-        <a-tab-pane v-if="!isSqlApi" :key="3" title="请求体">
+        <a-tab-pane v-if="!isSqlApi" :key="3" :title="$t('api.result.requestBody')">
           <pre class="request-body">{{ formatRequestBody(props.debugResult?.requestBody) }}</pre>
         </a-tab-pane>
-        <a-tab-pane v-if="!isSqlApi" :key="4" title="响应头">
+        <a-tab-pane v-if="!isSqlApi" :key="4" :title="$t('api.result.responseHeaders')">
           <a-descriptions :column="1">
             <a-descriptions-item v-for="(value, key) in props.debugResult?.responseHeaders" :key="key" :label="key">
               {{ value }}
@@ -181,50 +181,50 @@
         </a-tab-pane>
         <a-tab-pane :key="5">
           <template #title>
-            <a-badge :count="assertBadge.count" :offset="[10, -2]" :dot-style="{ background: assertBadge.color }">断言结果</a-badge>
+            <a-badge :count="assertBadge.count" :offset="[10, -2]" :dot-style="{ background: assertBadge.color }">{{ $t('api.result.assertResult') }}</a-badge>
           </template>
           <template v-if="hasAssertionResults">
             <div class="assert-summary">
               <a-space>
-                <a-tag color="green">通过: {{ assertPassCount }}</a-tag>
-                <a-tag color="red">失败: {{ assertFailCount }}</a-tag>
+                <a-tag color="green">{{ $t('api.result.passed') }}: {{ assertPassCount }}</a-tag>
+                <a-tag color="red">{{ $t('api.result.failed') }}: {{ assertFailCount }}</a-tag>
               </a-space>
             </div>
             <a-table :columns="assertColumns" :data="assertData" bordered :pagination="false"/>
           </template>
           <template v-else>
-            <a-empty description="未配置断言规则或断言结果为空"/>
+            <a-empty :description="$t('api.result.noAssert')"/>
           </template>
         </a-tab-pane>
         <a-tab-pane :key="6">
           <template #title>
             <a-badge :count="extractBadge.count" :offset="[10, -2]" :dot-style="{ background: extractBadge.color }">
-              提取结果
+              {{ $t('api.result.extractResult') }}
             </a-badge>
           </template>
           <template v-if="hasExtractedVariables">
             <a-table :columns="extractionColumns" :data="extractionData" bordered :pagination="false"/>
           </template>
           <template v-else>
-            <a-empty description="未配置提取规则或提取结果为空"/>
+            <a-empty :description="$t('api.result.noExtract')"/>
           </template>
         </a-tab-pane>
         <a-tab-pane :key="7">
           <template #title>
-            <a-badge :count="unmatchedVars.length" :offset="[10, -2]">变量追踪</a-badge>
+            <a-badge :count="unmatchedVars.length" :offset="[10, -2]">{{ $t('api.result.varTrack') }}</a-badge>
           </template>
           <template v-if="hasVariableTrack">
             <!-- 变量来源 -->
             <div class="track-section"
                  v-if="variableTrack.variableSources && Object.keys(variableTrack.variableSources).length > 0">
-              <div class="track-section-title">变量来源（共 {{ Object.keys(variableTrack.variableSources).length }} 个）
+              <div class="track-section-title">{{ $t('api.result.varSources', {count: Object.keys(variableTrack.variableSources).length}) }}
               </div>
               <a-table :columns="sourceColumns" :data="sourceData" bordered :pagination="false" size="small"/>
             </div>
 
             <!-- 替换记录 -->
             <div class="track-section" v-if="trackReplaceRecords.length > 0">
-              <div class="track-section-title">变量替换记录（共 {{ trackReplaceRecords.length }} 条）</div>
+              <div class="track-section-title">{{ $t('api.result.replaceRecords', {count: trackReplaceRecords.length}) }}</div>
               <a-table :columns="trackColumns" :data="trackReplaceRecords" bordered :pagination="false" size="small"/>
             </div>
 
@@ -232,7 +232,7 @@
             <div class="track-section"
                  v-if="variableTrack.unmatchedVariables && variableTrack.unmatchedVariables.length > 0">
               <div class="track-section-title" style="color: #f5222d">
-                未匹配变量（{{ variableTrack.unmatchedVariables.length }} 个）
+                {{ $t('api.result.unmatchedVars', {count: variableTrack.unmatchedVariables.length}) }}
               </div>
               <a-space wrap>
                 <a-tag v-for="varName in variableTrack.unmatchedVariables" :key="varName" color="red">{{
@@ -244,15 +244,15 @@
 
             <!-- 提取变量 -->
             <div class="track-section" v-if="hasExtractedVariables">
-              <div class="track-section-title">提取的变量（执行后）</div>
+              <div class="track-section-title">{{ $t('api.result.extractedVars') }}</div>
               <a-table :columns="extractionColumns" :data="extractionData" bordered :pagination="false" size="small"/>
             </div>
           </template>
           <template v-else>
-            <a-empty description="本次请求未使用变量替换"/>
+            <a-empty :description="$t('api.result.noVarReplace')"/>
           </template>
         </a-tab-pane>
-        <a-tab-pane :key="8" title="控制台">
+        <a-tab-pane :key="8" :title="$t('api.result.console')">
           <template v-if="hasConsoleLogs">
             <div class="console-logs">
               <div
@@ -266,11 +266,11 @@
             </div>
           </template>
           <template v-if="hasScriptAssertions">
-            <div class="track-section-title" style="margin-top: 16px">脚本断言</div>
+            <div class="track-section-title" style="margin-top: 16px">{{ $t('api.result.scriptAssert') }}</div>
             <a-table :columns="scriptAssertColumns" :data="scriptAssertData" bordered :pagination="false" size="small"/>
           </template>
           <template v-if="!hasConsoleLogs && !hasScriptAssertions">
-            <a-empty description="无脚本执行日志"></a-empty>
+            <a-empty :description="$t('api.result.noLogs')"></a-empty>
           </template>
         </a-tab-pane>
       </a-tabs>
@@ -284,6 +284,9 @@ import {Message} from "@arco-design/web-vue";
 import {VxeTable, VxeColumn} from 'vxe-table';
 import 'vxe-table/lib/style.css';
 import {ApiType} from "@/types/domain/api/apiEnum/ApiType";
+import {useI18n} from "vue-i18n";
+
+const {t} = useI18n();
 
 const props = defineProps<{
   debugResult: any;
@@ -468,14 +471,14 @@ const exportSqlResultExcel = async () => {
     const rows = sqlTableData.value.map(({_key, ...rest}) => rest);
     const sheet = XLSX.utils.json_to_sheet(rows, {header: sqlColumns.value});
     const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, '查询结果');
+    XLSX.utils.book_append_sheet(book, sheet, t('api.result.sheetName'));
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    const fileName = `SQL查询结果_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.xlsx`;
+    const fileName = `${t('api.result.fileName')}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.xlsx`;
     XLSX.writeFile(book, fileName);
-    Message.success({content: `已导出 ${rows.length} 行`, duration: 2000});
+    Message.success({content: t('api.result.exportedRows', {count: rows.length}), duration: 2000});
   } catch (e) {
-    Message.error({content: '导出失败', duration: 2000});
+    Message.error({content: t('api.result.exportFailed'), duration: 2000});
   } finally {
     exportingExcel.value = false;
   }
@@ -498,7 +501,7 @@ const copySqlResult = async (format: string | number | Record<string, any> | und
   }
   try {
     await navigator.clipboard.writeText(text);
-    Message.success({content: `已复制 ${rows.length} 行（${format === 'csv' ? 'CSV' : 'JSON'}）`, duration: 2000});
+    Message.success({content: t('api.result.copiedRows', {count: rows.length, format: format === 'csv' ? 'CSV' : 'JSON'}), duration: 2000});
   } catch {
     // 非安全上下文（http 内网）降级：隐藏 textarea + execCommand
     const ta = document.createElement('textarea');
@@ -510,9 +513,9 @@ const copySqlResult = async (format: string | number | Record<string, any> | und
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     if (ok) {
-      Message.success({content: `已复制 ${rows.length} 行（${format === 'csv' ? 'CSV' : 'JSON'}）`, duration: 2000});
+      Message.success({content: t('api.result.copiedRows', {count: rows.length, format: format === 'csv' ? 'CSV' : 'JSON'}), duration: 2000});
     } else {
-      Message.error({content: '复制失败，请手动选择复制', duration: 2000});
+      Message.error({content: t('api.result.copyFailed'), duration: 2000});
     }
   }
 };
@@ -539,21 +542,21 @@ const hasExtractedVariables = computed(() => {
 });
 
 /** 提取类型英文 → 中文映射 */
-const extractTypeMap: Record<string, string> = {
+const extractTypeMap = computed<Record<string, string>>(() => ({
   JSON_PATH: 'JSONPath',
-  REGEX: '正则',
-  HEADER: '响应头',
+  REGEX: t('api.extraction.typeRegex'),
+  HEADER: t('api.extraction.typeHeader'),
   COOKIE: 'Cookie',
-  STATUS_CODE: '状态码'
-};
+  STATUS_CODE: t('api.extraction.typeStatusCode')
+}));
 
-const extractionColumns = [
-  {title: '变量名', dataIndex: 'variableName', width: '20%'},
-  {title: '提取类型', dataIndex: 'type', width: '12%'},
-  {title: '表达式', dataIndex: 'expression', width: '23%'},
-  {title: '提取值', dataIndex: 'value', width: '25%'},
-  {title: '来源', dataIndex: 'source', width: '10%'}
-];
+const extractionColumns = computed(() => [
+  {title: t('api.extraction.colVariableName'), dataIndex: 'variableName', width: '20%'},
+  {title: t('api.extraction.colType'), dataIndex: 'type', width: '12%'},
+  {title: t('api.result.colExpression'), dataIndex: 'expression', width: '23%'},
+  {title: t('api.result.colValue'), dataIndex: 'value', width: '25%'},
+  {title: t('api.result.colSource'), dataIndex: 'source', width: '10%'}
+]);
 
 const extractionData = computed(() => {
   // 优先使用带有来源信息的 extractionDetails
@@ -561,10 +564,10 @@ const extractionData = computed(() => {
   if (details && details.length > 0) {
     return details.map((d: any) => ({
       variableName: d.variableName || '-',
-      type: extractTypeMap[d.type] || d.type || '-',
+      type: extractTypeMap.value[d.type] || d.type || '-',
       expression: d.expression || '-',
       value: d.value === null || d.value === undefined ? 'null' : String(d.value),
-      source: sourceMap[d.source] || d.source || '-'
+      source: sourceMap.value[d.source] || d.source || '-'
     }));
   }
   // 兼容旧数据：回退到 extractedVariables
@@ -574,7 +577,7 @@ const extractionData = computed(() => {
     variableName: key,
     type: '-',
     expression: '-',
-    value: value === null || value === undefined ? 'null' : (String(value) === '' ? '(空字符串)' : String(value)),
+    value: value === null || value === undefined ? 'null' : (String(value) === '' ? t('api.result.emptyString') : String(value)),
     source: '-'
   }));
 });
@@ -622,23 +625,23 @@ const missedExtractions = computed(() => {
   );
 });
 
-const assertColumns = [
+const assertColumns = computed(() => [
   {
-    title: '状态',
+    title: t('api.param.colStatus'),
     dataIndex: 'success',
     width: '10%',
     render: ({record}: any) => {
       return record.success
-          ? h('span', {style: {color: '#52c41a'}}, '✓ 通过')
-          : h('span', {style: {color: '#f5222d'}}, '✗ 失败');
+          ? h('span', {style: {color: '#52c41a'}}, t('api.result.passMark'))
+          : h('span', {style: {color: '#f5222d'}}, t('api.result.failMark'));
     }
   },
-  {title: '来源', dataIndex: 'source', width: '10%'},
-  {title: '断言类型', dataIndex: 'assertType', width: '10%'},
-  {title: '断言关系', dataIndex: 'assertRelationship', width: '10%'},
-  {title: '提示信息', dataIndex: 'assertTip', width: '30%'},
+  {title: t('api.result.colSource'), dataIndex: 'source', width: '10%'},
+  {title: t('api.result.colAssertType'), dataIndex: 'assertType', width: '10%'},
+  {title: t('api.result.colAssertRel'), dataIndex: 'assertRelationship', width: '10%'},
+  {title: t('api.result.colAssertTip'), dataIndex: 'assertTip', width: '30%'},
   {
-    title: '实际值',
+    title: t('api.result.colActualValue'),
     dataIndex: 'actualValue',
     width: '30%',
     render: ({record}: any) => {
@@ -654,48 +657,48 @@ const assertColumns = [
       return h('span', {class: 'actual-value'}, display);
     }
   }
-];
+]);
 
 /** 断言类型英文 → 中文映射 */
-const assertTypeMap: Record<string, string> = {
-  HEADER: '响应头',
-  BODY: '响应体',
-  STATUS_CODE: '状态码',
-  RESPONSE_TIME: '响应时间',
-  CUSTOM: '自定义',
-  SQL_ASSERT: 'SQL断言',
-  SCHEMA: '结构校验'
-};
+const assertTypeMap = computed<Record<string, string>>(() => ({
+  HEADER: t('api.extraction.typeHeader'),
+  BODY: t('api.assertion.typeBody'),
+  STATUS_CODE: t('api.assertion.typeStatusCode'),
+  RESPONSE_TIME: t('api.assertion.typeResponseTime'),
+  CUSTOM: t('api.assertion.typeCustom'),
+  SQL_ASSERT: t('api.result.typeSqlAssert'),
+  SCHEMA: t('api.assertion.typeSchema')
+}));
 
 /** 断言关系英文 → 中文映射 */
-const assertRelationshipMap: Record<string, string> = {
-  EQUALS: '等于',
-  NOT_EQUALS: '不等于',
-  CONTAINS: '包含',
-  NOT_CONTAINS: '不包含',
-  GT: '大于',
-  LT: '小于',
-  GE: '大于等于',
-  LE: '小于等于',
-  REGULAR: '正则匹配'
-};
+const assertRelationshipMap = computed<Record<string, string>>(() => ({
+  EQUALS: t('api.condition.equals'),
+  NOT_EQUALS: t('api.condition.notEquals'),
+  CONTAINS: t('api.condition.contains'),
+  NOT_CONTAINS: t('api.condition.notContains'),
+  GT: t('api.condition.gt'),
+  LT: t('api.condition.lt'),
+  GE: t('api.condition.ge'),
+  LE: t('api.condition.le'),
+  REGULAR: t('api.condition.regex')
+}));
 
 /** 规则来源英文 → 中文映射 */
-const sourceMap: Record<string, string> = {
-  GLOBAL: '全局配置',
-  ENVIRONMENT: '环境配置',
-  SCENE: '场景配置',
-  API: '接口配置'
-};
+const sourceMap = computed<Record<string, string>>(() => ({
+  GLOBAL: t('api.result.sourceGlobal'),
+  ENVIRONMENT: t('api.result.sourceEnvironment'),
+  SCENE: t('api.result.sourceScene'),
+  API: t('api.result.sourceApi')
+}));
 
 const assertData = computed(() => {
   const results = props.debugResult?.assertionResults;
   if (!results) return [];
   return results.map((r: any) => ({
     success: r.success,
-    source: sourceMap[r.source] || r.source || '-',
-    assertType: assertTypeMap[r.assertType] || r.assertType || '-',
-    assertRelationship: assertRelationshipMap[r.assertRelationship] || r.assertRelationship || '-',
+    source: sourceMap.value[r.source] || r.source || '-',
+    assertType: assertTypeMap.value[r.assertType] || r.assertType || '-',
+    assertRelationship: assertRelationshipMap.value[r.assertRelationship] || r.assertRelationship || '-',
     assertTip: r.assertTip || '',
     actualValue: r.actualValue || '-'
   }));
@@ -716,10 +719,10 @@ const hasVariableTrack = computed(() => {
       || (vt.extractedVariables && Object.keys(vt.extractedVariables).length > 0);
 });
 
-const sourceColumns = [
-  {title: '变量名', dataIndex: 'name', width: '40%'},
-  {title: '变量值', dataIndex: 'value', width: '60%'}
-];
+const sourceColumns = computed(() => [
+  {title: t('api.extraction.colVariableName'), dataIndex: 'name', width: '40%'},
+  {title: t('api.result.colVarValue'), dataIndex: 'value', width: '60%'}
+]);
 
 const sourceData = computed(() => {
   const sources = variableTrack.value?.variableSources;
@@ -730,13 +733,13 @@ const sourceData = computed(() => {
   }));
 });
 
-const trackColumns = [
-  {title: '位置', dataIndex: 'location', width: '12%'},
-  {title: '参数名', dataIndex: 'name', width: '15%'},
-  {title: '替换前', dataIndex: 'before', width: '28%'},
-  {title: '替换后', dataIndex: 'after', width: '28%'},
-  {title: '涉及变量', dataIndex: 'variables', width: '17%'}
-];
+const trackColumns = computed(() => [
+  {title: t('api.result.colLocation'), dataIndex: 'location', width: '12%'},
+  {title: t('api.param.colName'), dataIndex: 'name', width: '15%'},
+  {title: t('api.result.colBefore'), dataIndex: 'before', width: '28%'},
+  {title: t('api.result.colAfter'), dataIndex: 'after', width: '28%'},
+  {title: t('api.result.colVariables'), dataIndex: 'variables', width: '17%'}
+]);
 
 const trackReplaceRecords = computed(() => {
   const vt = variableTrack.value;
@@ -798,19 +801,19 @@ const hasConsoleLogs = computed(() => consoleLogs.value.length > 0);
 const scriptAssertions = computed(() => props.debugResult?.scriptAssertions || []);
 const hasScriptAssertions = computed(() => scriptAssertions.value.length > 0);
 
-const scriptAssertColumns = [
+const scriptAssertColumns = computed(() => [
   {
-    title: '状态',
+    title: t('api.param.colStatus'),
     dataIndex: 'success',
     width: '15%',
     render: ({record}: any) => {
       return record.success
-          ? h('span', {style: {color: '#52c41a'}}, '✓ 通过')
-          : h('span', {style: {color: '#f5222d'}}, '✗ 失败');
+          ? h('span', {style: {color: '#52c41a'}}, t('api.result.passMark'))
+          : h('span', {style: {color: '#f5222d'}}, t('api.result.failMark'));
     }
   },
-  {title: '断言信息', dataIndex: 'message', width: '85%'}
-];
+  {title: t('api.result.colAssertMsg'), dataIndex: 'message', width: '85%'}
+]);
 
 const scriptAssertData = computed(() => {
   return scriptAssertions.value.map((a: any) => ({

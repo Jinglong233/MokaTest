@@ -1,10 +1,10 @@
 <template>
   <a-form :model="form" layout="vertical">
-    <a-form-item label="数据类型" field="type" required>
+    <a-form-item :label="$t('api.mock.dataType')" field="type" required>
       <a-cascader
           v-model="selectedCategoryPath"
           :options="mockCategories"
-          placeholder="请选择数据类型"
+          :placeholder="$t('api.mock.dataTypePlaceholder')"
           @change="onTypeChange"
       />
       <template #extra>
@@ -12,42 +12,42 @@
       </template>
     </a-form-item>
 
-    <a-form-item v-if="showLocale" label="语言/地区" field="locale">
-      <a-select v-model="form.locale" placeholder="请选择">
-        <a-option value="zh">中文</a-option>
-        <a-option value="en">英文</a-option>
+    <a-form-item v-if="showLocale" :label="$t('api.mock.locale')" field="locale">
+      <a-select v-model="form.locale" :placeholder="$t('api.common.pleaseSelect')">
+        <a-option value="zh">{{ $t('api.mock.localeZh') }}</a-option>
+        <a-option value="en">{{ $t('api.mock.localeEn') }}</a-option>
       </a-select>
     </a-form-item>
 
-    <a-form-item v-if="showCaseType" label="字符类型" field="caseType">
-      <a-select v-model="form.caseType" placeholder="请选择">
-        <a-option value="lower">小写字母</a-option>
-        <a-option value="upper">大写字母</a-option>
-        <a-option value="number">数字</a-option>
-        <a-option value="mixed">字母数字混合</a-option>
+    <a-form-item v-if="showCaseType" :label="$t('api.mock.caseType')" field="caseType">
+      <a-select v-model="form.caseType" :placeholder="$t('api.common.pleaseSelect')">
+        <a-option value="lower">{{ $t('api.mock.caseLower') }}</a-option>
+        <a-option value="upper">{{ $t('api.mock.caseUpper') }}</a-option>
+        <a-option value="number">{{ $t('api.mock.caseNumber') }}</a-option>
+        <a-option value="mixed">{{ $t('api.mock.caseMixed') }}</a-option>
       </a-select>
     </a-form-item>
 
-    <a-form-item v-if="showMinMax" label="最小值" field="min">
-      <a-input-number v-model="form.min" placeholder="最小值"/>
+    <a-form-item v-if="showMinMax" :label="$t('api.mock.min')" field="min">
+      <a-input-number v-model="form.min" :placeholder="$t('api.mock.min')"/>
     </a-form-item>
 
-    <a-form-item v-if="showMinMax" label="最大值" field="max">
-      <a-input-number v-model="form.max" placeholder="最大值"/>
+    <a-form-item v-if="showMinMax" :label="$t('api.mock.max')" field="max">
+      <a-input-number v-model="form.max" :placeholder="$t('api.mock.max')"/>
     </a-form-item>
 
-    <a-form-item v-if="showScale" label="小数位数" field="scale">
-      <a-input-number v-model="form.scale" :min="0" :max="10" placeholder="小数位数"/>
+    <a-form-item v-if="showScale" :label="$t('api.mock.scale')" field="scale">
+      <a-input-number v-model="form.scale" :min="0" :max="10" :placeholder="$t('api.mock.scale')"/>
     </a-form-item>
 
-    <a-form-item v-if="showLength" label="长度" field="length">
-      <a-input-number v-model="form.length" :min="1" :max="1000" placeholder="字符串长度"/>
+    <a-form-item v-if="showLength" :label="$t('api.mock.length')" field="length">
+      <a-input-number v-model="form.length" :min="1" :max="1000" :placeholder="$t('api.mock.lengthPlaceholder')"/>
     </a-form-item>
 
-    <a-form-item v-if="showFormat" label="日期格式" field="format">
+    <a-form-item v-if="showFormat" :label="$t('api.mock.format')" field="format">
       <a-select
           v-model="form.format"
-          placeholder="选择或输入格式"
+          :placeholder="$t('api.mock.formatPlaceholder')"
           allow-create
           allow-clear
       >
@@ -55,24 +55,24 @@
       </a-select>
     </a-form-item>
 
-    <a-form-item v-if="showChoices" label="选项（英文逗号分隔）" field="choices">
-      <a-input v-model="form.choices" placeholder="例如：A,B,C"/>
+    <a-form-item v-if="showChoices" :label="$t('api.mock.choices')" field="choices">
+      <a-input v-model="form.choices" :placeholder="$t('api.mock.choicesPlaceholder')"/>
     </a-form-item>
 
-    <a-form-item v-if="showFixed" label="固定值" field="fixedValue" required>
-      <a-input v-model="form.fixedValue" placeholder="请输入固定值"/>
+    <a-form-item v-if="showFixed" :label="$t('api.mock.fixedValue')" field="fixedValue" required>
+      <a-input v-model="form.fixedValue" :placeholder="$t('api.mock.fixedValueInputPlaceholder')"/>
     </a-form-item>
 
-    <a-form-item v-if="showTemplate" label="选择模板" field="templateId" required>
-      <a-select v-model="form.templateId" placeholder="请选择数据模板" :loading="templateLoading">
+    <a-form-item v-if="showTemplate" :label="$t('api.template.selectTemplate')" field="templateId" required>
+      <a-select v-model="form.templateId" :placeholder="$t('api.template.selectPlaceholder')" :loading="templateLoading">
         <a-option v-for="item in templateList" :key="item.id" :value="item.id"
         >{{ item.templateName }}
         </a-option>
       </a-select>
     </a-form-item>
 
-    <a-form-item label="预览结果">
-      <a-input :model-value="previewResult" readonly :loading="previewLoading" placeholder="生成中..."
+    <a-form-item :label="$t('api.mock.previewResult')">
+      <a-input :model-value="previewResult" readonly :loading="previewLoading" :placeholder="$t('api.mock.generating')"
       >
         <template #suffix>
           <a-button
@@ -82,7 +82,7 @@
               :disabled="previewLoading"
               @click="emit('refreshPreview')"
           >
-            刷新
+            {{ $t('api.common.refresh') }}
           </a-button>
         </template>
       </a-input>

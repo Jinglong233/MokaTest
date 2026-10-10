@@ -1,12 +1,17 @@
+import ai from './zh-CN/ai';
+import bug from './zh-CN/bug';
+import requirement from './zh-CN/requirement';
+import review from './zh-CN/review';
+import testCase from './zh-CN/testCase';
+import testPlan from './zh-CN/testPlan';
+import traceability from './zh-CN/traceability';
+
 export default {
     'menu.qa': '质量管理',
     'menu.qa.workbench': '测试工作台',
     'menu.qa.requirement': '需求池',
     'menu.qa.bug': 'BUG池',
     'menu.qa.testCase': '用例列表',
-    'menu.qa.requirementEdit': '编辑需求',
-    'menu.qa.bugEdit': '编辑BUG',
-    'menu.qa.testCaseEdit': '编辑用例',
 
     'qa.requirement.title': '需求池',
     'qa.requirement.add': '新建需求',
@@ -56,12 +61,21 @@ export default {
     'menu.qa.review': '用例评审',
     'menu.qa.reviewCreate': '新建评审',
     'menu.qa.reviewDetail': '评审详情',
-    'menu.qa.reviewEdit': '编辑评审',
     'menu.qa.reviewWorkbench': '评审工作台',
     'menu.qa.testPlanDetail': '计划详情',
-    'menu.qa.testPlanExecute': '执行计划',
-    'menu.qa.testPlanReportDetail': '测试报告',
     'menu.qa.traceability': '血缘追踪',
+    'menu.qa.aiWorkbench': 'AI 工作台',
+    'menu.qa.aiSkills': 'AI Skills',
+    'menu.qa.aiSkillsMgmt': '快捷指令管理',
+    'menu.qa.aiMcp': 'MCP 工具管理',
+    'menu.qa.aiReview': '需求评审',
+    'menu.qa.aiCaseGen': 'AI用例生成',
+    'menu.qa.requirementEdit': '编辑需求',
+    'menu.qa.bugEdit': '编辑BUG',
+    'menu.qa.testCaseEdit': '编辑用例',
+    'menu.qa.reviewEdit': '编辑评审',
+    'menu.qa.testPlanExecute': '执行计划',
+    'menu.qa.testPlanReportDetail': '报告详情',
     'qa.testPlan.title': '测试计划',
     'qa.testPlan.add': '新建计划',
     'qa.testPlan.edit': '编辑计划',
@@ -93,4 +107,11 @@ export default {
     'qa.common.confirmDelete': '确认删除吗？',
     'qa.common.operation': '操作',
     'qa.common.all': '全部',
+    ...ai,
+    ...bug,
+    ...requirement,
+    ...review,
+    ...testCase,
+    ...testPlan,
+    ...traceability,
 };

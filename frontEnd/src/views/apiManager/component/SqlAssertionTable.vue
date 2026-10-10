@@ -12,59 +12,62 @@
         />
       </template>
       <template #columnName="{ record }">
-        <a-input v-model="record.columnName" placeholder="列名" size="small" :disabled="disabled" @input="onDataChange" />
+        <a-input v-model="record.columnName" :placeholder="$t('api.sqlAssertion.columnNamePlaceholder')" size="small" :disabled="disabled" @input="onDataChange" />
       </template>
       <template #jsonPath="{ record }">
-        <a-tooltip content="列值为 JSON 时按路径取嵌套值后再比较，如 $.data.id；留空取整列值" position="top">
-          <a-input v-model="record.jsonPath" placeholder="选填，如 $.data.id" size="small" :disabled="disabled" @input="onDataChange" />
+        <a-tooltip :content="$t('api.sqlAssertion.jsonPathTip')" position="top">
+          <a-input v-model="record.jsonPath" :placeholder="$t('api.sqlAssertion.jsonPathPlaceholder')" size="small" :disabled="disabled" @input="onDataChange" />
         </a-tooltip>
       </template>
       <template #condition="{ record }">
-        <a-select v-model="record.condition" placeholder="条件" size="small" :disabled="disabled" @change="onDataChange" style="width: 100%">
-          <a-option value="EQUALS">等于</a-option>
-          <a-option value="NOT_EQUALS">不等于</a-option>
-          <a-option value="CONTAINS">包含</a-option>
-          <a-option value="NOT_CONTAINS">不包含</a-option>
-          <a-option value="GT">大于</a-option>
-          <a-option value="LT">小于</a-option>
-          <a-option value="GE">大于等于</a-option>
-          <a-option value="LE">小于等于</a-option>
-          <a-option value="REGULAR">正则匹配</a-option>
+        <a-select v-model="record.condition" :placeholder="$t('api.sqlAssertion.conditionPlaceholder')" size="small" :disabled="disabled" @change="onDataChange" style="width: 100%">
+          <a-option value="EQUALS">{{ $t('api.condition.equals') }}</a-option>
+          <a-option value="NOT_EQUALS">{{ $t('api.condition.notEquals') }}</a-option>
+          <a-option value="CONTAINS">{{ $t('api.condition.contains') }}</a-option>
+          <a-option value="NOT_CONTAINS">{{ $t('api.condition.notContains') }}</a-option>
+          <a-option value="GT">{{ $t('api.condition.gt') }}</a-option>
+          <a-option value="LT">{{ $t('api.condition.lt') }}</a-option>
+          <a-option value="GE">{{ $t('api.condition.ge') }}</a-option>
+          <a-option value="LE">{{ $t('api.condition.le') }}</a-option>
+          <a-option value="REGULAR">{{ $t('api.condition.regex') }}</a-option>
         </a-select>
       </template>
       <template #expectedValue="{ record }">
-        <a-input v-model="record.expectedValue" placeholder="期望值" size="small" :disabled="disabled" @input="onDataChange" />
+        <a-input v-model="record.expectedValue" :placeholder="$t('api.sqlAssertion.expectedValuePlaceholder')" size="small" :disabled="disabled" @input="onDataChange" />
       </template>
       <template #rowIndex="{ record }">
         <a-input-number v-model="record.rowIndex" :min="0" placeholder="0" size="small" :disabled="disabled" @change="onDataChange" style="width: 100%" />
       </template>
       <template #description="{ record }">
-        <a-input v-model="record.description" placeholder="描述" size="small" :disabled="disabled" @input="onDataChange" />
+        <a-input v-model="record.description" :placeholder="$t('api.sqlAssertion.descPlaceholder')" size="small" :disabled="disabled" @input="onDataChange" />
       </template>
       <template #operation="{ rowIndex }">
-        <a-popconfirm content="确认删除该断言？" position="left" @ok="deleteRow(rowIndex)">
-          <a-button type="text" status="danger" size="small" :disabled="disabled">删除</a-button>
+        <a-popconfirm :content="$t('api.sqlAssertion.confirmDelete')" position="left" @ok="deleteRow(rowIndex)">
+          <a-button type="text" status="danger" size="small" :disabled="disabled">{{ $t('qa.common.delete') }}</a-button>
         </a-popconfirm>
       </template>
     </a-table>
-    <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">+ 添加断言</a-button>
+    <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">{{ $t('api.sqlAssertion.add') }}</a-button>
   </div>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {SqlAssertion} from '@/types/domain/api/requestModel/SqlAssertion'
 
-const columns = [
-  {title: '启用', slotName: 'status', width: '60px'},
-  {title: '字段', slotName: 'columnName'},
-  {title: 'JSON路径', slotName: 'jsonPath', width: '150px'},
-  {title: '条件', slotName: 'condition', width: '110px'},
-  {title: '值', slotName: 'expectedValue'},
-  {title: '下标', slotName: 'rowIndex', width: '80px'},
-  {title: '描述', slotName: 'description'},
-  {title: '操作', slotName: 'operation', width: '70px'}
-]
+const {t} = useI18n()
+
+const columns = computed(() => [
+  {title: t('api.sqlAssertion.colEnabled'), slotName: 'status', width: '60px'},
+  {title: t('api.sqlAssertion.colField'), slotName: 'columnName'},
+  {title: t('api.sqlAssertion.colJsonPath'), slotName: 'jsonPath', width: '150px'},
+  {title: t('api.sqlAssertion.colCondition'), slotName: 'condition', width: '110px'},
+  {title: t('api.sqlAssertion.colValue'), slotName: 'expectedValue'},
+  {title: t('api.sqlAssertion.colRowIndex'), slotName: 'rowIndex', width: '80px'},
+  {title: t('api.sqlAssertion.colDesc'), slotName: 'description'},
+  {title: t('qa.common.operation'), slotName: 'operation', width: '70px'}
+])
 
 const props = defineProps<{ disabled?: boolean }>()
 const tableData = ref<SqlAssertion[]>([])
@@ -94,13 +97,13 @@ const validateAll = (): { valid: boolean; message: string } => {
         .some(v => v != null && String(v).trim() !== '')
     if (!hasAny) continue
     if (!r.columnName?.trim()) {
-      return {valid: false, message: `断言第 ${i + 1} 行：请填写字段（列名）`}
+      return {valid: false, message: t('api.sqlAssertion.rowFieldRequired', {row: i + 1})}
     }
     if (!r.condition) {
-      return {valid: false, message: `断言第 ${i + 1} 行：请选择断言条件`}
+      return {valid: false, message: t('api.sqlAssertion.rowConditionRequired', {row: i + 1})}
     }
     if (r.expectedValue == null || String(r.expectedValue).trim() === '') {
-      return {valid: false, message: `断言第 ${i + 1} 行：请填写期望值`}
+      return {valid: false, message: t('api.sqlAssertion.rowExpectedRequired', {row: i + 1})}
     }
   }
   return {valid: true, message: ''}

@@ -7,27 +7,27 @@
         <a-card class="scene-card scene-folder-card">
           <div class="scene-tree-search-wrap">
             <a-input-search
-                placeholder="输入场景名称筛选"
+                :placeholder="$t('scene.tree.searchPlaceholder')"
                 class="scene-tree-search"
                 v-model="searchKey"
             />
           </div>
           <a-button-group class="scene-tree-actions">
-            <a-popover title="新建目录" style="flex: 1">
+            <a-popover :title="$t('scene.tree.newFolder')" style="flex: 1">
               <a-button v-permission="'auto:scene:create'" @click="userAddOrUpdateFolder('新建')" style="width: 100%;">
                 <template #icon>
                   <icon-folder-add/>
                 </template>
               </a-button>
             </a-popover>
-            <a-popover title="新建场景" style="flex: 1">
+            <a-popover :title="$t('scene.tree.newScene')" style="flex: 1">
               <a-button v-permission="'auto:scene:create'" @click="userAddOrUpdateScene('新建')" style="width: 100%;">
                 <template #icon>
                   <icon-file/>
                 </template>
               </a-button>
             </a-popover>
-            <a-popover :title="isExpandAll ? '展开全部' : '折叠全部'" style="flex: 1">
+            <a-popover :title="isExpandAll ? $t('scene.tree.expandAll') : $t('scene.tree.collapseAll')" style="flex: 1">
               <a-button @click="handleSceneTreeExpand" style="width: 100%;">
                 <template #icon>
                   <icon-menu-fold v-if="isExpandAll"/>
@@ -35,14 +35,14 @@
                 </template>
               </a-button>
             </a-popover>
-            <a-popover title="导出场景" style="flex: 1">
+            <a-popover :title="$t('scene.scene.export')" style="flex: 1">
               <a-button v-permission="'auto:scene:view'" @click="openExportSceneModal" style="width: 100%;">
                 <template #icon>
                   <icon-export/>
                 </template>
               </a-button>
             </a-popover>
-            <a-popover title="导入场景" style="flex: 1">
+            <a-popover :title="$t('scene.scene.import')" style="flex: 1">
               <a-button v-permission="'auto:scene:create'" @click="importScene" style="width: 100%;">
                 <template #icon>
                   <icon-import/>
@@ -98,23 +98,23 @@
                       </template>
                     </a-button>
                     <template #content v-if="node.sceneType==='FOLDER'">
-                      <a-doption v-permission="'auto:scene:create'" @click="userAddSubFolder(node.id)">新建子目录
+                      <a-doption v-permission="'auto:scene:create'" @click="userAddSubFolder(node.id)">{{ $t('scene.tree.newSubFolder') }}
                       </a-doption>
-                      <a-doption v-permission="'auto:scene:create'" @click="userAddSubScene(node.id)">新建场景
+                      <a-doption v-permission="'auto:scene:create'" @click="userAddSubScene(node.id)">{{ $t('scene.tree.newScene') }}
                       </a-doption>
-                      <a-doption v-permission="'auto:scene:update'" @click="userAddOrUpdateFolder('编辑',node)">编辑目录
+                      <a-doption v-permission="'auto:scene:update'" @click="userAddOrUpdateFolder('编辑',node)">{{ $t('scene.tree.editFolder') }}
                       </a-doption>
                       <a-doption v-permission="'auto:scene:delete'" v-if="node.id != null && node.id != 0"
-                                  @click="handleFolderDelete(node.id)">删除目录
+                                  @click="handleFolderDelete(node.id)">{{ $t('scene.tree.deleteFolder') }}
                       </a-doption>
                     </template>
                     <template #content v-if="node.sceneType==='SCENE'">
-                      <a-doption v-permission="'auto:scene:update'" @click="userAddOrUpdateScene('编辑',node)">编辑场景
+                      <a-doption v-permission="'auto:scene:update'" @click="userAddOrUpdateScene('编辑',node)">{{ $t('scene.tree.editScene') }}
                       </a-doption>
-                      <a-doption v-permission="'auto:scene:delete'" @click="handleSceneDelete(node.id)">删除场景
+                      <a-doption v-permission="'auto:scene:delete'" @click="handleSceneDelete(node.id)">{{ $t('scene.tree.deleteScene') }}
                       </a-doption>
                       <a-doption v-permission="'auto:scene:create'" v-if="node.id != null && node.id != 0"
-                                  @click="handleSceneCopy(node.id)">复制场景
+                                  @click="handleSceneCopy(node.id)">{{ $t('scene.tree.copyScene') }}
                       </a-doption>
                     </template>
                   </a-dropdown>
@@ -141,11 +141,11 @@
           <div class="scene-empty">
             <EmptyActionCard
                 v-if="hasSceneCreatePermission"
-                title="新建场景"
+                :title="$t('scene.tree.newScene')"
                 :icon="isApiScene ? IconCode : IconDesktop"
                 @click="userAddOrUpdateScene('新建')"
             />
-            <div v-else class="scene-empty-tip">暂无场景编辑权限，请联系管理员开通</div>
+            <div v-else class="scene-empty-tip">{{ $t('scene.empty.noEditPermission') }}</div>
           </div>
         </template>
         <template v-else>
@@ -158,7 +158,7 @@
                   <a-input
                       v-model="topSceneInfo.name"
                       class="scene-name-input"
-                      placeholder="场景名称"
+                      :placeholder="$t('scene.top.sceneNamePlaceholder')"
                       :max-length="50"
                       :disabled="!hasSceneUpdatePermission"
                       @blur="handleTopSceneInfoUpdate"
@@ -173,12 +173,20 @@
                       <template #icon>
                         <icon-robot/>
                       </template>
-                      AI 修复建议
+                      {{ $t('scene.heal.title') }}
+                    </a-button>
+                  </a-badge>
+                  <a-badge v-if="triageResults.length > 0" :count="triageResults.length">
+                    <a-button status="warning" @click="triageModalVisible = true" style="white-space: nowrap;">
+                      <template #icon>
+                        <icon-bug/>
+                      </template>
+                      {{ $t('scene.triage.title') }}
                     </a-button>
                   </a-badge>
                   <a-button v-permission="'auto:scene:execute'" status="danger" @click="exit()" v-if="isDebugging" style="white-space: nowrap;">
                       <icon-record-stop/>
-                      终止调试
+                      {{ $t('scene.top.stopDebug') }}
                   </a-button>
                   <a-button v-permission="'auto:scene:execute'" :status="!isDebugging ? 'success' : 'danger' "
                             type="primary"
@@ -202,7 +210,7 @@
                     <template #icon>
                       <icon-play-arrow/>
                     </template>
-                    Trace 回放
+                    {{ $t('scene.top.traceReplay') }}
                   </a-button>
                 </div>
               </div>
@@ -211,7 +219,7 @@
                 <a-input
                     v-model="topSceneInfo.description"
                     class="scene-desc-input"
-                    placeholder="添加场景描述…"
+                    :placeholder="$t('scene.top.descPlaceholder')"
                     :max-length="200"
                     :disabled="!hasSceneUpdatePermission"
                     @blur="handleTopSceneInfoUpdate"
@@ -220,7 +228,7 @@
                   <!-- 环境选择：API/UI 场景共用（UI 场景里的 HTTP/SQL 步骤执行时按环境合并 baseUrl/环境变量/数据库连接） -->
                   <a-select
                       v-model="selectedEnvironmentId"
-                      placeholder="选择环境"
+                      :placeholder="$t('scene.top.selectEnv')"
                       allow-clear
                       :disabled="!hasSceneUpdatePermission"
                       @change="onEnvironmentChange"
@@ -235,17 +243,17 @@
                     </a-option>
                   </a-select>
                   <!-- 环境配置入口：与 API 测试页同一个配置弹窗，关闭后刷新下拉选项 -->
-                  <a-tooltip content="环境配置">
-                    <a-button v-if="hasEnvConfigPermission" type="text" shape="circle" aria-label="环境配置" @click="envConfigVisible = true">
+                  <a-tooltip :content="$t('scene.top.envConfig')">
+                    <a-button v-if="hasEnvConfigPermission" type="text" shape="circle" :aria-label="$t('scene.top.envConfig')" @click="envConfigVisible = true">
                       <icon-settings/>
                     </a-button>
                   </a-tooltip>
                   <a-divider direction="vertical" style="margin: 0 4px;"/>
-                  <a-button @click="openCommonFunctionDialog()">公共函数</a-button>
-                  <a-button v-permission="'auto:scene:update'" @click="editSceneConfig()">场景配置</a-button>
+                  <a-button @click="openCommonFunctionDialog()">{{ $t('scene.top.commonFunction') }}</a-button>
+                  <a-button v-permission="'auto:scene:update'" @click="editSceneConfig()">{{ $t('scene.top.sceneConfig') }}</a-button>
                   <a-radio-group v-model="stepListShowModel" type="button">
-                    <a-radio value="list">列表</a-radio>
-                    <a-radio value="workflow">工作流</a-radio>
+                    <a-radio value="list">{{ $t('scene.top.listView') }}</a-radio>
+                    <a-radio value="workflow">{{ $t('scene.top.workflowView') }}</a-radio>
                   </a-radio-group>
                 </div>
               </div>
@@ -254,22 +262,22 @@
           <!--      核心步骤列表-->
           <a-card v-if="stepListShowModel==='list'" class="scene-list-card">
             <template #title v-if="currentEditScene && currentEditScene.id != null">
-              场景步骤
+              {{ $t('scene.step.title') }}
             </template>
             <template #extra>
               <a-button type="primary" v-if="stepDebugList && stepDebugList.length > 0 && !isApiScene"
-                        @click="debugScreenShotDrawerVisible = true">调试预览
+                        @click="debugScreenShotDrawerVisible = true">{{ $t('scene.top.debugPreview') }}
               </a-button>
               <!--              批量操作-->
               <a-dropdown v-if="hasStepUpdatePermission || hasStepDeletePermission">
                 <a-button :disabled="mutationsLocked">
-                  批量操作&emsp;
+                  {{ $t('scene.step.batchOperation') }}&emsp;
                   <icon-down/>
                 </a-button>
                 <template #content>
-                  <a-doption v-permission="'auto:step:update'" @click="batchEnabledStep()">启用</a-doption>
-                  <a-doption v-permission="'auto:step:update'" @click="batchDisableStep()">禁用</a-doption>
-                  <a-doption v-permission="'auto:step:delete'" @click="batchDeleteStep()">删除</a-doption>
+                  <a-doption v-permission="'auto:step:update'" @click="batchEnabledStep()">{{ $t('scene.step.enable') }}</a-doption>
+                  <a-doption v-permission="'auto:step:update'" @click="batchDisableStep()">{{ $t('scene.step.disable') }}</a-doption>
+                  <a-doption v-permission="'auto:step:delete'" @click="batchDeleteStep()">{{ $t('qa.common.delete') }}</a-doption>
                 </template>
               </a-dropdown>
             </template>
@@ -294,7 +302,7 @@
                   :step-debug-list="stepDebugList"
               />
               <div v-else>
-                <a-empty v-if="currentEditScene!= null && currentEditScene.id!=null" description="暂无步骤"/>
+                <a-empty v-if="currentEditScene!= null && currentEditScene.id!=null" :description="$t('scene.step.empty')"/>
                 <div v-if="currentEditFolder!=null && currentEditFolder.id!=null" class="protocol-cards-container">
                   <div
                       class="protocol-card"
@@ -304,7 +312,7 @@
                     <div class="icon-wrapper" :style="{ backgroundColor: 'rgba(168, 85, 247, 0.3)' }">
                       <component :is="h(IconCopy, { style: { color: '#FF914D', fontSize: '24px' } })" class="icon"/>
                     </div>
-                    <div class="card-title">新建场景</div>
+                    <div class="card-title">{{ $t('scene.tree.newScene') }}</div>
                   </div>
                 </div>
                 </div>
@@ -336,7 +344,7 @@
                 <a-dropdown v-if="overflowActions.length > 0" position="top" :popup-max-height="400">
                   <a-button>
                     <icon-more/>
-                    更多操作
+                    {{ $t('scene.step.moreActions') }}
                     <icon-down/>
                   </a-button>
                   <template #content>
@@ -369,7 +377,7 @@
                   <span class="footer-measure-item footer-measure-more">
                     <a-button>
                       <icon-more/>
-                      更多操作
+                      {{ $t('scene.step.moreActions') }}
                       <icon-down/>
                     </a-button>
                   </span>
@@ -429,14 +437,14 @@
 
 
     <!--添加/编辑 目录对话框-->
-    <a-modal v-model:visible="folderFormVisible" :title="`${modalMode}目录`" @cancel="handleCancel"
+    <a-modal v-model:visible="folderFormVisible" :title="$t('scene.modal.folderTitle', { mode: modalModeText })" @cancel="handleCancel"
              @before-ok="handleFolderBeforeOk">
       <a-form ref="addOrUpdateFolderFormRef" :model="addOrUpdateFolderForm" :rules="addFormRules">
-        <a-form-item field="parentId" label="父目录" required>
+        <a-form-item field="parentId" :label="$t('scene.modal.parentFolder')" required>
           <a-tree-select
               :data="selectableTreeNode"
               v-model="addOrUpdateFolderForm.parentId"
-              placeholder="选择父目录"
+              :placeholder="$t('scene.modal.selectParentFolder')"
               :fieldNames="{
                 key: 'id',
                 title: 'name',
@@ -447,21 +455,21 @@
             </template>
           </a-tree-select>
         </a-form-item>
-        <a-form-item field="name" label="目录名称" required>
+        <a-form-item field="name" :label="$t('scene.modal.folderName')" required>
           <a-input v-model="addOrUpdateFolderForm.name"/>
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!--添加场景对话框-->
-    <a-modal v-model:visible="sceneFormVisible" :title="`${modalMode}场景`" @cancel="handleSceneCancel"
+    <a-modal v-model:visible="sceneFormVisible" :title="$t('scene.modal.sceneTitle', { mode: modalModeText })" @cancel="handleSceneCancel"
              @before-ok="handleSceneBeforeOk">
       <a-form ref="addOrUpdateSceneFormRef" :model="addOrUpdateSceneForm" :rules="addSceneFormRules">
-        <a-form-item field="parentId" label="所属目录" required>
+        <a-form-item field="parentId" :label="$t('scene.modal.belongFolder')" required>
           <a-tree-select
               :data="folderList"
               v-model="addOrUpdateSceneForm.parentId"
-              placeholder="场景所属目录"
+              :placeholder="$t('scene.modal.sceneFolderPlaceholder')"
               :fieldNames="{
                 key: 'id',
                 title: 'name',
@@ -472,10 +480,10 @@
             </template>
           </a-tree-select>
         </a-form-item>
-        <a-form-item field="name" label="场景名称" required>
+        <a-form-item field="name" :label="$t('scene.modal.sceneName')" required>
           <a-input v-model="addOrUpdateSceneForm.name"/>
         </a-form-item>
-        <a-form-item field="description" label="场景描述">
+        <a-form-item field="description" :label="$t('scene.modal.sceneDesc')">
           <a-textarea v-model="addOrUpdateSceneForm.description" allow-clear :max-length="50" show-word-limit
                       :auto-size="true"/>
         </a-form-item>
@@ -491,7 +499,7 @@
       <template #title>
         <a-space>
           <icon-import style="color: rgb(var(--arcoblue-6));"/>
-          <span style="font-weight: 600;">导入场景</span>
+          <span style="font-weight: 600;">{{ $t('scene.scene.import') }}</span>
         </a-space>
       </template>
 
@@ -504,21 +512,21 @@
               <div class="import-source-card">
                 <icon-code class="import-source-icon"/>
                 <div class="import-source-title">CRX</div>
-                <div class="import-source-desc">Playwright 录制脚本</div>
+                <div class="import-source-desc">{{ $t('scene.import.playwrightDesc') }}</div>
               </div>
             </a-radio>
             <a-radio v-if="props.sceneCategory === 'UI'" value="platform">
               <div class="import-source-card">
                 <icon-desktop class="import-source-icon"/>
                 <div class="import-source-title">MokatestRecord</div>
-                <div class="import-source-desc">Mokatest 浏览器录制插件</div>
+                <div class="import-source-desc">{{ $t('scene.import.recordDesc') }}</div>
               </div>
             </a-radio>
             <a-radio value="mokatest-json">
               <div class="import-source-card">
                 <icon-file class="import-source-icon"/>
-                <div class="import-source-title">Mokatest 场景 JSON</div>
-                <div class="import-source-desc">导出的场景 JSON 文件</div>
+                <div class="import-source-title">{{ $t('scene.import.jsonTitle') }}</div>
+                <div class="import-source-desc">{{ $t('scene.import.jsonDesc') }}</div>
               </div>
             </a-radio>
           </a-radio-group>
@@ -529,11 +537,11 @@
           <!-- 第二层：所属目录 & 解析状态 -->
           <a-row :gutter="16" class="import-config-row">
             <a-col :span="12">
-              <a-form-item field="parentId" label="所属目录" required>
+              <a-form-item field="parentId" :label="$t('scene.modal.belongFolder')" required>
                 <a-tree-select
                     :data="folderList"
                     v-model="importSceneForm.parentId"
-                    placeholder="请选择场景所属目录"
+                    :placeholder="$t('scene.import.selectFolderPlaceholder')"
                     :fieldNames="{key: 'id', title: 'name'}"
                 >
                   <template #tree-slot-icon>
@@ -543,13 +551,13 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="解析状态" hide-asterisk>
+              <a-form-item :label="$t('scene.import.parseStatus')" hide-asterisk>
                 <a-alert
                     :type="importJsonSceneCount > 0 ? 'success' : 'warning'"
                     :show-icon="true"
                     :content="importJsonSceneCount > 0
-                      ? `解析成功，共包含 ${importJsonSceneCount} 个场景`
-                      : '暂未解析到可用场景，请先上传文件'"
+                      ? $t('scene.import.parseSuccess', { count: importJsonSceneCount })
+                      : $t('scene.import.parseEmpty')"
                 />
               </a-form-item>
             </a-col>
@@ -569,8 +577,8 @@
               <template #upload-button>
                 <div v-if="!importJsonFileList?.length" class="import-drag-zone">
                   <icon-cloud style="font-size: 40px; color: rgb(var(--arcoblue-6));"/>
-                  <div class="import-drag-title">点击上传或将 JSON 文件拖拽到此处</div>
-                  <div class="import-drag-desc">仅支持 .json 格式，可包含单个或多个场景</div>
+                  <div class="import-drag-title">{{ $t('scene.import.dragTitle') }}</div>
+                  <div class="import-drag-desc">{{ $t('scene.import.dragDesc') }}</div>
                 </div>
                 <div v-else class="import-file-card">
                   <div class="import-file-info">
@@ -595,11 +603,11 @@
         <template v-if="importSceneForm.mode === 'playwright'">
           <a-row :gutter="16" class="import-config-row">
             <a-col :span="12">
-              <a-form-item field="parentId" label="所属目录" required>
+              <a-form-item field="parentId" :label="$t('scene.modal.belongFolder')" required>
                 <a-tree-select
                     :data="folderList"
                     v-model="importSceneForm.parentId"
-                    placeholder="请选择场景所属目录"
+                    :placeholder="$t('scene.import.selectFolderPlaceholder')"
                     :fieldNames="{key: 'id', title: 'name'}"
                 >
                   <template #tree-slot-icon>
@@ -609,27 +617,27 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="格式说明" hide-asterisk>
-                <a-alert type="warning" show-icon content="每行一个 JSON 对象，CRX 格式"/>
+              <a-form-item :label="$t('scene.import.formatNote')" hide-asterisk>
+                <a-alert type="warning" show-icon :content="$t('scene.import.crxFormat')"/>
               </a-form-item>
             </a-col>
           </a-row>
-          <a-form-item field="CrxData" label="CRX 数据" required>
+          <a-form-item field="CrxData" :label="$t('scene.import.crxData')" required>
             <a-textarea
                 v-model="importSceneForm.CrxData"
                 :auto-size="{minRows: 6, maxRows: 6}"
-                placeholder="请粘贴 CRX 录制数据..."
+                :placeholder="$t('scene.import.crxPlaceholder')"
             />
           </a-form-item>
           <a-row :gutter="16">
             <a-col :span="12">
-              <a-form-item field="name" label="场景名称" required>
-                <a-input v-model="importSceneForm.name" placeholder="导入后的场景名称"/>
+              <a-form-item field="name" :label="$t('scene.modal.sceneName')" required>
+                <a-input v-model="importSceneForm.name" :placeholder="$t('scene.import.sceneNamePlaceholder')"/>
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item field="description" label="场景描述">
-                <a-input v-model="importSceneForm.description" placeholder="场景描述（可选）"/>
+              <a-form-item field="description" :label="$t('scene.modal.sceneDesc')">
+                <a-input v-model="importSceneForm.description" :placeholder="$t('scene.import.sceneDescPlaceholder')"/>
               </a-form-item>
             </a-col>
           </a-row>
@@ -639,11 +647,11 @@
         <template v-if="importSceneForm.mode === 'platform'">
           <a-row :gutter="16" class="import-config-row">
             <a-col :span="12">
-              <a-form-item field="parentId" label="所属目录" required>
+              <a-form-item field="parentId" :label="$t('scene.modal.belongFolder')" required>
                 <a-tree-select
                     :data="folderList"
                     v-model="importSceneForm.parentId"
-                    placeholder="请选择场景所属目录"
+                    :placeholder="$t('scene.import.selectFolderPlaceholder')"
                     :fieldNames="{key: 'id', title: 'name'}"
                 >
                   <template #tree-slot-icon>
@@ -653,13 +661,13 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="状态" hide-asterisk>
+              <a-form-item :label="$t('scene.import.status')" hide-asterisk>
                 <a-alert
                     :type="recordSteps.length > 0 ? 'success' : 'info'"
                     :show-icon="true"
                     :content="recordSteps.length > 0
-                      ? `解析成功，共 ${recordSteps.length} 个有效步骤`
-                      : '请在左侧上传录制文件，系统将自动解析为可执行步骤'"
+                      ? $t('scene.import.recordParseSuccess', { count: recordSteps.length })
+                      : $t('scene.import.recordParseEmpty')"
                 />
               </a-form-item>
             </a-col>
@@ -668,9 +676,9 @@
             <a-col :span="12" class="record-import-left">
               <a-form-item required>
                 <template #label>
-                  录制导入
+                  {{ $t('scene.import.recordImport') }}
                   <a-link style="margin-left: 8px; font-size: 12px;" @click="recorderGuideVisible = true">
-                    没有插件？点这里获取
+                    {{ $t('scene.import.noPlugin') }}
                   </a-link>
                 </template>
                 <div class="record-import-uploader">
@@ -681,11 +689,11 @@
                   />
                 </div>
               </a-form-item>
-              <a-form-item field="name" label="场景名称" required>
-                <a-input v-model="importSceneForm.name" placeholder="导入后的场景名称"/>
+              <a-form-item field="name" :label="$t('scene.modal.sceneName')" required>
+                <a-input v-model="importSceneForm.name" :placeholder="$t('scene.import.sceneNamePlaceholder')"/>
               </a-form-item>
-              <a-form-item field="description" label="场景描述">
-                <a-input v-model="importSceneForm.description" placeholder="场景描述（可选）"/>
+              <a-form-item field="description" :label="$t('scene.modal.sceneDesc')">
+                <a-input v-model="importSceneForm.description" :placeholder="$t('scene.import.sceneDescPlaceholder')"/>
               </a-form-item>
             </a-col>
             <a-col :span="12" class="record-import-right">
@@ -703,7 +711,7 @@
     <RecorderGuideModal v-model:visible="recorderGuideVisible"/>
 
     <!--导出场景弹窗：树形勾选-->
-    <a-modal v-model:visible="exportSceneVisible" title="导出场景"
+    <a-modal v-model:visible="exportSceneVisible" :title="$t('scene.scene.export')"
              :width="520"
              :ok-button-props="{ disabled: exportSceneCheckedKeys.length === 0 }"
              @before-ok="handleExportSceneConfirm"
@@ -711,13 +719,13 @@
       <div class="export-scene-dialog">
         <!-- 搜索 + 快捷选择 -->
         <div class="export-scene-toolbar">
-          <a-input v-model="exportSceneSearchKey" placeholder="搜索场景/目录名称" allow-clear>
+          <a-input v-model="exportSceneSearchKey" :placeholder="$t('scene.export.searchPlaceholder')" allow-clear>
             <template #prefix>
               <icon-search/>
             </template>
           </a-input>
-          <a-button type="text" size="small" style="flex-shrink: 0;" @click="exportSceneSelectAll">全选</a-button>
-          <a-button type="text" size="small" style="flex-shrink: 0;" @click="exportSceneCheckedKeys = []">清空</a-button>
+          <a-button type="text" size="small" style="flex-shrink: 0;" @click="exportSceneSelectAll">{{ $t('scene.export.selectAll') }}</a-button>
+          <a-button type="text" size="small" style="flex-shrink: 0;" @click="exportSceneCheckedKeys = []">{{ $t('scene.export.clearAll') }}</a-button>
         </div>
         <!-- 固定高度树区域，弹窗大小不随内容变化 -->
         <div class="export-scene-tree-wrapper">
@@ -743,11 +751,11 @@
                 <span v-html="highlightExportSceneName(node.name)"></span>
               </template>
             </a-tree>
-            <a-empty v-else description="未找到匹配的场景"/>
+            <a-empty v-else :description="$t('scene.export.noMatch')"/>
           </a-scrollbar>
         </div>
         <div class="export-scene-footer">
-          已选择 <span class="export-scene-count">{{ exportSceneCheckedKeys.length }}</span> 个场景
+          {{ $t('scene.export.selectedPrefix') }}<span class="export-scene-count">{{ exportSceneCheckedKeys.length }}</span>{{ $t('scene.export.selectedSuffix') }}
         </div>
       </div>
     </a-modal>
@@ -756,51 +764,83 @@
                     @update:visible="cancelDebugImage"/>
 
     <!-- AI 定位自愈建议聚合弹窗：一轮调试的多条建议统一在此批量处理 -->
-    <a-modal v-model:visible="healModalVisible" title="AI 修复建议" width="720px"
-             ok-text="全部采纳" :ok-button-props="{disabled: pendingLibrarySuggestions.length === 0}"
-             cancel-text="关闭" @ok="async (done: any) => { if (await applyAllHealSuggestions()) done(); }">
+    <a-modal v-model:visible="healModalVisible" :title="$t('scene.heal.title')" width="720px"
+             :ok-text="$t('scene.heal.applyAll')" :ok-button-props="{disabled: pendingLibrarySuggestions.length === 0}"
+             :cancel-text="$t('scene.heal.close')" @ok="async (done: any) => { if (await applyAllHealSuggestions()) done(); }">
       <a-alert type="info" style="margin-bottom: 12px;">
-        以下步骤的定位失效后由 AI 自动修复并通过真实页面验证。采纳后将写回元素库，所有引用该元素的场景同步生效。
+        {{ $t('scene.heal.alertInfo') }}
       </a-alert>
       <a-list :data="healSuggestions" :bordered="false">
         <template #item="{ item }">
           <a-list-item>
             <div style="width: 100%;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span style="font-weight: 600;">{{ item.stepName || ('步骤 #' + item.stepId) }}</span>
+                <span style="font-weight: 600;">{{ item.stepName || $t('scene.common.stepFallback', { id: item.stepId }) }}</span>
                 <a-tag v-if="item.elementName" size="small">{{ item.elementName }}</a-tag>
-                <a-tag v-if="item.locatorSource === 'CUSTOM'" size="small" color="orange">自定义定位</a-tag>
-                <a-tag v-if="item.status === 'applied'" size="small" color="green">已写回</a-tag>
-                <a-tag v-else-if="item.status === 'ignored'" size="small" color="gray">已忽略</a-tag>
+                <a-tag v-if="item.locatorSource === 'CUSTOM'" size="small" color="orange">{{ $t('scene.heal.customLocator') }}</a-tag>
+                <a-tag v-if="item.status === 'applied'" size="small" color="green">{{ $t('scene.heal.applied') }}</a-tag>
+                <a-tag v-else-if="item.status === 'ignored'" size="small" color="gray">{{ $t('scene.heal.ignored') }}</a-tag>
               </div>
               <div style="font-size: 12px; line-height: 1.8;">
                 <div>
-                  <span style="color: var(--color-text-3);">旧定位（已失效）：</span>
+                  <span style="color: var(--color-text-3);">{{ $t('scene.heal.oldLocator') }}</span>
                   <code style="color: rgb(var(--red-6)); word-break: break-all;">{{ item.oldType }} = {{ item.oldValue }}</code>
                 </div>
                 <div>
-                  <span style="color: var(--color-text-3);">新定位（已验证）：</span>
+                  <span style="color: var(--color-text-3);">{{ $t('scene.heal.newLocator') }}</span>
                   <code style="color: rgb(var(--green-6)); word-break: break-all;">{{ item.newType }} = {{ item.newValue }}</code>
                 </div>
                 <div v-if="item.locatorSource === 'CUSTOM' && item.status === 'pending'" style="color: var(--color-text-3);">
-                  自定义定位将写回该步骤的自定义定位；调试运行中受写保护时需调试结束后采纳。
+                  {{ $t('scene.heal.customNote') }}
                 </div>
               </div>
             </div>
             <template #actions>
               <template v-if="item.status === 'pending'">
                 <a-button type="text" size="small" status="success" :loading="item.applying"
-                          @click="applyHealSuggestion(item)">采纳</a-button>
-                <a-button type="text" size="small" @click="ignoreHealSuggestion(item)">忽略</a-button>
+                          @click="applyHealSuggestion(item)">{{ $t('scene.heal.apply') }}</a-button>
+                <a-button type="text" size="small" @click="ignoreHealSuggestion(item)">{{ $t('scene.heal.ignore') }}</a-button>
               </template>
             </template>
           </a-list-item>
         </template>
       </a-list>
-      <a-empty v-if="healSuggestions.length === 0" description="暂无修复建议"/>
+      <a-empty v-if="healSuggestions.length === 0" :description="$t('scene.heal.empty')"/>
     </a-modal>
 
-    <a-modal v-model:visible="sceneConfigFormVisible" title="编辑场景配置"
+    <a-modal v-model:visible="triageModalVisible" :title="$t('scene.triage.title')" width="720px" :footer="false">
+      <a-alert type="info" style="margin-bottom: 12px;">
+        {{ $t('scene.triage.alertInfo') }}
+      </a-alert>
+      <a-list :data="triageResults" :bordered="false">
+        <template #item="{ item }">
+          <a-list-item>
+            <div style="width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-weight: 600;">{{ item.stepName || $t('scene.common.stepFallback', { id: item.stepId }) }}</span>
+                <a-tag size="small" :color="TRIAGE_CATEGORY_COLOR[item.category] || 'gray'">
+                  {{ TRIAGE_CATEGORY_TEXT[item.category] || item.category }}
+                </a-tag>
+                <a-tag v-if="item.bugCreated" size="small" color="green">{{ $t('scene.triage.bugCreated') }}</a-tag>
+              </div>
+              <div v-if="item.detail" style="font-size: 12px; line-height: 1.8; color: var(--color-text-2); white-space: pre-wrap;">{{ item.detail }}</div>
+              <div v-if="item.bugDraft" style="font-size: 12px; line-height: 1.8; margin-top: 4px;">
+                <div><span style="color: var(--color-text-3);">{{ $t('scene.triage.bugTitle') }}</span>{{ item.bugDraft.title }}</div>
+                <div><span style="color: var(--color-text-3);">{{ $t('scene.triage.severity') }}</span>{{ item.bugDraft.severity }}</div>
+                <div><span style="color: var(--color-text-3);">{{ $t('scene.triage.reproduceSteps') }}</span><span style="white-space: pre-wrap;">{{ item.bugDraft.reproduceSteps }}</span></div>
+              </div>
+            </div>
+            <template #actions>
+              <a-button v-if="item.bugDraft && !item.bugCreated" type="text" size="small" status="danger"
+                        :loading="triageBugCreating" @click="createBugFromTriage(item)">{{ $t('scene.triage.createBug') }}</a-button>
+            </template>
+          </a-list-item>
+        </template>
+      </a-list>
+      <a-empty v-if="triageResults.length === 0" :description="$t('scene.triage.empty')"/>
+    </a-modal>
+
+    <a-modal v-model:visible="sceneConfigFormVisible" :title="$t('scene.config.title')"
              width="auto"
              @before-ok="handleSceneConfigBeforeOk">
       <a-form
@@ -810,85 +850,85 @@
         <a-tabs :default-active-key="1">
           <!-- ========== API场景 ========== -->
           <template v-if="isApiScene">
-            <a-tab-pane :key="1" title="场景Header">
+            <a-tab-pane :key="1" :title="$t('scene.config.tabHeader')">
               <ParameterTable ref="sceneHeaderTableRef" context="header" @change="onSceneConfigChange"/>
             </a-tab-pane>
-            <a-tab-pane :key="2" title="场景Cookie">
+            <a-tab-pane :key="2" :title="$t('scene.config.tabCookie')">
               <ParameterTable ref="sceneCookieTableRef" context="cookie" @change="onSceneConfigChange"/>
             </a-tab-pane>
-            <a-tab-pane :key="3" title="场景变量">
+            <a-tab-pane :key="3" :title="$t('scene.config.tabVariable')">
               <ParameterTable ref="sceneVarTableRef" context="variable" @change="onSceneConfigChange"/>
             </a-tab-pane>
-            <a-tab-pane :key="4" title="场景断言">
+            <a-tab-pane :key="4" :title="$t('scene.config.tabAssert')">
               <AssertionTable ref="sceneAssertTableRef" @change="onSceneConfigChange"/>
             </a-tab-pane>
           </template>
           <!-- ========== UI场景 ========== -->
           <template v-else>
-            <a-tab-pane :key="1" title="运行配置">
-              <a-form-item field="sceneBrowserConfig.browserType" label="浏览器类型" required>
+            <a-tab-pane :key="1" :title="$t('scene.config.tabRun')">
+              <a-form-item field="sceneBrowserConfig.browserType" :label="$t('scene.config.browserType')" required>
                 <a-select v-model="updateSceneConfigForm.sceneBrowserConfig.browserType">
-                  <a-option value="CHROME">谷歌</a-option>
-                  <a-option value="EDGE">微软Edge</a-option>
-                  <a-option value="FIREFOX">火狐</a-option>
+                  <a-option value="CHROME">{{ $t('scene.config.browser.chrome') }}</a-option>
+                  <a-option value="EDGE">{{ $t('scene.config.browser.edge') }}</a-option>
+                  <a-option value="FIREFOX">{{ $t('scene.config.browser.firefox') }}</a-option>
                   <a-option value="SAFARI">safari</a-option>
-                  <a-option value="IE">IE浏览器</a-option>
+                  <a-option value="IE">{{ $t('scene.config.browser.ie') }}</a-option>
                 </a-select>
               </a-form-item>
-              <a-form-item field="sceneBrowserConfig.runningType" label="运行模式" required>
+              <a-form-item field="sceneBrowserConfig.runningType" :label="$t('scene.config.runningType')" required>
                 <a-select v-model="updateSceneConfigForm.sceneBrowserConfig.runningType">
-                  <a-option value="NORMAL">正常模式</a-option>
-                  <a-option value="HEADLESS">无头模式</a-option>
+                  <a-option value="NORMAL">{{ $t('scene.config.runMode.normal') }}</a-option>
+                  <a-option value="HEADLESS">{{ $t('scene.config.runMode.headless') }}</a-option>
                 </a-select>
               </a-form-item>
-              <a-form-item field="sceneBrowserConfig.windowMode" label="窗口模式" required>
+              <a-form-item field="sceneBrowserConfig.windowMode" :label="$t('scene.config.windowMode')" required>
                 <a-select v-model="updateSceneConfigForm.sceneBrowserConfig.windowMode">
-                  <a-option value="MAXIMIZE">窗口最大化</a-option>
-                  <a-option value="CUSTOMSIZE">自定义尺寸</a-option>
+                  <a-option value="MAXIMIZE">{{ $t('scene.config.window.maximize') }}</a-option>
+                  <a-option value="CUSTOMSIZE">{{ $t('scene.config.window.customSize') }}</a-option>
                 </a-select>
               </a-form-item>
-              <a-form-item field="sceneBrowserConfig.deviceType" label="设备类型" required>
+              <a-form-item field="sceneBrowserConfig.deviceType" :label="$t('scene.config.deviceType')" required>
                 <a-select v-model="updateSceneConfigForm.sceneBrowserConfig.deviceType">
-                  <a-option value="MOBILE">移动端</a-option>
-                  <a-option value="PC">PC端</a-option>
+                  <a-option value="MOBILE">{{ $t('scene.config.device.mobile') }}</a-option>
+                  <a-option value="PC">{{ $t('scene.config.device.pc') }}</a-option>
                 </a-select>
               </a-form-item>
               <a-form-item v-if="updateSceneConfigForm.sceneBrowserConfig.windowMode === 'CUSTOMSIZE'"
-                           field="sceneBrowserConfig.windowSize" label="窗口大小" required>
+                           field="sceneBrowserConfig.windowSize" :label="$t('scene.config.windowSize')" required>
                 <a-input v-model="updateSceneConfigForm.sceneBrowserConfig.windowSize"/>
               </a-form-item>
             </a-tab-pane>
-            <a-tab-pane :key="2" title="步骤通用配置">
-              <a-form-item field="setting.timeout" label="超时时间" required>
+            <a-tab-pane :key="2" :title="$t('scene.config.tabStepCommon')">
+              <a-form-item field="setting.timeout" :label="$t('scene.config.timeout')" required>
                 <a-input-number :precision="0" hide-button="hide-button" :min="0"
                                 v-model="updateSceneConfigForm.setting.timeout">
-                  <template #suffix>秒</template>
+                  <template #suffix>{{ $t('scene.config.seconds') }}</template>
                 </a-input-number>
               </a-form-item>
-              <a-form-item field="setting.preExecuteWaitingTime" label="执行前等待时间" required>
+              <a-form-item field="setting.preExecuteWaitingTime" :label="$t('scene.config.preWait')" required>
                 <a-input-number :precision="0" hide-button="hide-button" :min="0"
                                 v-model="updateSceneConfigForm.setting.preExecuteWaitingTime">
-                  <template #suffix>秒</template>
+                  <template #suffix>{{ $t('scene.config.seconds') }}</template>
                 </a-input-number>
               </a-form-item>
-              <a-form-item field="setting.waitingTimeAfterExecution" label="执行后等待时间" required>
+              <a-form-item field="setting.waitingTimeAfterExecution" :label="$t('scene.config.postWait')" required>
                 <a-input-number :precision="0" hide-button="hide-button" :min="0"
                                 v-model="updateSceneConfigForm.setting.waitingTimeAfterExecution">
-                  <template #suffix>秒</template>
+                  <template #suffix>{{ $t('scene.config.seconds') }}</template>
                 </a-input-number>
               </a-form-item>
-              <a-form-item field="setting.screenshotConfiguration" label="截图策略" required>
+              <a-form-item field="setting.screenshotConfiguration" :label="$t('scene.config.screenshot')" required>
                 <a-select v-model="updateSceneConfigForm.setting.screenshotConfiguration">
-                  <a-option value="NOT_SCREENSHOT">不截图</a-option>
-                  <a-option value="SCREENSHOT">当前步骤截图</a-option>
-                  <a-option value="SCREENSHOT_EXCEPTION">出现异常截图</a-option>
+                  <a-option value="NOT_SCREENSHOT">{{ $t('scene.config.shot.none') }}</a-option>
+                  <a-option value="SCREENSHOT">{{ $t('scene.config.shot.step') }}</a-option>
+                  <a-option value="SCREENSHOT_EXCEPTION">{{ $t('scene.config.shot.exception') }}</a-option>
                 </a-select>
               </a-form-item>
-              <a-form-item field="setting.errorHandlingStrategy" label="错误处理策略" required>
+              <a-form-item field="setting.errorHandlingStrategy" :label="$t('scene.config.errorStrategy')" required>
                 <a-select v-model="updateSceneConfigForm.setting.errorHandlingStrategy">
-                  <a-option value="IGNORE">忽略</a-option>
-                  <a-option value="STOP">终止</a-option>
-                  <a-option value="RETRY" disabled>重试（暂时搁置）</a-option>
+                  <a-option value="IGNORE">{{ $t('scene.config.err.ignore') }}</a-option>
+                  <a-option value="STOP">{{ $t('scene.config.err.stop') }}</a-option>
+                  <a-option value="RETRY" disabled>{{ $t('scene.config.err.retry') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-tab-pane>
@@ -909,8 +949,10 @@
 <script lang="ts" setup>
 import {IconCopy, IconCode, IconDesktop, IconFile, IconFolder, IconMore, IconRight} from '@arco-design/web-vue/es/icon';
 import {computed, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
+import {useI18n} from 'vue-i18n';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import EmptyActionCard from '@/components/empty-action-card/index.vue';
+import {saveBug} from '@/api/MyApi/qa';
 import {Scene} from "@/types/domain/Scene";
 import {Message, Modal, TreeNodeData} from "@arco-design/web-vue";
 import {
@@ -1020,6 +1062,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const { t } = useI18n();
 
 const isApiScene = computed(() => props.sceneCategory === 'API');
 
@@ -1169,18 +1213,18 @@ const formatPauseCountdown = (seconds: number) => {
 
 // 调试主按钮文案：状态机单点收口，避免并列 v-if 分支互相打架
 const debugButtonLabel = computed(() => {
-  if (!isDebugging.value) return '调试场景';
-  if (isApiScene.value) return '调试中...';
+  if (!isDebugging.value) return t('scene.debug.start');
+  if (isApiScene.value) return t('scene.debug.running');
   if (debugStatus.value === '运行中') {
-    return pausePending.value ? '等待步骤完成后暂停…' : '暂停调试';
+    return pausePending.value ? t('scene.debug.pausePending') : t('scene.debug.pause');
   }
   if (debugStatus.value === '失败挂起') {
-    return `继续重试（${formatPauseCountdown(pauseCountdown.value)} 后关闭）`;
+    return t('scene.debug.resumeRetry', { time: formatPauseCountdown(pauseCountdown.value) });
   }
   if (debugStatus.value === '暂停') {
-    return `继续调试（${formatPauseCountdown(pauseCountdown.value)} 后关闭）`;
+    return t('scene.debug.resume', { time: formatPauseCountdown(pauseCountdown.value) });
   }
-  return '调试中...';
+  return t('scene.debug.running');
 });
 
 const startPauseCountdown = (deadlineMs: number, onTimeout: () => void) => {
@@ -1273,6 +1317,9 @@ const showSettingTab = computed(() => {
 
 // 对话框的状态（新建/编辑）
 const modalMode = ref<string>('');
+// modalMode 内部值保持 '新建'/'编辑'（有多处逻辑判断），展示文案单独映射
+const modalModeText = computed(() =>
+    modalMode.value === '编辑' ? t('scene.modal.modeEdit') : t('scene.modal.modeCreate'));
 
 // 当前编辑的目录
 const currentEditFolder = ref<Scene>({});
@@ -1504,7 +1551,7 @@ const reloadSelectedScene = async () => {
 
   const {data} = await getSceneById(selectedScene.value);
   if (!data && data?.trim() != '') {
-    Message.warning(`未查找到相关场景信息(sceneId:${selectedScene.value})，请确认场景是否被删除！`);
+    Message.warning(t('scene.message.sceneNotFound', { id: selectedScene.value }));
   }
   currentEditScene.value = data;
   // 获取步骤列表
@@ -1570,7 +1617,7 @@ watch(isDebugging, (val) => {
 // 调试期间通过 Vue Router 跳转时给出原生 confirm 拦截
 onBeforeRouteLeave(() => {
   if (isDebugging.value) {
-    const confirmed = window.confirm('当前正在调试场景，离开页面将终止调试，是否继续？');
+    const confirmed = window.confirm(t('scene.debug.leaveConfirm'));
     if (confirmed) {
       exit();
     }
@@ -1595,7 +1642,7 @@ const onDrop = async ({
 
   // 如果拖拽节点id是0 or null 就直接返回
   if (!dragNode.id || dragNode.id === 0) {
-    Message.warning('根节点无法拖拽');
+    Message.warning(t('scene.tree.rootNoDrag'));
     return;
   }
 
@@ -1699,10 +1746,10 @@ const onDrop = async ({
 
   const result = await updateSort(data[0].children);
   if (result.data === true) {
-    Message.success("更新成功");
+    Message.success(t('scene.common.updateSuccess'));
   } else {
     Message.error({
-      content: "更新失败",
+      content: t('scene.common.updateFailed'),
       duration: 1000
     })
   }
@@ -1779,40 +1826,40 @@ const handleSceneTreeExpand = () => {
 }
 
 // 新建/编辑（目录）表单提交校验
-const addFormRules = {
+const addFormRules = computed(() => ({
   parentId: [
     {
       required: true,
-      message: '请选择父目录',
+      message: t('scene.rules.parentFolder'),
     },
   ],
   name: [
     {
       required: true,
-      message: '请输入目录名称',
+      message: t('scene.rules.folderName'),
     },
   ]
-};
+}));
 
 
 // 编辑场景配置表单 提交检验规则
-const updateSceneConfigFormRules = {
+const updateSceneConfigFormRules = computed(() => ({
   'sceneBrowserConfig.browserType': [
     {
       required: true,
-      message: '请选择浏览器类型',
+      message: t('scene.rules.browserType'),
     },
   ],
   'sceneBrowserConfig.runningType': [
     {
       required: true,
-      message: '请选择运行类型',
+      message: t('scene.rules.runningType'),
     },
   ],
   'sceneBrowserConfig.windowMode': [
     {
       required: true,
-      message: '请选择窗口模式',
+      message: t('scene.rules.windowMode'),
     },
   ],
   'sceneBrowserConfig.windowSize': [
@@ -1825,12 +1872,12 @@ const updateSceneConfigFormRules = {
         }
         // 否则检查是否为空
         if (!value || value.trim() === '') {
-          return callback('请输入尺寸');
+          return callback(t('scene.rules.windowSize'));
         }
 
 
         if (!/^(?!0)\d{1,4}x(?!0)\d{1,4}$/.test(value)) {
-          return callback('请输入合法的屏幕尺寸');
+          return callback(t('scene.rules.windowSizeInvalid'));
         }
         callback();
         callback();
@@ -1840,7 +1887,7 @@ const updateSceneConfigFormRules = {
   'setting.timeout': [
     {
       required: true,
-      message: '请输入超时时间',
+      message: t('scene.rules.timeout'),
     },
     {
       validator: (value: any, callback: any) => {
@@ -1849,7 +1896,7 @@ const updateSceneConfigFormRules = {
         }
         const num = Number(value);
         if (Number.isNaN(num) || num < 0) {
-          return callback('超时时间必须大于等于 0');
+          return callback(t('scene.rules.timeoutMin'));
         }
         callback();
       }
@@ -1858,7 +1905,7 @@ const updateSceneConfigFormRules = {
   'setting.preExecuteWaitingTime': [
     {
       required: true,
-      message: '请输入执行前等待时间',
+      message: t('scene.rules.preWait'),
     },
     {
       validator: (value: any, callback: any) => {
@@ -1867,7 +1914,7 @@ const updateSceneConfigFormRules = {
         }
         const num = Number(value);
         if (Number.isNaN(num) || num < 0) {
-          return callback('执行前等待时间必须大于等于 0');
+          return callback(t('scene.rules.preWaitMin'));
         }
         callback();
       }
@@ -1876,7 +1923,7 @@ const updateSceneConfigFormRules = {
   'setting.waitingTimeAfterExecution': [
     {
       required: true,
-      message: '请输入执行后等待时间',
+      message: t('scene.rules.postWait'),
     },
     {
       validator: (value: any, callback: any) => {
@@ -1885,7 +1932,7 @@ const updateSceneConfigFormRules = {
         }
         const num = Number(value);
         if (Number.isNaN(num) || num < 0) {
-          return callback('执行后等待时间必须大于等于 0');
+          return callback(t('scene.rules.postWaitMin'));
         }
         callback();
       }
@@ -1894,47 +1941,47 @@ const updateSceneConfigFormRules = {
   'setting.screenshotConfiguration': [
     {
       required: true,
-      message: '请选择截图策略',
+      message: t('scene.rules.screenshot'),
     },
   ],
   'setting.errorHandlingStrategy': [
     {
       required: true,
-      message: '请选择异常处理策略',
+      message: t('scene.rules.errorStrategy'),
     },
   ],
-};
+}));
 
 
 // 新建/编辑(场景)表单提交校验
-const addSceneFormRules = {
+const addSceneFormRules = computed(() => ({
   parentId: [
     {
       required: true,
-      message: '请选择父目录',
+      message: t('scene.rules.parentFolder'),
     },
   ],
   name: [
     {
       required: true,
-      message: '请输入场景名称',
+      message: t('scene.rules.sceneName'),
     },
   ],
   CrxData: [
     {
       required: true,
-      message: '请输入Crx数据',
+      message: t('scene.rules.crxData'),
     },
   ]
 
-};
+}));
 
 // 导入场景表单校验
 const importSceneFormRules = computed(() => ({
   parentId: [
     {
       required: true,
-      message: '请选择父目录',
+      message: t('scene.rules.parentFolder'),
     },
   ],
   name: importSceneForm.value.mode === 'mokatest-json'
@@ -1942,14 +1989,14 @@ const importSceneFormRules = computed(() => ({
       : [
         {
           required: true,
-          message: '请输入场景名称',
+          message: t('scene.rules.sceneName'),
         },
       ],
   CrxData: importSceneForm.value.mode === 'playwright'
       ? [
         {
           required: true,
-          message: '请输入Crx数据',
+          message: t('scene.rules.crxData'),
         },
       ]
       : [],
@@ -2071,7 +2118,7 @@ const handleFolderBeforeOk = async () => {
 
   if (result.data === true) {
     Message.success({
-      content: `${modalMode.value}成功`,
+      content: t('scene.modal.opSuccess', { mode: modalModeText.value }),
       duration: 1000
     })
     // 清空表单
@@ -2107,7 +2154,7 @@ const handleSceneBeforeOk = async () => {
   }
   if (result.data === true) {
     Message.success({
-      content: `${modalMode.value}成功`,
+      content: t('scene.modal.opSuccess', { mode: modalModeText.value }),
       duration: 1000
     })
     // 重新加载目录
@@ -2166,10 +2213,10 @@ const filterNodeAndSubNode = (nodeId: string) => {
 // 删除目录的确认框
 const handleFolderDelete = async (deleteId: string) => {
   Modal.warning({
-    title: '确认删除？',
-    content: () => '删除后，该目录及子目录下的场景将不再可见。',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('qa.common.confirmDelete'),
+    content: () => t('scene.modal.deleteFolderContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       await deleteFolderOrScene(deleteId);
@@ -2181,10 +2228,10 @@ const handleFolderDelete = async (deleteId: string) => {
 // 删除场景的确认框
 const handleSceneDelete = async (deleteId: string) => {
   Modal.warning({
-    title: '确认删除？',
-    content: () => '确认删除该场景吗？',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('qa.common.confirmDelete'),
+    content: () => t('scene.modal.deleteSceneContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       await deleteFolderOrScene(deleteId);
@@ -2205,7 +2252,7 @@ const deleteFolderOrScene = async (id: string) => {
   const result = await deleteScene(id);
   if (result.data === true) {
     Message.success({
-      content: '删除成功',
+      content: t('scene.common.deleteSuccess'),
       duration: 1000
     })
     clearSelectedSceneOrFolder();
@@ -2233,7 +2280,7 @@ const topSceneInfo = ref<Scene>({});
 const selectScene = async (data: any, selectedNodes: TreeNodeData) => {
   // 切换场景前，如果正在调试，提示用户终止调试
   if (isDebugging.value) {
-    const confirmed = window.confirm('当前正在调试场景，切换场景将终止调试，是否继续？');
+    const confirmed = window.confirm(t('scene.debug.switchConfirm'));
     if (!confirmed) {
       return;
     }
@@ -2269,7 +2316,7 @@ const selectScene = async (data: any, selectedNodes: TreeNodeData) => {
 // 添加步骤
 const addOperation = (config: any, schema: any, stepType: any) => {
   if (mutationsLocked.value) {
-    Message.warning('调试运行中，暂停后可新增步骤');
+    Message.warning(t('scene.debug.lockedAdd'));
     return;
   }
   stepFormVisible.value = true;
@@ -2282,7 +2329,7 @@ const addOperation = (config: any, schema: any, stepType: any) => {
 // 添加相邻步骤
 const addAdjacentStep = (step: TestStep, stepType: any, isChildren: boolean, source?: 'new' | 'import') => {
   if (mutationsLocked.value) {
-    Message.warning('调试运行中，暂停后可新增步骤');
+    Message.warning(t('scene.debug.lockedAdd'));
     return;
   }
   // API/SQL 步骤走「新建/引入」拆分入口
@@ -2372,7 +2419,7 @@ const addApiStep = (config: any, schema: any, stepType: any, source: 'new' | 'im
   isChildren: boolean
 }) => {
   if (mutationsLocked.value) {
-    Message.warning('调试运行中，暂停后可新增步骤');
+    Message.warning(t('scene.debug.lockedAdd'));
     return;
   }
   if (source === 'import') {
@@ -2401,7 +2448,7 @@ const currentStep = ref<TestStep>({} as TestStep);
 const handleSubmit = async (stepDetail: any) => {
   // 调试锁定兜底：运行中禁止一切修改；暂停/失败挂起仅未执行步骤可保存
   if (mutationsLocked.value || isStepLocked(currentStep.value?.id)) {
-    Message.warning('调试中，该步骤不可修改');
+    Message.warning(t('scene.debug.lockedModify'));
     return;
   }
 
@@ -2423,7 +2470,7 @@ const handleSubmit = async (stepDetail: any) => {
     const result = await updateStep(testStep);
     if (result.data) {
       Message.success({
-        content: '更新成功',
+        content: t('scene.common.updateSuccess'),
         duration: 1000
       })
       // 重新加载步骤列表
@@ -2442,7 +2489,7 @@ const handleSubmit = async (stepDetail: any) => {
       // 插入成功，重新加载步骤列表
       if (result.data) {
         Message.success({
-          content: '添加成功',
+          content: t('scene.common.addSuccess'),
           duration: 1000
         })
         // 重新加载步骤列表
@@ -2458,7 +2505,7 @@ const handleSubmit = async (stepDetail: any) => {
       // 插入成功，重新加载步骤列表
       if (result.data) {
         Message.success({
-          content: '添加成功',
+          content: t('scene.common.addSuccess'),
           duration: 1000
         })
         // 重新加载步骤列表
@@ -2479,7 +2526,7 @@ const handleTopSceneInfoUpdate = async () => {
   // 校验空信息
   if (topSceneInfo.value.name == null || topSceneInfo.value.name.trim() === '') {
     Message.error({
-      content: '场景名称不能为空',
+      content: t('scene.message.sceneNameRequired'),
       duration: 1000
     })
     // 重新赋值
@@ -2489,7 +2536,7 @@ const handleTopSceneInfoUpdate = async () => {
   let result = await updateScene(topSceneInfo.value);
   if (result.data === true) {
     Message.success({
-      content: `${modalMode.value}成功`,
+      content: t('scene.modal.opSuccess', { mode: modalModeText.value }),
       duration: 1000
     })
     // 重新加载目录
@@ -2515,7 +2562,7 @@ const ws = ref();
 const startApiDebug = async (command?: string) => {
   if (sceneStepList.value.length === 0) {
     Message.warning({
-      content: '当前场景步骤为空，请先添加步骤',
+      content: t('scene.debug.emptySteps'),
       duration: 1000
     })
     return;
@@ -2578,11 +2625,11 @@ const startApiDebug = async (command?: string) => {
           }
           const allSuccess = stepDebugList.value.every((s: any) => s.result?.status === 'SUCCESS');
           if (event.data.includes('执行异常')) {
-            Message.error({ content: 'API场景调试异常：' + event.data, duration: 2000 });
+            Message.error({ content: t('scene.debug.apiDebugErrorPrefix') + event.data, duration: 2000 });
           } else if (allSuccess) {
-            Message.success({ content: 'API场景调试完成，全部通过', duration: 2000 });
+            Message.success({ content: t('scene.debug.apiDebugPass'), duration: 2000 });
           } else {
-            Message.error({ content: 'API场景调试完成，存在失败步骤', duration: 2000 });
+            Message.error({ content: t('scene.debug.apiDebugFail'), duration: 2000 });
           }
           isDebugging.value = false;
           debugStatus.value = '未运行';
@@ -2636,7 +2683,7 @@ const startApiDebug = async (command?: string) => {
     // 连接异常，可能是登录失效，触发一次 HTTP 登录检查（拦截器会自动跳转登录页）
     getUserInfo().catch(() => {});
     Message.error({
-      content: 'API场景调试连接异常',
+      content: t('scene.debug.apiConnError'),
       duration: 2000
     });
     isDebugging.value = false;
@@ -2653,7 +2700,7 @@ const startApiDebug = async (command?: string) => {
 const runApiSceneFromStep = (step: any) => {
   if (isDebugging.value) return;
   if (!step?.id || !currentEditScene.value?.id) return;
-  Message.info({ content: `从步骤「${step.stepName}」开始执行`, duration: 1500 });
+  Message.info({ content: t('scene.debug.runFrom', { name: step.stepName }), duration: 1500 });
   startApiDebug(`from_${currentEditScene.value.id}_${step.id}`);
 }
 
@@ -2661,7 +2708,7 @@ const runApiSceneFromStep = (step: any) => {
 const runApiSceneSingleStep = (step: any) => {
   if (isDebugging.value) return;
   if (!step?.id || !currentEditScene.value?.id) return;
-  Message.info({ content: `仅执行步骤「${step.stepName}」`, duration: 1500 });
+  Message.info({ content: t('scene.debug.runOnly', { name: step.stepName }), duration: 1500 });
   startApiDebug(`only_${currentEditScene.value.id}_${step.id}`);
 }
 
@@ -2676,13 +2723,63 @@ const healModalVisible = ref(false);
 const showHealSuggestion = (msg: any) => {
   healSuggestions.value.push({...msg, status: 'pending', applying: false});
   Message.success({
-    content: `AI 已自动修复步骤「${msg.stepName || '#' + msg.stepId}」的定位，可在调试栏「AI 修复建议」中处理`,
+    content: t('scene.heal.healed', { name: msg.stepName || '#' + msg.stepId }),
     duration: 4000,
   });
 };
 
 /** 待处理建议总数（角标计数） */
 const pendingHealCount = computed(() => healSuggestions.value.filter(s => s.status === 'pending').length);
+
+// ==================== AI 失败分诊 ====================
+/** 分诊结果聚合列表（一轮调试可能多条，与修复建议同模式，弹窗批量查看） */
+const triageResults = ref<any[]>([]);
+const triageModalVisible = ref(false);
+const triageBugCreating = ref(false);
+
+const TRIAGE_CATEGORY_TEXT = computed<Record<string, string>>(() => ({
+  DATA: t('scene.triage.catData'),
+  ENV: t('scene.triage.catEnv'),
+  PRODUCT_BUG: t('scene.triage.catProductBug'),
+  LOCATOR: t('scene.triage.catLocator'),
+}));
+const TRIAGE_CATEGORY_COLOR: Record<string, string> = {
+  DATA: 'arcoblue',
+  ENV: 'orange',
+  PRODUCT_BUG: 'red',
+  LOCATOR: 'purple',
+};
+
+/** 收到分诊结果：入列表 + 轻提示，入口在调试栏「AI 失败分诊」按钮 */
+const showTriageResult = (msg: any) => {
+  triageResults.value.push({...msg, bugCreated: false});
+  Message.info({
+    content: t('scene.triage.notice', { name: msg.stepName || '#' + msg.stepId, category: TRIAGE_CATEGORY_TEXT.value[msg.category] || msg.category }),
+    duration: 4000,
+  });
+};
+
+/** 从分诊 BUG 草稿创建 BUG（调 QA 模块保存接口，预填标题/描述/复现步骤/严重程度） */
+const createBugFromTriage = async (item: any) => {
+  if (!item.bugDraft || triageBugCreating.value) return;
+  triageBugCreating.value = true;
+  try {
+    await saveBug({
+      title: item.bugDraft.title,
+      description: item.bugDraft.description,
+      reproduceSteps: item.bugDraft.reproduceSteps,
+      severity: item.bugDraft.severity || 'NORMAL',
+      environment: 'TEST',
+    });
+    item.bugCreated = true;
+    Message.success(t('scene.triage.bugCreatedOk'));
+  } catch {
+    Message.error(t('scene.triage.bugCreatedFail'));
+  } finally {
+    triageBugCreating.value = false;
+  }
+};
+
 
 /** 待处理且可采纳的建议（库选写回元素库，自定义写回步骤） */
 const pendingLibrarySuggestions = computed(() =>
@@ -2695,10 +2792,10 @@ const applyHealSuggestion = async (item: any) => {
   }
   // 库选元素被所有引用它的步骤共享，写回前二次确认
   Modal.confirm({
-    title: '写回元素库确认',
-    content: `元素「${item.elementName || '#' + item.elementId}」可能被多个场景的步骤引用，写回后所有引用该元素的步骤都将使用新定位。确认继续？`,
-    okText: '确认写回',
-    cancelText: '再想想',
+    title: t('scene.heal.libraryConfirmTitle'),
+    content: t('scene.heal.libraryConfirmContent', { name: item.elementName || '#' + item.elementId }),
+    okText: t('scene.heal.libraryConfirmOk'),
+    cancelText: t('scene.heal.thinkAgain'),
     onOk: () => applyLibraryHealSuggestion(item),
   });
 };
@@ -2710,7 +2807,7 @@ const applyLibraryHealSuggestion = async (item: any) => {
     const result: any = await getElementById(item.elementId);
     const el = result.data;
     if (!el) {
-      Message.warning({content: '元素已被删除，无法写回', duration: 3000});
+      Message.warning({content: t('scene.heal.elementDeleted'), duration: 3000});
       item.status = 'ignored';
       return;
     }
@@ -2720,9 +2817,9 @@ const applyLibraryHealSuggestion = async (item: any) => {
       locatorValue: item.newValue,
     });
     item.status = 'applied';
-    Message.success({content: `已将新定位写回元素库（${item.elementName || '元素 #' + item.elementId}）`, duration: 2500});
+    Message.success({content: t('scene.heal.libraryApplied', { name: item.elementName || t('scene.heal.elementFallback', { id: item.elementId }) }), duration: 2500});
   } catch (e) {
-    Message.error({content: '写回元素库失败，请稍后重试或手动修改', duration: 3000});
+    Message.error({content: t('scene.heal.libraryApplyFail'), duration: 3000});
   } finally {
     item.applying = false;
   }
@@ -2749,15 +2846,15 @@ const applyCustomHealSuggestion = async (item: any) => {
     detail.element.locatorSource = 'CUSTOM';
     await updateStep({...step, stepDetail: detail});
     item.status = 'applied';
-    Message.success({content: `已将新定位写回步骤「${item.stepName || '#' + item.stepId}」`, duration: 2500});
+    Message.success({content: t('scene.heal.stepApplied', { name: item.stepName || '#' + item.stepId }), duration: 2500});
     // 刷新步骤列表，让步骤行展示最新定位
     reloadSelectedScene();
   } catch (e: any) {
     const errMsg = e?.response?.data?.message || '';
     if (errMsg.includes('调试')) {
-      Message.warning({content: '调试运行中步骤受写保护，请在调试结束后再采纳', duration: 3500});
+      Message.warning({content: t('scene.heal.writeProtected'), duration: 3500});
     } else {
-      Message.error({content: '写回步骤失败，请稍后重试或手动修改', duration: 3000});
+      Message.error({content: t('scene.heal.stepApplyFail'), duration: 3000});
     }
   } finally {
     item.applying = false;
@@ -2780,10 +2877,10 @@ const applyAllHealSuggestions = async (): Promise<boolean> => {
   };
   if (libraryCount > 0) {
     Modal.confirm({
-      title: '批量写回确认',
-      content: `即将采纳 ${items.length} 条建议，其中 ${libraryCount} 条会写回元素库，所有引用这些元素的步骤都将使用新定位。确认继续？`,
-      okText: '确认全部采纳',
-      cancelText: '再想想',
+      title: t('scene.heal.batchConfirmTitle'),
+      content: t('scene.heal.batchConfirmContent', { total: items.length, count: libraryCount }),
+      okText: t('scene.heal.batchConfirmOk'),
+      cancelText: t('scene.heal.thinkAgain'),
       onOk: doApplyAll,
     });
     return false;
@@ -2801,7 +2898,7 @@ const startDebug = async (startCommand?: string) => {
   // 工作流视图有未保存节点时拦截
   if (stepListShowModel.value === 'workflow' && hasDirtyWorkflowNodes.value) {
     Message.warning({
-      content: '工作流视图中有未保存的节点修改，请先保存后再调试',
+      content: t('scene.debug.workflowDirty'),
       duration: 2000
     });
     return;
@@ -2810,7 +2907,7 @@ const startDebug = async (startCommand?: string) => {
   // 判断当前场景步骤是否为空
   if (sceneStepList.value.length === 0) {
     Message.warning({
-      content: '当前场景步骤为空，请先添加步骤',
+      content: t('scene.debug.emptySteps'),
       duration: 1000
     })
     return;
@@ -2831,6 +2928,9 @@ const startDebug = async (startCommand?: string) => {
 
   // 清空上一轮调试遗留的 AI 修复建议
   healSuggestions.value = [];
+
+  // 清空上一轮调试遗留的 AI 失败分诊结果
+  triageResults.value = [];
 
   // 重置挂起重试状态，防止旧状态残留
   isPausedOnFailure.value = false;
@@ -2867,6 +2967,12 @@ const startDebug = async (startCommand?: string) => {
         return;
       }
 
+      // AI 失败分诊结果（JSON 对象消息）：数据/环境/真BUG 分类 + 专家结论 + BUG 草稿
+      if (parsedMsg && parsedMsg.type === 'TRIAGE_RESULT') {
+        showTriageResult(parsedMsg);
+        return;
+      }
+
       // 登录失效或无权限，触发一次 HTTP 登录检查（拦截器会自动跳转登录页）
       if (typeof event.data === 'string' && (event.data.includes('启动失败：未获取到登录信息') || event.data.includes('启动失败：无权调试该场景'))) {
         getUserInfo().catch(() => {});
@@ -2885,7 +2991,7 @@ const startDebug = async (startCommand?: string) => {
           console.log('[UI Debug] 收到 PAUSED, deadlineMs=', deadlineMs);
           pausePending.value = false;
           if (runUntilTargetId.value != null) {
-            Message.success({content: '已执行到目标步骤并暂停', duration: 2000});
+            Message.success({content: t('scene.debug.pausedAtTarget'), duration: 2000});
             runUntilTargetId.value = null;
           }
           isDebugging.value = true;
@@ -2931,7 +3037,7 @@ const startDebug = async (startCommand?: string) => {
       // 暂停期间步骤发生变更，后端热加载并从锚点重跑：清空旧调试结果，等待新结果流入
       if (typeof event.data === 'string' && event.data.includes('STEPS_RELOADED')) {
         stepDebugList.value = [];
-        Message.info({ content: '检测到步骤变更，已从断点重新加载步骤并继续执行', duration: 3000 });
+        Message.info({ content: t('scene.debug.stepsReloaded'), duration: 3000 });
         return;
       }
 
@@ -3057,7 +3163,7 @@ const pause = async () => {
     ws.value.send('p');
     // 边界暂停：步骤执行完才生效，先提示等待，等后端 PAUSED 回执再切状态
     pausePending.value = true;
-    Message.info({content: '暂停请求已发送，将在当前步骤执行完成后暂停', duration: 2500});
+    Message.info({content: t('scene.debug.pauseRequested'), duration: 2500});
   }
 }
 
@@ -3165,10 +3271,10 @@ const onImportJsonFileChange = (fileList: any[]) => {
       importJsonSceneData.value = json;
       const scenes = json?.scenes || (json?.meta ? [json] : []);
       if (scenes.length > 0 && !importSceneForm.value.name) {
-        importSceneForm.value.name = `批量导入${scenes.length}个场景`;
+        importSceneForm.value.name = t('scene.import.batchName', { count: scenes.length });
       }
     } catch (err) {
-      Message.error('JSON 解析失败，请检查文件格式');
+      Message.error(t('scene.import.jsonParseError'));
       importJsonSceneData.value = null;
     }
   };
@@ -3188,10 +3294,10 @@ const openExportSceneModal = () => {
 const handleExportSceneConfirm = async () => {
   const sceneIds = exportSceneCheckedKeys.value;
   if (!sceneIds || sceneIds.length === 0) {
-    Message.error('请至少勾选一个场景');
+    Message.error(t('scene.export.selectOne'));
     return false;
   }
-  const loadingMsg = Message.loading({content: '正在导出...', duration: 0});
+  const loadingMsg = Message.loading({content: t('scene.export.exporting'), duration: 0});
   try {
     const result = await exportScenes(sceneIds);
     const data = result.data;
@@ -3204,9 +3310,9 @@ const handleExportSceneConfirm = async () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    Message.success('导出成功');
+    Message.success(t('scene.export.success'));
   } catch (err: any) {
-    Message.error(err?.response?.data?.msg || err?.message || '导出失败');
+    Message.error(err?.response?.data?.msg || err?.message || t('scene.export.failed'));
     return false;
   } finally {
     loadingMsg.close?.();
@@ -3258,7 +3364,7 @@ const handleImportSceneBeforeOk = async () => {
 
     if (result.data === true) {
       Message.success({
-        content: '导入成功',
+        content: t('scene.import.success'),
         duration: 1000
       })
       // 重新加载目录
@@ -3278,7 +3384,7 @@ const handleImportSceneBeforeOk = async () => {
   if (importSceneForm.value.mode === 'mokatest-json') {
     const scenes = importJsonSceneData.value?.scenes || (importJsonSceneData.value?.meta ? [importJsonSceneData.value] : []);
     if (!scenes || scenes.length === 0) {
-      Message.error('请先上传有效的场景 JSON 文件');
+      Message.error(t('scene.import.uploadFirst'));
       return false;
     }
     try {
@@ -3289,16 +3395,16 @@ const handleImportSceneBeforeOk = async () => {
         sceneDataList: scenes
       });
       if (result.data === true) {
-        Message.success({content: `成功导入 ${scenes.length} 个场景`, duration: 1000});
+        Message.success({content: t('scene.import.importedCount', { count: scenes.length }), duration: 1000});
         await reloadSceneTree();
         await reloadFolderLIst();
       } else {
-        Message.error({content: result.msg || '导入失败', duration: 1000});
+        Message.error({content: result.msg || t('scene.import.failed'), duration: 1000});
       }
       handleImportSceneCancel();
       return true;
     } catch (err: any) {
-      Message.error(err?.response?.data?.msg || err?.message || '导入失败');
+      Message.error(err?.response?.data?.msg || err?.message || t('scene.import.failed'));
       return false;
     }
   }
@@ -3308,7 +3414,7 @@ const handleImportSceneBeforeOk = async () => {
     return false;
   }
   if (recordSteps.value.length === 0) {
-    Message.error('请先上传录制文件，并确保至少保留一个步骤');
+    Message.error(t('scene.import.recordUploadFirst'));
     return false;
   }
 
@@ -3322,7 +3428,7 @@ const handleImportSceneBeforeOk = async () => {
     });
     const sceneId = result.data;
     Message.success({
-      content: '保存成功',
+      content: t('scene.common.saveSuccess'),
       duration: 1000
     });
     await reloadSceneTree();
@@ -3332,7 +3438,7 @@ const handleImportSceneBeforeOk = async () => {
     handleImportSceneCancel();
     return true;
   } catch (err: any) {
-    Message.error(err?.response?.data?.msg || err?.message || '保存失败');
+    Message.error(err?.response?.data?.msg || err?.message || t('scene.common.saveFailed'));
     return false;
   }
 }
@@ -3344,7 +3450,7 @@ const handleSceneConfigBeforeOk = async () => {
   const error = await updateSceneConfigFormRef.value?.validate();
   if (error) {
     Message.error({
-      content: '检验失败',
+      content: t('scene.config.validateFailed'),
       duration: 1000
     })
     return false;
@@ -3353,9 +3459,9 @@ const handleSceneConfigBeforeOk = async () => {
   // API场景：校验参数表和断言表
   if (isApiScene.value) {
     const refs = [
-      { ref: sceneHeaderTableRef, label: '场景Header' },
-      { ref: sceneCookieTableRef, label: '场景Cookie' },
-      { ref: sceneVarTableRef, label: '场景变量' },
+      { ref: sceneHeaderTableRef, label: t('scene.config.tabHeader') },
+      { ref: sceneCookieTableRef, label: t('scene.config.tabCookie') },
+      { ref: sceneVarTableRef, label: t('scene.config.tabVariable') },
     ];
     for (const item of refs) {
       if (item.ref.value?.validateAll) {
@@ -3369,7 +3475,7 @@ const handleSceneConfigBeforeOk = async () => {
     if (sceneAssertTableRef.value?.validateAll) {
       const result = sceneAssertTableRef.value.validateAll();
       if (!result.valid) {
-        Message.error({ content: `场景断言：${result.message}`, duration: 3000 });
+        Message.error({ content: t('scene.config.assertError', { msg: result.message }), duration: 3000 });
         return false;
       }
     }
@@ -3393,12 +3499,12 @@ const handleSceneConfigBeforeOk = async () => {
   const result = await updateSceneSetting(currentEditScene.value.id, JSON.stringify(updateSceneConfigForm.value));
   if (result.data === true) {
     Message.success({
-      content: '保存成功',
+      content: t('scene.common.saveSuccess'),
       duration: 1000
     })
   } else {
     Message.error({
-      content: '保存失败',
+      content: t('scene.common.saveFailed'),
       duration: 1000
     })
 
@@ -3450,7 +3556,7 @@ const handleSceneCopy = async (sceneId: number) => {
   let result = await cpoyScene(sceneId);
   if (result.data === true) {
     Message.success({
-      content: `复制成功`,
+      content: t('scene.common.copySuccess'),
       duration: 1000
     })
     // 刷新列表
@@ -3533,7 +3639,7 @@ const parseSceneEnvVariables = () => {
       sceneEnvConfig.value.envVariables = parsed;
     }
   } catch (e) {
-    Message.warning({content: '环境变量JSON格式不正确', duration: 2000});
+    Message.warning({content: t('scene.env.jsonInvalid'), duration: 2000});
   }
 };
 
@@ -3584,9 +3690,9 @@ const onEnvironmentChange = async (envId: number) => {
     const sqlCount = countSqlEnvLinkedSteps(sceneStepList.value);
     if (sqlCount > 0) {
       if (selectedEnvironmentId.value) {
-        Message.info({content: `当前有 ${sqlCount} 个 SQL 步骤引用了环境数据库连接，请确认新环境下存在同名连接`, duration: 3000});
+        Message.info({content: t('scene.env.sqlLinkedSwitch', { count: sqlCount }), duration: 3000});
       } else {
-        Message.info({content: `已清空环境，${sqlCount} 个 SQL 步骤的环境数据库连接将失效，执行时将报「未找到数据库连接配置」`, duration: 3000});
+        Message.info({content: t('scene.env.sqlLinkedClear', { count: sqlCount }), duration: 3000});
       }
     }
   }
@@ -3618,10 +3724,10 @@ const persistEnvironmentChange = async (envId: number | undefined) => {
       const sceneSettingStr = JSON.stringify(sceneSettingObj);
       currentEditScene.value.sceneSetting = sceneSettingStr;
       await updateSceneSetting(currentEditScene.value.id, sceneSettingStr);
-      Message.success({ content: '环境配置已更新', duration: 1000 });
+      Message.success({ content: t('scene.env.updated'), duration: 1000 });
     } catch (e) {
       console.error('自动保存环境配置失败', e);
-      Message.error({ content: '环境配置保存失败', duration: 2000 });
+      Message.error({ content: t('scene.env.saveFailed'), duration: 2000 });
     }
   }
 };
@@ -3637,7 +3743,7 @@ const filterUnlockedCheckedSteps = (): number[] => {
   const ids = checkedStepNode.value || [];
   const unlocked = ids.filter((id: number) => !isStepLocked(id));
   if (unlocked.length < ids.length) {
-    Message.warning(`已跳过 ${ids.length - unlocked.length} 个调试中不可修改的步骤`);
+    Message.warning(t('scene.step.skipLocked', { count: ids.length - unlocked.length }));
   }
   return unlocked;
 }
@@ -3646,27 +3752,27 @@ const batchEnabledStep = async () => {
 // 判断checkedKey是否为空
   if (checkedStepNode.value == null || checkedStepNode.value.length <= 0) {
     Message.error({
-      content: "请先选择步骤节点",
+      content: t('scene.step.selectFirst'),
       duration: 1000
     })
     return;
   }
   const ids = filterUnlockedCheckedSteps();
   if (ids.length === 0) {
-    Message.error({content: "所选步骤调试中不可修改", duration: 1000})
+    Message.error({content: t('scene.step.lockedInDebug'), duration: 1000})
     return;
   }
   Modal.warning({
-    title: '确认批量启用',
-    content: () => '确认批量启用步骤？',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('scene.step.batchEnableTitle'),
+    content: () => t('scene.step.batchEnableContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       const result = await batchEnable(ids);
       if (result.data) {
         Message.success({
-          content: '启用成功',
+          content: t('scene.step.enableSuccess'),
           duration: 1000
         })
         await reloadSelectedScene();
@@ -3682,29 +3788,29 @@ const batchDisableStep = async () => {
 // 判断checkedKey是否为空
   if (checkedStepNode.value == null || checkedStepNode.value.length <= 0) {
     Message.error({
-      content: "请先选择步骤节点",
+      content: t('scene.step.selectFirst'),
       duration: 1000
     })
     return;
   }
   const ids = filterUnlockedCheckedSteps();
   if (ids.length === 0) {
-    Message.error({content: "所选步骤调试中不可修改", duration: 1000})
+    Message.error({content: t('scene.step.lockedInDebug'), duration: 1000})
     return;
   }
 
 
   Modal.warning({
-    title: '确认批量禁用',
-    content: () => '确认批量禁用步骤？',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('scene.step.batchDisableTitle'),
+    content: () => t('scene.step.batchDisableContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       const result = await batchDisable(ids);
       if (result.data) {
         Message.success({
-          content: '禁用成功',
+          content: t('scene.step.disableSuccess'),
           duration: 1000
         })
         await reloadSelectedScene();
@@ -3721,29 +3827,29 @@ const batchDeleteStep = async () => {
   // 判断checkedKey是否为空
   if (checkedStepNode.value == null || checkedStepNode.value.length <= 0) {
     Message.error({
-      content: "请先选择步骤节点",
+      content: t('scene.step.selectFirst'),
       duration: 1000
     })
     return;
   }
   const ids = filterUnlockedCheckedSteps();
   if (ids.length === 0) {
-    Message.error({content: "所选步骤调试中不可修改", duration: 1000})
+    Message.error({content: t('scene.step.lockedInDebug'), duration: 1000})
     return;
   }
 
 
   Modal.warning({
-    title: '确认批量删除',
-    content: () => '确认批量删除步骤？删除后不可恢复！！',
-    cancelText: '取消',
-    okText: '确认',
+    title: t('scene.step.batchDeleteTitle'),
+    content: () => t('scene.step.batchDeleteContent'),
+    cancelText: t('qa.common.cancel'),
+    okText: t('scene.common.ok'),
     hideCancel: false,
     onOk: async () => {
       const result = await batchDelete(ids);
       if (result.data) {
         Message.success({
-          content: '删除成功',
+          content: t('scene.common.deleteSuccess'),
           duration: 1000
         })
         await reloadSelectedScene();
@@ -3778,88 +3884,88 @@ const footerActions = computed<FooterAction[]>(() => {
   if (isApiScene.value) {
     return [
       {
-        key: 'api_request', label: 'HTTP请求', icon: 'icon-thunderbolt', type: 'primary',
+        key: 'api_request', label: t('scene.action.httpRequest'), icon: 'icon-thunderbolt', type: 'primary',
         children: [
-          {label: '新建接口', onClick: () => addApiStep(ApiRequest, null, 'api_request', 'new')},
-          {label: '引入已有用例', onClick: () => addApiStep(ApiRequest, null, 'api_request', 'import')},
+          {label: t('scene.action.newApi'), onClick: () => addApiStep(ApiRequest, null, 'api_request', 'new')},
+          {label: t('scene.action.importApiCase'), onClick: () => addApiStep(ApiRequest, null, 'api_request', 'import')},
         ]
       },
       {
-        key: 'sql', label: 'SQL查询', icon: 'icon-storage', style: 'background-color:rgb(230, 245, 255)',
+        key: 'sql', label: t('scene.action.sqlQuery'), icon: 'icon-storage', style: 'background-color:rgb(230, 245, 255)',
         children: [
-          {label: '新建SQL接口', onClick: () => addApiStep(SqlRequest, null, 'sql', 'new')},
-          {label: '引入已有SQL接口', onClick: () => addApiStep(SqlRequest, null, 'sql', 'import')},
+          {label: t('scene.action.newSql'), onClick: () => addApiStep(SqlRequest, null, 'sql', 'new')},
+          {label: t('scene.action.importSql'), onClick: () => addApiStep(SqlRequest, null, 'sql', 'import')},
         ]
       },
       {
-        key: 'loop', label: '循环', icon: 'icon-loop', style: 'background-color:rgb(230, 230, 255)',
+        key: 'loop', label: t('scene.action.loop'), icon: 'icon-loop', style: 'background-color:rgb(230, 230, 255)',
         children: [
-          {label: 'for循环', onClick: () => addOperation(For, clickSchema, 'for')},
-          {label: 'while循环', onClick: () => addOperation(While, null, 'while')},
+          {label: t('scene.action.forLoop'), onClick: () => addOperation(For, clickSchema, 'for')},
+          {label: t('scene.action.whileLoop'), onClick: () => addOperation(While, null, 'while')},
         ]
       },
-      {key: 'if', label: 'if判断', icon: 'icon-branch', style: 'background-color:rgb(230, 255, 240)', onClick: () => addOperation(IfAssert, ifSchema, 'if')},
-      {key: 'script', label: '脚本', icon: 'icon-code-sandbox', style: 'background-color:rgb(255, 240, 230)', onClick: () => addOperation(ScriptRequest, null, 'script')},
-      {key: 'wait', label: '等待', icon: 'icon-clock-circle', style: 'background-color:rgb(255, 255, 230)', onClick: () => addOperation(Wait, waitFixedDurationSchema, 'wait')},
+      {key: 'if', label: t('scene.action.if'), icon: 'icon-branch', style: 'background-color:rgb(230, 255, 240)', onClick: () => addOperation(IfAssert, ifSchema, 'if')},
+      {key: 'script', label: t('scene.action.script'), icon: 'icon-code-sandbox', style: 'background-color:rgb(255, 240, 230)', onClick: () => addOperation(ScriptRequest, null, 'script')},
+      {key: 'wait', label: t('scene.action.wait'), icon: 'icon-clock-circle', style: 'background-color:rgb(255, 255, 230)', onClick: () => addOperation(Wait, waitFixedDurationSchema, 'wait')},
     ];
   }
   return [
     {
-      key: 'import', label: '导入步骤', icon: 'icon-import', style: 'background-color:#ed4d8b',
+      key: 'import', label: t('scene.action.importStep'), icon: 'icon-import', style: 'background-color:#ed4d8b',
       children: [
-        {label: '导入已有步骤', onClick: () => importExistStep()},
+        {label: t('scene.action.importExistStep'), onClick: () => importExistStep()},
       ]
     },
     {
-      key: 'api_request', label: 'HTTP请求', icon: 'icon-thunderbolt', type: 'primary',
+      key: 'api_request', label: t('scene.action.httpRequest'), icon: 'icon-thunderbolt', type: 'primary',
       children: [
-        {label: '新建接口', onClick: () => addApiStep(ApiRequest, null, 'api_request', 'new')},
-        {label: '引入已有用例', onClick: () => addApiStep(ApiRequest, null, 'api_request', 'import')},
+        {label: t('scene.action.newApi'), onClick: () => addApiStep(ApiRequest, null, 'api_request', 'new')},
+        {label: t('scene.action.importApiCase'), onClick: () => addApiStep(ApiRequest, null, 'api_request', 'import')},
       ]
     },
     {
-      key: 'sql', label: 'SQL查询', icon: 'icon-storage', style: 'background-color:rgb(230, 245, 255)',
+      key: 'sql', label: t('scene.action.sqlQuery'), icon: 'icon-storage', style: 'background-color:rgb(230, 245, 255)',
       children: [
-        {label: '新建SQL接口', onClick: () => addApiStep(SqlRequest, null, 'sql', 'new')},
-        {label: '引入已有SQL接口', onClick: () => addApiStep(SqlRequest, null, 'sql', 'import')},
+        {label: t('scene.action.newSql'), onClick: () => addApiStep(SqlRequest, null, 'sql', 'new')},
+        {label: t('scene.action.importSql'), onClick: () => addApiStep(SqlRequest, null, 'sql', 'import')},
       ]
     },
     {
-      key: 'browser', label: '浏览器操作', icon: 'icon-compass', style: 'background-color:rgb(255, 230, 230)',
+      key: 'browser', label: t('scene.action.browserOp'), icon: 'icon-compass', style: 'background-color:rgb(255, 230, 230)',
       children: [
-        {label: '打开网页', onClick: () => addOperation(OpenPage, SCHEMA_REGISTRY['OPEN_PAGE'], 'open_page')},
-        {label: '关闭网页', onClick: () => addOperation(ClosePage, closePageSchema, 'close_page')},
-        {label: '切换tab', onClick: () => addOperation(SwitchTab, switchTabSchema, 'switch_tab')},
-        {label: '前进', onClick: () => addOperation(Forward, null, 'forward')},
-        {label: '后退', onClick: () => addOperation(Back, null, 'back')},
-        {label: '刷新', onClick: () => addOperation(Refresh, null, 'refresh')},
+        {label: t('scene.action.openPage'), onClick: () => addOperation(OpenPage, SCHEMA_REGISTRY['OPEN_PAGE'], 'open_page')},
+        {label: t('scene.action.closePage'), onClick: () => addOperation(ClosePage, closePageSchema, 'close_page')},
+        {label: t('scene.action.switchTab'), onClick: () => addOperation(SwitchTab, switchTabSchema, 'switch_tab')},
+        {label: t('scene.action.forward'), onClick: () => addOperation(Forward, null, 'forward')},
+        {label: t('scene.action.back'), onClick: () => addOperation(Back, null, 'back')},
+        {label: t('scene.action.refresh'), onClick: () => addOperation(Refresh, null, 'refresh')},
       ]
     },
     {
-      key: 'mouse', label: '鼠标操作', icon: 'icon-interaction', style: 'background-color:rgb(230, 255, 230)',
+      key: 'mouse', label: t('scene.action.mouseOp'), icon: 'icon-interaction', style: 'background-color:rgb(230, 255, 230)',
       children: [
-        {label: '点击', onClick: () => addOperation(ClickForm, clickSchema, 'click')},
-        {label: '悬停', onClick: () => addOperation(Hover, null, 'hover')},
-        {label: '鼠标拖拽', onClick: () => addOperation(Drag, null, 'drag')},
+        {label: t('scene.action.click'), onClick: () => addOperation(ClickForm, clickSchema, 'click')},
+        {label: t('scene.action.hover'), onClick: () => addOperation(Hover, null, 'hover')},
+        {label: t('scene.action.drag'), onClick: () => addOperation(Drag, null, 'drag')},
       ]
     },
     {
-      key: 'loop', label: '循环', icon: 'icon-loop', style: 'background-color:rgb(230, 230, 255)',
+      key: 'loop', label: t('scene.action.loop'), icon: 'icon-loop', style: 'background-color:rgb(230, 230, 255)',
       children: [
-        {label: 'for循环', onClick: () => addOperation(For, clickSchema, 'for')},
-        {label: 'while循环', onClick: () => addOperation(While, null, 'while')},
+        {label: t('scene.action.forLoop'), onClick: () => addOperation(For, clickSchema, 'for')},
+        {label: t('scene.action.whileLoop'), onClick: () => addOperation(While, null, 'while')},
       ]
     },
-    {key: 'wait', label: '等待', icon: 'icon-clock-circle', style: 'background-color:rgb(255, 255, 230)', onClick: () => addOperation(Wait, waitFixedDurationSchema, 'wait')},
-    {key: 'extract', label: '关联提取', icon: 'icon-export', style: 'background-color:rgb(255, 230, 255)', onClick: () => addOperation(Extract, extractSchema, 'extract')},
-    {key: 'keyboard', label: '键盘操作', icon: 'icon-command', style: 'background-color:rgb(230, 255, 255)', onClick: () => addOperation(Keyboard, keyboardInputSchema, 'keyboard')},
-    {key: 'element_dom_operation', label: '元素DOM操作', icon: 'icon-code', style: 'background-color:rgb(235, 245, 255)', onClick: () => addOperation(ElementDomOperation, null, 'element_dom_operation')},
-    {key: 'file_upload', label: '上传文件', icon: 'icon-upload', style: 'background-color:rgb(255, 245, 230)', onClick: () => addOperation(FileUpload, null, 'file_upload')},
-    {key: 'assert', label: '断言', icon: 'icon-check-circle', style: 'background-color:rgb(240, 230, 255)', onClick: () => addOperation(Assert, assertSchema, 'assert')},
-    {key: 'if', label: 'if判断', icon: 'icon-branch', style: 'background-color:rgb(230, 255, 240)', onClick: () => addOperation(IfAssert, ifSchema, 'if')},
-    {key: 'script', label: '脚本', icon: 'icon-code-sandbox', style: 'background-color:rgb(255, 240, 230)', onClick: () => addOperation(ScriptRequest, null, 'script')},
-    {key: 'iframe', label: 'iframe切换', icon: 'icon-layout', style: 'background-color:rgb(255, 230, 240)', onClick: () => addOperation(SwitchIframe, iframeSchema, 'iframe')},
-    {key: 'dialog', label: '对话框', icon: 'icon-message', style: 'background-color:rgb(255, 230, 240)', onClick: () => addOperation(Dialog, null, 'dialog')},
+    {key: 'wait', label: t('scene.action.wait'), icon: 'icon-clock-circle', style: 'background-color:rgb(255, 255, 230)', onClick: () => addOperation(Wait, waitFixedDurationSchema, 'wait')},
+    {key: 'extract', label: t('scene.action.extract'), icon: 'icon-export', style: 'background-color:rgb(255, 230, 255)', onClick: () => addOperation(Extract, extractSchema, 'extract')},
+    {key: 'keyboard', label: t('scene.action.keyboardOp'), icon: 'icon-command', style: 'background-color:rgb(230, 255, 255)', onClick: () => addOperation(Keyboard, keyboardInputSchema, 'keyboard')},
+    {key: 'element_dom_operation', label: t('scene.action.elementDom'), icon: 'icon-code', style: 'background-color:rgb(235, 245, 255)', onClick: () => addOperation(ElementDomOperation, null, 'element_dom_operation')},
+    {key: 'file_upload', label: t('scene.action.fileUpload'), icon: 'icon-upload', style: 'background-color:rgb(255, 245, 230)', onClick: () => addOperation(FileUpload, null, 'file_upload')},
+    {key: 'assert', label: t('scene.action.assert'), icon: 'icon-check-circle', style: 'background-color:rgb(240, 230, 255)', onClick: () => addOperation(Assert, assertSchema, 'assert')},
+    {key: 'if', label: t('scene.action.if'), icon: 'icon-branch', style: 'background-color:rgb(230, 255, 240)', onClick: () => addOperation(IfAssert, ifSchema, 'if')},
+    {key: 'script', label: t('scene.action.script'), icon: 'icon-code-sandbox', style: 'background-color:rgb(255, 240, 230)', onClick: () => addOperation(ScriptRequest, null, 'script')},
+    {key: 'iframe', label: t('scene.action.iframe'), icon: 'icon-layout', style: 'background-color:rgb(255, 230, 240)', onClick: () => addOperation(SwitchIframe, iframeSchema, 'iframe')},
+    {key: 'dialog', label: t('scene.action.dialog'), icon: 'icon-message', style: 'background-color:rgb(255, 230, 240)', onClick: () => addOperation(Dialog, null, 'dialog')},
   ];
 });
 

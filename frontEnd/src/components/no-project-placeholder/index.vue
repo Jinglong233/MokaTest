@@ -4,21 +4,21 @@
       <div class="placeholder-icon">
         <Inbox :size="48" stroke-width="1.5" />
       </div>
-      <div class="placeholder-title">暂无项目</div>
+      <div class="placeholder-title">{{ $t('components.noProject.title') }}</div>
       <div class="placeholder-desc">
-        项目是所有测试资源的容器，请先创建或选择一个项目，再使用自动化测试功能。
+        {{ $t('components.noProject.description') }}
       </div>
       <a-button type="primary" @click="goToProject">
         <template #icon>
           <IconApps />
         </template>
-        去创建项目
+        {{ $t('components.noProject.create') }}
       </a-button>
       <a-button type="text" @click="goBackToList">
         <template #icon>
           <IconArrowLeft />
         </template>
-        {{ backLabel }}
+        {{ $t('components.noProject.back') }}
       </a-button>
     </div>
   </div>
@@ -30,8 +30,6 @@ import { IconApps, IconArrowLeft } from '@arco-design/web-vue/es/icon';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-
-const backLabel = '返回工作台';
 
 const goToProject = () => {
   router.push({ name: 'ProjectInfo' });

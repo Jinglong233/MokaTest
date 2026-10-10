@@ -3,17 +3,18 @@
     <div ref="mapRef" class="mindmap-canvas"></div>
     <!-- 画布右上角悬浮工具栏（与用例库脑图一致） -->
     <div class="mindmap-toolbar-top">
-      <span class="hint">{{ testPoints.length }} 个测试点</span>
-      <a-button size="mini" type="primary" :loading="saving" @click="handleSave">保存</a-button>
+      <span class="hint">{{ $t('qa.testPlan.mindmap.tpCount', { count: testPoints.length }) }}</span>
+      <a-button size="mini" type="primary" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import {ref, onMounted, onBeforeUnmount, nextTick} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
 import {getTestPoints, saveTestPoints} from '@/api/MyApi/qa';
 
 const props = defineProps<{
@@ -25,6 +26,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   openDrawer: [testPointId: string, testPointName: string];
 }>();
+
+const {t} = useI18n();
 
 const mapRef = ref<HTMLElement>();
 let mind: any = null;
@@ -58,14 +61,14 @@ function getNodeActions(node: any): { key: string; icon: string; danger?: boolea
   const uid = uidOf(node);
   // 「功能用例」固定节点：只能添加测试点
   if (uid === 'cat-functional') {
-    return [{key: 'addTp', icon: ICON_PLUS, title: '添加测试点'}];
+    return [{key: 'addTp', icon: ICON_PLUS, title: t('qa.testPlan.tp.add')}];
   }
   // 测试点节点：添加同级测试点 / 关联用例 / 删除
   if (isTpNode(node)) {
     return [
-      {key: 'siblingTp', icon: ICON_SIBLING, title: '添加同级测试点'},
-      {key: 'linkCase', icon: ICON_LINK, title: '关联用例'},
-      {key: 'del', icon: ICON_TRASH, danger: true, title: '删除'},
+      {key: 'siblingTp', icon: ICON_SIBLING, title: t('qa.testPlan.tp.addSibling')},
+      {key: 'linkCase', icon: ICON_LINK, title: t('qa.testPlan.tp.linkCase')},
+      {key: 'del', icon: ICON_TRASH, danger: true, title: t('qa.common.delete')},
     ];
   }
   return [];
@@ -74,10 +77,7 @@ function getNodeActions(node: any): { key: string; icon: string; danger?: boolea
 function createNodeActions(node: any) {
   const uid = uidOf(node);
   const actions = getNodeActions(node);
-  if (!actions.length) {
-    const empty = document.createElement('span');
-    return {el: empty, width: 0, height: 0};
-  }
+  if (!actions.length) return null;
 
   const el = document.createElement('div');
   el.className = 'tpm-actions';
@@ -138,9 +138,9 @@ function onNodeAction(key: string, node: any) {
 
 // 用例集合节点：文本「N条」+ 末尾「用例数」tag（官方 data.tag 通道）
 const CASESET_STYLE = {fillColor: '#f7f8fa', color: '#4e5969'};
-const casesetTag = () => [{text: '用例数', style: {backgroundColor: '#165dff', color: '#ffffff', borderRadius: 3, fontSize: 12}}];
+const casesetTag = () => [{text: t('qa.testPlan.caseCount'), style: {backgroundColor: '#165dff', color: '#ffffff', borderRadius: 3, fontSize: 12}}];
 const casesetNode = (uid: string, n: number) => ({
-  data: {text: `${n}条`, uid, expand: true, tag: casesetTag(), ...CASESET_STYLE},
+  data: {text: t('qa.testPlan.itemsCount', { n }), uid, expand: true, tag: casesetTag(), ...CASESET_STYLE},
   children: [] as any[],
 });
 
@@ -151,7 +151,7 @@ function insertTestPoint(targetNode: any, asSibling: boolean) {
   const children = [casesetNode(`caseset-${uid}`, 0)];
   isInternalOp = true;
   try {
-    origExec(asSibling ? 'INSERT_NODE' : 'INSERT_CHILD_NODE', true, [targetNode], {text: '默认测试点', uid}, children);
+    origExec(asSibling ? 'INSERT_NODE' : 'INSERT_CHILD_NODE', true, [targetNode], {text: t('qa.testPlan.defaultTestPoint'), uid}, children);
   } finally {
     isInternalOp = false;
   }
@@ -166,11 +166,11 @@ function buildMindData(tpData: any) {
 
   const root: any = {
     // 根节点必须给稳定 uid：渲染器按 uid 复用/清理节点，无 uid 时重复渲染旧根节点 DOM 不会被销毁，导致脑图重叠
-    data: { text: props.planName || '测试计划', expand: true, uid: 'root' },
+    data: { text: props.planName || t('qa.testPlan.title'), expand: true, uid: 'root' },
     children: [
-      { data: { text: '功能用例', expand: true, uid: 'cat-functional' }, children: [] },
-      { data: { text: '接口用例', expand: true, uid: 'cat-api' }, children: [] },
-      { data: { text: '场景用例', expand: true, uid: 'cat-scenario' }, children: [] },
+      { data: { text: t('qa.testPlan.tab.cases'), expand: true, uid: 'cat-functional' }, children: [] },
+      { data: { text: t('qa.testPlan.cat.api'), expand: true, uid: 'cat-api' }, children: [] },
+      { data: { text: t('qa.testPlan.cat.scenario'), expand: true, uid: 'cat-scenario' }, children: [] },
     ],
   };
 
@@ -186,7 +186,7 @@ function buildMindData(tpData: any) {
   // 未分配用例作为独立测试点
   if (unassigned.length > 0) {
     funcNode.children.push({
-      data: { text: '未分配', expand: true, uid: 'tp-unassigned' },
+      data: { text: t('qa.testPlan.unassigned'), expand: true, uid: 'tp-unassigned' },
       children: [casesetNode('caseset-unassigned', unassigned.length)],
     });
   }
@@ -231,7 +231,7 @@ function extractTestPoints(): any[] {
       const cached = testPoints.value.find(t => String(t.id) === idStr);
       return {
         id,
-        name: (tp.data?.text || '默认测试点').replace(/<[^>]*>/g, ''),
+        name: (tp.data?.text || t('qa.testPlan.defaultTestPoint')).replace(/<[^>]*>/g, ''),
         sortOrder: index,
         caseIds: cached?.cases?.map((c: any) => c.testCaseId) || [],
       };
@@ -245,13 +245,13 @@ async function handleSave() {
     const tps = extractTestPoints();
     const res: any = await saveTestPoints(props.planId, tps);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.testPlan.saveSuccess'));
       dirty.value = false;
       await loadTestPoints();
     }
   } catch (e) {
     console.error(e);
-    Message.error('保存失败');
+    Message.error(t('qa.testPlan.saveFail'));
   } finally {
     saving.value = false;
   }
@@ -364,7 +364,7 @@ async function initMind(retries = 0) {
         const d = node?.nodeData?.data;
         if (!d) return;
         if (!(d.text || '').trim()) {
-          d.text = '默认测试点';
+          d.text = t('qa.testPlan.defaultTestPoint');
           mind.render();
         }
         dirty.value = true;

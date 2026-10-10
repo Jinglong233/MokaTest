@@ -4,14 +4,14 @@
     <div class="mock-rule-header"
     >
       <div class="col-drag"></div>
-      <div class="col-name">字段名</div>
-      <div class="col-type">类型</div>
-      <div class="col-bool required-col" title="必填">*</div>
-      <div class="col-bool nullable-col" title="允许 Null">N</div>
-      <div class="col-rule">Mock 值</div>
-      <div class="col-desc">描述</div>
-      <div class="col-advanced">高级</div>
-      <div class="col-ops">操作</div>
+      <div class="col-name">{{ $t('api.mockField.colName') }}</div>
+      <div class="col-type">{{ $t('api.mockField.colType') }}</div>
+      <div class="col-bool required-col" :title="$t('api.mockAdv.required')">*</div>
+      <div class="col-bool nullable-col" :title="$t('api.mockField.nullableTitle')">N</div>
+      <div class="col-rule">{{ $t('api.mockField.colMockValue') }}</div>
+      <div class="col-desc">{{ $t('api.sqlAssertion.colDesc') }}</div>
+      <div class="col-advanced">{{ $t('api.mockAdv.title') }}</div>
+      <div class="col-ops">{{ $t('qa.common.operation') }}</div>
     </div>
     <div class="mock-rule-body"
     >
@@ -80,7 +80,6 @@
     modelValue: () => new MockFieldRule(true),
     disabled: false,
     templateList: () => [],
-    rootLabel: '响应体',
   });
 
   const emit = defineEmits<{

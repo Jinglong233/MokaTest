@@ -2,30 +2,30 @@
   <!-- 录制插件获取引导弹窗（关注公众号回复关键词） -->
   <a-modal
       :visible="visible"
-      title="获取浏览器录制插件"
+      :title="$t('components.recorderGuide.title')"
       :footer="false"
       :width="420"
       @cancel="handleCancel"
   >
     <div class="recorder-modal">
       <a-alert type="info" :closable="false">
-        录制插件可录制浏览器操作并一键生成 UI 自动化场景
+        {{ $t('components.recorderGuide.tip') }}
       </a-alert>
       <div class="recorder-steps">
         <div class="step">
           <div class="step-num">1</div>
-          <div class="step-text">微信扫码关注公众号「{{ OFFICIAL_ACCOUNT_NAME }}」</div>
+          <div class="step-text">{{ $t('components.recorderGuide.step1', { name: OFFICIAL_ACCOUNT_NAME }) }}</div>
         </div>
         <div class="qrcode-wrap">
           <!-- TODO: 替换为真实公众号二维码图片（放在 frontEnd/public 下） -->
-          <img src="/official-account-qrcode.png" alt="公众号二维码" class="qrcode"/>
+          <img src="/official-account-qrcode.png" :alt="$t('components.recorderGuide.qrcodeAlt')" class="qrcode"/>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-text">
-            在公众号后台回复关键词
+            {{ $t('components.recorderGuide.step2a') }}
             <span class="keyword">{{ RECORDER_KEYWORD }}</span>
-            获取插件安装包与使用教程
+            {{ $t('components.recorderGuide.step2b') }}
           </div>
         </div>
       </div>

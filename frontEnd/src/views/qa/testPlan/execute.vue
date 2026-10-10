@@ -1,19 +1,19 @@
 <template>
   <div class="exec-page">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', planData.planName || '用例执行']" />
+    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', planData.planName || $t('qa.testPlan.execPage')]" />
     <a-card class="exec-card">
       <!-- 顶部信息栏 -->
       <div class="exec-header">
         <a-button size="small" @click="handleBack">
           <template #icon><icon-left /></template>
-          返回
+          {{ $t('qa.testPlan.exec.back') }}
         </a-button>
         <div class="exec-title">
           <span class="exec-code">{{ planData.planCode || '' }}</span>
-          <span class="exec-name">{{ planData.planName || '用例执行' }}</span>
+          <span class="exec-name">{{ planData.planName || $t('qa.testPlan.execPage') }}</span>
         </div>
         <div class="exec-meta">
-          <span class="exec-meta-item">已执行 {{ executedCount }}/{{ caseList.length }}</span>
+          <span class="exec-meta-item">{{ $t('qa.testPlan.exec.progress', { done: executedCount, total: caseList.length }) }}</span>
         </div>
       </div>
 
@@ -24,13 +24,13 @@
             <div class="exec-left-filter">
               <a-input-search
                 v-model="caseKeyword"
-                placeholder="搜索用例名称"
+                :placeholder="$t('qa.testPlan.exec.caseSearchPlaceholder')"
                 allow-clear
                 size="small"
               />
               <a-radio-group v-model="caseFilter" type="button" size="small" style="margin-top: 8px">
-                <a-radio value="ALL">全部</a-radio>
-                <a-radio value="TODO">未执行</a-radio>
+                <a-radio value="ALL">{{ $t('qa.common.all') }}</a-radio>
+                <a-radio value="TODO">{{ $t('qa.testPlan.result.unexecuted') }}</a-radio>
               </a-radio-group>
             </div>
             <div class="exec-left-scroll">
@@ -55,7 +55,7 @@
                   </span>
                 </div>
               </template>
-              <a-empty v-else description="暂无用例" style="margin-top: 40px" />
+              <a-empty v-else :description="$t('qa.testPlan.exec.noCase')" style="margin-top: 40px" />
             </div>
             <div class="exec-left-pager">
               <a-pagination
@@ -80,19 +80,19 @@
                 <div class="case-head-row1">
                   <div class="case-head-name">{{ caseDetail?.caseName || currentCase.caseName }}</div>
                   <a-button v-permission="'qa:testcase:update'" type="outline" size="small" @click="editDrawerVisible = true">
-                    <template #icon><icon-edit /></template>编辑
+                    <template #icon><icon-edit /></template>{{ $t('qa.testPlan.action.edit') }}
                   </a-button>
                 </div>
                 <div class="case-head-meta">
                   <span class="meta-item">
                     <icon-info-circle-fill :size="14" class="meta-icon-info" />
-                    <span class="meta-label">模块</span>
+                    <span class="meta-label">{{ $t('qa.testPlan.module') }}</span>
                     {{ currentCase.moduleName || '-' }}
                   </span>
                   <a-divider direction="vertical" />
                   <span class="meta-item">
                     <icon-star-fill :size="14" class="meta-icon-priority" />
-                    <span class="meta-label">优先级</span>
+                    <span class="meta-label">{{ $t('qa.testCase.priority') }}</span>
                     {{ currentCase.priority || '-' }}
                   </span>
                   <a-divider direction="vertical" />
@@ -101,7 +101,7 @@
                     <icon-close-circle-fill v-else-if="currentCase.executeResult === 'FAIL'" :size="14" class="status-icon-fail" />
                     <icon-exclamation-circle-fill v-else-if="currentCase.executeResult === 'BLOCK'" :size="14" class="status-icon-block" />
                     <icon-clock-circle v-else :size="14" class="status-icon-pending" />
-                    <span class="meta-label">结果</span>
+                    <span class="meta-label">{{ $t('qa.testPlan.exec.resultLabel') }}</span>
                     {{ resultText(currentCase.executeResult) }}
                   </span>
                 </div>
@@ -109,26 +109,26 @@
 
               <a-tabs v-model:active-key="activeTabKey" type="line" class="exec-tabs">
                 <!-- 基本信息 -->
-                <a-tab-pane key="basic" title="基本信息">
+                <a-tab-pane key="basic" :title="$t('qa.testPlan.exec.tab.basic')">
                   <a-descriptions :column="1" size="small">
-                    <a-descriptions-item label="用例编号">{{ currentCase.caseCode }}</a-descriptions-item>
-                    <a-descriptions-item label="所属模块">{{ currentCase.moduleName || '-' }}</a-descriptions-item>
-                    <a-descriptions-item label="用例等级">
+                    <a-descriptions-item :label="$t('qa.testCase.code')">{{ currentCase.caseCode }}</a-descriptions-item>
+                    <a-descriptions-item :label="$t('qa.testPlan.module')">{{ currentCase.moduleName || '-' }}</a-descriptions-item>
+                    <a-descriptions-item :label="$t('qa.testPlan.caseLevel')">
                       <a-tag v-if="currentCase.priority" :color="priorityColor(currentCase.priority)" size="small">{{ currentCase.priority }}</a-tag>
                       <span v-else>-</span>
                     </a-descriptions-item>
-                    <a-descriptions-item label="创建人">{{ caseDetail?.createUserName || '-' }}</a-descriptions-item>
-                    <a-descriptions-item label="创建时间">{{ caseDetail?.createTime || '-' }}</a-descriptions-item>
+                    <a-descriptions-item :label="$t('qa.testPlan.creator')">{{ caseDetail?.createUserName || '-' }}</a-descriptions-item>
+                    <a-descriptions-item :label="$t('qa.testPlan.createTime')">{{ caseDetail?.createTime || '-' }}</a-descriptions-item>
                   </a-descriptions>
                 </a-tab-pane>
 
                 <!-- 详情 -->
-                <a-tab-pane key="info" title="详情">
-                  <div class="dd-section-title">前置条件</div>
+                <a-tab-pane key="info" :title="$t('qa.testPlan.exec.tab.info')">
+                  <div class="dd-section-title">{{ $t('qa.testCase.preCondition') }}</div>
                   <div v-if="caseDetail?.preCondition" class="pre-condition-view" v-html="caseDetail.preCondition"></div>
-                  <div v-else class="pre-condition-empty">无</div>
+                  <div v-else class="pre-condition-empty">{{ $t('qa.testPlan.none') }}</div>
 
-                  <div class="dd-section-title">测试步骤</div>
+                  <div class="dd-section-title">{{ $t('qa.testCase.steps') }}</div>
                   <a-table
                     v-if="caseSteps.length"
                     :data="caseSteps"
@@ -143,131 +143,131 @@
                           <span class="step-no">{{ rowIndex + 1 }}</span>
                         </template>
                       </a-table-column>
-                      <a-table-column title="步骤">
+                      <a-table-column :title="$t('qa.testCase.step')">
                         <template #cell="{ record }">
                           <div v-html="record.step || '-'"></div>
                         </template>
                       </a-table-column>
-                      <a-table-column title="预期结果">
+                      <a-table-column :title="$t('qa.testCase.expected')">
                         <template #cell="{ record }">
                           <div v-html="record.expected || '-'"></div>
                         </template>
                       </a-table-column>
-                      <a-table-column title="实际结果" :width="220">
+                      <a-table-column :title="$t('qa.testPlan.actualResult')" :width="220">
                         <template #cell="{ rowIndex }">
                           <a-textarea
                             v-model="stepEdits[rowIndex].actualResult"
                             :auto-size="{ minRows: 1, maxRows: 4 }"
-                            placeholder="填写实际结果"
+                            :placeholder="$t('qa.testPlan.actualResultPlaceholder')"
                             allow-clear
                           />
                         </template>
                       </a-table-column>
-                      <a-table-column title="步骤执行结果" :width="140">
+                      <a-table-column :title="$t('qa.testPlan.stepResult')" :width="140">
                         <template #cell="{ rowIndex }">
-                          <a-select v-model="stepEdits[rowIndex].stepResult" placeholder="未执行" allow-clear size="small">
-                            <a-option value="PASS">成功</a-option>
-                            <a-option value="FAIL">失败</a-option>
-                            <a-option value="BLOCK">阻塞</a-option>
+                          <a-select v-model="stepEdits[rowIndex].stepResult" :placeholder="$t('qa.testPlan.result.unexecuted')" allow-clear size="small">
+                            <a-option value="PASS">{{ $t('qa.testPlan.result.success') }}</a-option>
+                            <a-option value="FAIL">{{ $t('qa.testPlan.result.fail') }}</a-option>
+                            <a-option value="BLOCK">{{ $t('qa.testPlan.result.block') }}</a-option>
                           </a-select>
                         </template>
                       </a-table-column>
                     </template>
                   </a-table>
-                  <a-empty v-else description="暂无测试步骤" />
+                  <a-empty v-else :description="$t('qa.testPlan.noSteps')" />
                 </a-tab-pane>
 
                 <!-- 缺陷：关联当前计划用例的 BUG（plan_case_id 维度） -->
                 <a-tab-pane key="bugs">
-                  <template #title>缺陷 <span v-if="bugList.length" class="tab-count">{{ bugList.length }}</span></template>
+                  <template #title>{{ $t('qa.testPlan.exec.tab.bugs') }} <span v-if="bugList.length" class="tab-count">{{ bugList.length }}</span></template>
                   <div style="margin-bottom: 8px; display: flex; gap: 8px">
                     <a-button size="small" @click="openBugBindDrawer">
-                      <template #icon><icon-link /></template>关联已有BUG
+                      <template #icon><icon-link /></template>{{ $t('qa.testPlan.exec.bindBug') }}
                     </a-button>
                     <a-button size="small" type="primary" @click="openNewBugDrawer">
-                      <template #icon><icon-plus /></template>新建BUG
+                      <template #icon><icon-plus /></template>{{ $t('qa.bug.add') }}
                     </a-button>
                   </div>
                   <a-table v-if="bugList.length" :data="bugList" :pagination="false" size="small" row-key="id">
                     <template #columns>
-                      <a-table-column title="编号" :width="120">
+                      <a-table-column :title="$t('qa.testPlan.exec.bugCode')" :width="120">
                         <template #cell="{ record }">{{ record.bugCode }}</template>
                       </a-table-column>
-                      <a-table-column title="BUG名称" data-index="title" :ellipsis="true" />
-                      <a-table-column title="状态" :width="90">
+                      <a-table-column :title="$t('qa.testPlan.exec.bugName')" data-index="title" :ellipsis="true" />
+                      <a-table-column :title="$t('qa.bug.status')" :width="90">
                         <template #cell="{ record }">
                           <a-tag size="small" :color="bugStatusColor(record.status)">{{ bugStatusText(record.status) }}</a-tag>
                         </template>
                       </a-table-column>
-                      <a-table-column title="创建人" :width="100">
+                      <a-table-column :title="$t('qa.testPlan.creator')" :width="100">
                         <template #cell="{ record }">{{ record.reporterName || '-' }}</template>
                       </a-table-column>
-                      <a-table-column title="处理人" :width="100">
+                      <a-table-column :title="$t('qa.testPlan.assignee')" :width="100">
                         <template #cell="{ record }">{{ record.assigneeName || '-' }}</template>
                       </a-table-column>
-                      <a-table-column title="操作" :width="110">
+                      <a-table-column :title="$t('qa.common.operation')" :width="110">
                         <template #cell="{ record }">
-                          <a-popconfirm content="取消关联该BUG？" type="warning" @ok="handleUnbindBug(record)">
-                            <a-button type="text" size="small" status="warning">取消关联</a-button>
+                          <a-popconfirm :content="$t('qa.testPlan.exec.unbindConfirm')" type="warning" @ok="handleUnbindBug(record)">
+                            <a-button type="text" size="small" status="warning">{{ $t('qa.testPlan.exec.unbind') }}</a-button>
                           </a-popconfirm>
                         </template>
                       </a-table-column>
                     </template>
                   </a-table>
-                  <a-empty v-else description="未关联缺陷" />
+                  <a-empty v-else :description="$t('qa.testPlan.noBugs')" />
                 </a-tab-pane>
 
                 <!-- 执行历史 -->
-                <a-tab-pane key="history" title="执行历史">
+                <a-tab-pane key="history" :title="$t('qa.testPlan.exec.tab.history')">
                   <a-timeline v-if="execHistory.length">
                     <a-timeline-item v-for="item in execHistory" :key="item.id">
                       <div class="hist-time">{{ item.executeTime }}</div>
                       <div>
                         <a-tag :color="resultColor(item.result)" size="small">{{ resultText(item.result) }}</a-tag>
                         <span v-if="item.executeUserName || item.executeUserId" class="hist-user">
-                          执行人：{{ item.executeUserName || '用户' + item.executeUserId }}
+                          {{ $t('qa.testPlan.exec.executorWithName', { name: item.executeUserName || ($t('qa.testPlan.exec.defaultUser') + item.executeUserId) }) }}
                         </span>
                       </div>
                       <div v-if="item.remark" class="hist-remark">{{ item.remark }}</div>
                     </a-timeline-item>
                   </a-timeline>
-                  <a-empty v-else description="暂无执行记录" style="padding: 40px 0" />
+                  <a-empty v-else :description="$t('qa.testPlan.noHistory')" style="padding: 40px 0" />
                 </a-tab-pane>
               </a-tabs>
             </template>
-            <a-empty v-else description="请选择左侧用例" style="margin-top: 80px" />
+            <a-empty v-else :description="$t('qa.testPlan.selectCase')" style="margin-top: 80px" />
           </div>
 
           <!-- 执行面板（固定底部）：结果单选 成功/失败/阻塞，初始未执行 -->
           <div class="exec-panel" v-if="currentCase">
             <div class="exec-panel-title">
-              执行结果
+              {{ $t('qa.testPlan.execResult') }}
               <a-tag v-if="currentCase.executeResult && currentCase.executeResult !== 'UNEXECUTED'" size="small" :color="resultColor(currentCase.executeResult)">
-                当前：{{ resultText(currentCase.executeResult) }}
+                {{ $t('qa.testPlan.exec.current', { result: resultText(currentCase.executeResult) }) }}
               </a-tag>
-              <a-tag v-else size="small" color="gray">未执行</a-tag>
+              <a-tag v-else size="small" color="gray">{{ $t('qa.testPlan.result.unexecuted') }}</a-tag>
             </div>
             <div class="exec-panel-body">
               <a-radio-group v-model="execForm.result">
                 <a-radio value="PASS">
-                  <icon-check-circle-fill :size="18" class="status-icon-pass" />成功
+                  <icon-check-circle-fill :size="18" class="status-icon-pass" />{{ $t('qa.testPlan.result.success') }}
                 </a-radio>
                 <a-radio value="FAIL">
-                  <icon-close-circle-fill :size="18" class="status-icon-fail" />失败
+                  <icon-close-circle-fill :size="18" class="status-icon-fail" />{{ $t('qa.testPlan.result.fail') }}
                 </a-radio>
                 <a-radio value="BLOCK">
-                  <icon-exclamation-circle-fill :size="18" class="status-icon-block" />阻塞
+                  <icon-exclamation-circle-fill :size="18" class="status-icon-block" />{{ $t('qa.testPlan.result.block') }}
                 </a-radio>
               </a-radio-group>
               <a-textarea
                 v-model="execForm.remark"
                 :auto-size="{ minRows: 2, maxRows: 4 }"
-                placeholder="执行备注（选填）"
+                :placeholder="$t('qa.testPlan.exec.remarkPlaceholder')"
                 style="flex: 1"
               />
               <a-space direction="vertical">
-                <a-button type="primary" :loading="submitting" @click="handleSubmit(true)">提交并下一条</a-button>
-                <a-button :loading="submitting" @click="handleSubmit(false)">提交</a-button>
+                <a-button type="primary" :loading="submitting" @click="handleSubmit(true)">{{ $t('qa.testPlan.exec.submitNext') }}</a-button>
+                <a-button :loading="submitting" @click="handleSubmit(false)">{{ $t('qa.testPlan.exec.submit') }}</a-button>
               </a-space>
             </div>
           </div>
@@ -285,7 +285,7 @@
     <!-- 新建BUG抽屉：复用 BUG 表单，planCaseId/testCaseId 通过 initialData 带入完成关联 -->
     <a-drawer
       v-model:visible="newBugVisible"
-      title="新建BUG"
+      :title="$t('qa.bug.add')"
       :width="920"
       :footer="true"
       :body-style="{ padding: '0', height: '100%', overflow: 'hidden' }"
@@ -310,16 +310,16 @@
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="newBugVisible = false">取消</a-button>
-          <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">保存</a-button>
+          <a-button @click="newBugVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">{{ $t('qa.common.save') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
     <CaseDetailDrawer
       v-model:visible="editDrawerVisible"
       :case-id="currentCase?.testCaseId || null"
-      drawer-title="更新用例"
-      confirm-text="更新"
+      :drawer-title="$t('qa.testPlan.exec.updateCase')"
+      :confirm-text="$t('qa.testPlan.exec.update')"
       auto-edit
       @refresh="onEditDrawerRefresh"
     />
@@ -333,6 +333,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import BugForm from '@/views/qa/bug/components/BugForm.vue';
@@ -350,6 +351,7 @@ import {
 const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
+const { t } = useI18n();
 
 const planId = Number(route.params.planId);
 const initialPlanCaseId = route.query.planCaseId ? Number(route.query.planCaseId) : null;
@@ -436,8 +438,8 @@ const resetStepEdits = (savedJson?: string) => {
 watch(caseSteps, () => resetStepEdits(currentCase.value?.stepResults));
 
 const resultText = (r: string) => ({
-  PASS: '成功', FAIL: '失败', BLOCK: '阻塞', NA: '不适用',
-} as Record<string, string>)[r] || '未执行';
+  PASS: t('qa.testPlan.result.success'), FAIL: t('qa.testPlan.result.fail'), BLOCK: t('qa.testPlan.result.block'), NA: t('qa.testPlan.result.na'),
+} as Record<string, string>)[r] || t('qa.testPlan.result.unexecuted');
 const resultColor = (r: string) => ({
   PASS: 'green', FAIL: 'red', BLOCK: 'orange', NA: 'gray',
 } as Record<string, string>)[r] || 'gray';
@@ -446,7 +448,7 @@ const priorityColor = (p: string) => ({ P0: 'red', P1: 'orange', P2: 'blue' } as
 // ===== 缺陷 tab =====
 const bugList = computed<any[]>(() => currentCase.value?.bugList || []);
 const bugStatusText = (s: string) => ({
-  NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中', FIXED: '已修复', VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回',
+  NEW: t('qa.testPlan.bugStatus.new'), CONFIRMED: t('qa.testPlan.bugStatus.confirmed'), FIXING: t('qa.testPlan.bugStatus.fixing'), FIXED: t('qa.testPlan.bugStatus.fixed'), VERIFIED: t('qa.testPlan.bugStatus.verified'), CLOSED: t('qa.testPlan.bugStatus.closed'), REJECTED: t('qa.testPlan.bugStatus.rejected'),
 } as Record<string, string>)[s] || s || '-';
 const bugStatusColor = (s: string) => ({
   NEW: 'red', CONFIRMED: 'orange', FIXING: 'gold', FIXED: 'green', VERIFIED: 'cyan', CLOSED: 'gray', REJECTED: 'gray',
@@ -466,12 +468,12 @@ const handleUnbindBug = async (record: any) => {
   try {
     const res: any = await bindBugPlanCase(record.id, null);
     if (res.code === 200) {
-      Message.success('已取消关联');
+      Message.success(t('qa.testPlan.exec.unbindSuccess'));
       await loadDetail(true);
     }
   } catch (e) {
     console.error(e);
-    Message.error('操作失败');
+    Message.error(t('qa.testPlan.exec.opFail'));
   }
 };
 
@@ -491,7 +493,7 @@ const handleNewBugSave = async () => {
   try {
     const ok = await newBugFormRef.value.save();
     if (ok) {
-      Message.success('BUG已创建并关联');
+      Message.success(t('qa.testPlan.exec.bugCreated'));
       newBugVisible.value = false;
       await loadDetail(true);
     }
@@ -554,7 +556,7 @@ const selectCase = async (c: any) => {
 const handleSubmit = async (next: boolean) => {
   if (!currentCase.value) return;
   if (!execForm.value.result) {
-    Message.warning('请选择执行结果');
+    Message.warning(t('qa.testPlan.exec.selectResult'));
     return;
   }
   submitting.value = true;
@@ -567,7 +569,7 @@ const handleSubmit = async (next: boolean) => {
       stepEdits.value
     );
     if (res.code === 200) {
-      Message.success('执行结果已记录');
+      Message.success(t('qa.testPlan.exec.recorded'));
       const currentId = currentCase.value.id;
       await loadDetail(true);
       // 刷新执行历史
@@ -582,7 +584,7 @@ const handleSubmit = async (next: boolean) => {
         if (target) {
           selectCase(target);
         } else {
-          Message.success('已全部执行完成');
+          Message.success(t('qa.testPlan.exec.allDone'));
         }
       }
     }

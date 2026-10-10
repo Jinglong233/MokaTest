@@ -5,7 +5,9 @@ import {MockConfig} from '@/types/domain/api/requestModel/MockConfig';
 import {getDataTemplateList} from '@/api/MyApi/dataTemplate';
 import {generateMock} from '@/api/MyApi/mock';
 import useProjectStore from '@/store/modules/project';
+import {useI18n} from 'vue-i18n';
 import {Message} from '@arco-design/web-vue';
+import i18n from '@/locale';
 
 export interface UseMockDataFormOptions {
   parameterType?: ParameterType;
@@ -29,64 +31,64 @@ const STRING_TYPES = [ParameterType.STRING];
 const NUMBER_TYPES = [ParameterType.STRING, ParameterType.NUMBER];
 const INT_TYPES = [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER];
 
-const mockCategories: MockCategory[] = [
+const buildMockCategories = (t: (key: string) => string): MockCategory[] => [
   {
     value: 'basic',
-    label: '基础变量',
+    label: t('api.mockType.catBasic'),
     children: [
-      {value: 'fixed', label: '固定值', types: ALL_TYPES},
-      {value: 'choice', label: '枚举选择', types: ALL_TYPES},
-      {value: 'boolean', label: '布尔值', types: [ParameterType.STRING, ParameterType.BOOLEAN]},
-      {value: 'timestamp', label: '时间戳', types: STRING_TYPES},
+      {value: 'fixed', label: t('api.mockType.fixed'), types: ALL_TYPES},
+      {value: 'choice', label: t('api.mockType.choice'), types: ALL_TYPES},
+      {value: 'boolean', label: t('api.mockType.boolean'), types: [ParameterType.STRING, ParameterType.BOOLEAN]},
+      {value: 'timestamp', label: t('api.mockType.timestamp'), types: STRING_TYPES},
     ],
   },
   {
     value: 'string',
-    label: '字符串',
+    label: t('api.mockType.catString'),
     children: [
-      {value: 'text', label: '随机字符串', types: STRING_TYPES},
-      {value: 'character', label: '随机字符', types: STRING_TYPES},
+      {value: 'text', label: t('api.mockType.text'), types: STRING_TYPES},
+      {value: 'character', label: t('api.mockType.character'), types: STRING_TYPES},
       {value: 'uuid', label: 'UUID', types: STRING_TYPES},
     ],
   },
   {
     value: 'personal',
-    label: '个人信息',
+    label: t('api.mockType.catPersonal'),
     children: [
-      {value: 'name', label: '姓名', types: STRING_TYPES},
-      {value: 'cname', label: '中文姓名', types: STRING_TYPES},
-      {value: 'ename', label: '英文姓名', types: STRING_TYPES},
-      {value: 'phone', label: '手机号', types: STRING_TYPES},
-      {value: 'email', label: '邮箱', types: STRING_TYPES},
-      {value: 'idCard', label: '身份证号', types: STRING_TYPES},
-      {value: 'bankcard', label: '银行卡号', types: STRING_TYPES},
+      {value: 'name', label: t('api.mockType.name'), types: STRING_TYPES},
+      {value: 'cname', label: t('api.mockType.cname'), types: STRING_TYPES},
+      {value: 'ename', label: t('api.mockType.ename'), types: STRING_TYPES},
+      {value: 'phone', label: t('api.mockType.phone'), types: STRING_TYPES},
+      {value: 'email', label: t('api.mockType.email'), types: STRING_TYPES},
+      {value: 'idCard', label: t('api.mockType.idCard'), types: STRING_TYPES},
+      {value: 'bankcard', label: t('api.mockType.bankcard'), types: STRING_TYPES},
     ],
   },
   {
     value: 'organization',
-    label: '组织信息',
+    label: t('api.mockType.catOrg'),
     children: [
-      {value: 'company', label: '公司名', types: STRING_TYPES},
-      {value: 'address', label: '地址', types: STRING_TYPES},
+      {value: 'company', label: t('api.mockType.company'), types: STRING_TYPES},
+      {value: 'address', label: t('api.mockType.address'), types: STRING_TYPES},
     ],
   },
   {
     value: 'number',
-    label: '数字',
+    label: t('api.mockType.catNumber'),
     children: [
-      {value: 'int', label: '整数', types: INT_TYPES},
-      {value: 'long', label: '长整数', types: INT_TYPES},
-      {value: 'float', label: '浮点数', types: NUMBER_TYPES},
-      {value: 'double', label: '双精度', types: NUMBER_TYPES},
+      {value: 'int', label: t('api.mockType.int'), types: INT_TYPES},
+      {value: 'long', label: t('api.mockType.long'), types: INT_TYPES},
+      {value: 'float', label: t('api.mockType.float'), types: NUMBER_TYPES},
+      {value: 'double', label: t('api.mockType.double'), types: NUMBER_TYPES},
     ],
   },
   {
     value: 'datetime',
-    label: '日期时间',
+    label: t('api.mockType.catDatetime'),
     children: [
-      {value: 'date', label: '日期', types: STRING_TYPES},
-      {value: 'datetime', label: '日期时间', types: STRING_TYPES},
-      {value: 'time', label: '时间', types: STRING_TYPES},
+      {value: 'date', label: t('api.mockType.date'), types: STRING_TYPES},
+      {value: 'datetime', label: t('api.mockType.datetime'), types: STRING_TYPES},
+      {value: 'time', label: t('api.mockType.time'), types: STRING_TYPES},
     ],
   },
 ];
@@ -96,7 +98,7 @@ const mockCategories: MockCategory[] = [
  */
 export function findMockCategory(type?: string): string | undefined {
   if (!type) return undefined;
-  for (const category of mockCategories) {
+  for (const category of buildMockCategories((key) => i18n.global.t(key))) {
     if (category.children.some(item => item.value === type)) {
       return category.value;
     }
@@ -126,12 +128,14 @@ function applyMockConfigToForm(form: any, config?: MockConfig) {
 
 export function useMockDataForm(options: UseMockDataFormOptions = {}) {
   const {parameterType, mockConfig} = options;
+  const {t} = useI18n();
   const projectStore = useProjectStore();
+  const mockCategories = computed(() => buildMockCategories(t));
   const templateList = ref<DataTemplate[]>([]);
   const templateLoading = ref(false);
 
   const mockTypes = computed((): MockTypeOption[] => {
-    const flat = mockCategories.flatMap(category => category.children);
+    const flat = mockCategories.value.flatMap(category => category.children);
     if (parameterType === undefined) return flat;
     return flat.filter(item => item.types.includes(parameterType));
   });
@@ -343,7 +347,7 @@ export function useMockDataForm(options: UseMockDataFormOptions = {}) {
       const {data} = await getDataTemplateList(projectId);
       templateList.value = data || [];
     } catch (e) {
-      Message.error('加载模板列表失败');
+      Message.error(t('api.template.loadFailed'));
     } finally {
       templateLoading.value = false;
     }

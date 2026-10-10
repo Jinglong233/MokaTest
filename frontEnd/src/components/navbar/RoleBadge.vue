@@ -11,16 +11,18 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useUserStore, usePermissionStore } from '@/store';
 
+const { t } = useI18n();
 const userStore = useUserStore();
 const permissionStore = usePermissionStore();
 
 const label = computed(() => {
-  if (userStore.role === 'super_admin') return '超管';
-  if (permissionStore.hasPermission('team:role:manage')) return '团队管理员';
-  if (permissionStore.hasPermission('project:create')) return '项目管理员';
-  return '成员';
+  if (userStore.role === 'super_admin') return t('components.roleBadge.superAdmin');
+  if (permissionStore.hasPermission('team:role:manage')) return t('components.roleBadge.teamAdmin');
+  if (permissionStore.hasPermission('project:create')) return t('components.roleBadge.projectAdmin');
+  return t('components.roleBadge.member');
 });
 
 const color = computed(() => {

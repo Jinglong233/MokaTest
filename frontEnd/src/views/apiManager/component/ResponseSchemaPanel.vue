@@ -1,25 +1,25 @@
 <template>
   <div class="response-schema-panel">
     <div class="form-item">
-      <div class="form-label">响应定义模式</div>
+      <div class="form-label">{{ $t('api.responseSchema.modeLabel') }}</div>
       <a-radio-group
           :model-value="local.mode"
           :disabled="disabled"
           @change="(v) => updateField('mode', v as ResponseSchema['mode'])"
       >
-        <a-radio value="NONE">不定义</a-radio>
-        <a-radio value="TEMPLATE">绑定数据模板</a-radio>
-        <a-radio value="INLINE">内联定义</a-radio>
+        <a-radio value="NONE">{{ $t('api.responseSchema.modeNone') }}</a-radio>
+        <a-radio value="TEMPLATE">{{ $t('api.responseSchema.modeTemplate') }}</a-radio>
+        <a-radio value="INLINE">{{ $t('api.responseSchema.modeInline') }}</a-radio>
       </a-radio-group>
     </div>
 
     <!-- 绑定数据模板 -->
     <template v-if="local.mode === 'TEMPLATE'">
       <div class="form-item">
-        <div class="form-label">数据模板<span class="required-mark">*</span></div>
+        <div class="form-label">{{ $t('api.responseSchema.templateLabel') }}<span class="required-mark">*</span></div>
         <a-select
             :model-value="local.templateId"
-            placeholder="请选择数据模板"
+            :placeholder="$t('api.template.selectPlaceholder')"
             :disabled="disabled"
             allow-clear
             @change="(v) => updateField('templateId', v as number)"
@@ -31,10 +31,10 @@
       </div>
 
       <div class="form-item">
-        <div class="form-label">隐藏字段</div>
+        <div class="form-label">{{ $t('api.responseSchema.hiddenFields') }}</div>
         <a-input-tag
             :model-value="local.hiddenFields"
-            placeholder="输入要从模板中剔除的字段名，回车添加"
+            :placeholder="$t('api.responseSchema.hiddenFieldsPlaceholder')"
             :disabled="disabled"
             allow-clear
             @update:model-value="(v) => updateField('hiddenFields', v as string[])"
@@ -43,14 +43,14 @@
 
       <div class="form-item">
         <div class="form-label">
-          覆盖字段
-          <span class="override-tip">（与模板中同名字段以这里定义的为准）</span>
+          {{ $t('api.responseSchema.overrideFields') }}
+          <span class="override-tip">{{ $t('api.responseSchema.overrideTip') }}</span>
         </div>
         <MockFieldTreeNode
             v-model="overrideRoot"
             :template-list="templateList"
             :disabled="disabled"
-            root-label="覆盖字段"
+            :root-label="$t('api.responseSchema.overrideFields')"
             @change="emitUpdate"
         />
       </div>
@@ -59,26 +59,26 @@
     <!-- 内联定义 -->
     <template v-else-if="local.mode === 'INLINE'">
       <div class="form-item">
-        <div class="form-label">响应体结构</div>
+        <div class="form-label">{{ $t('api.responseSchema.schemaLabel') }}</div>
         <MockFieldTreeNode
             :model-value="inlineSchema"
             :template-list="templateList"
             :disabled="disabled"
-            root-label="响应体"
+            :root-label="$t('api.responseSchema.rootLabel')"
             @update:model-value="(v) => updateField('schema', v)"
         />
       </div>
     </template>
 
     <div class="form-item" v-if="!hideValidate">
-      <div class="form-label">执行时校验响应结构</div>
+      <div class="form-label">{{ $t('api.responseSchema.validateLabel') }}</div>
       <div class="validate-row">
         <a-switch
             :model-value="local.validateEnabled"
             :disabled="disabled"
             @change="(v) => updateField('validateEnabled', v as boolean)"
         />
-        <span class="validate-tip">开启后，调试/场景执行会校验响应是否符合上述结构定义，结果以「结构校验」断言展示</span>
+        <span class="validate-tip">{{ $t('api.responseSchema.validateTip') }}</span>
       </div>
     </div>
   </div>
@@ -87,6 +87,7 @@
 <script setup lang="ts">
   import { ref, reactive, computed, watch, onMounted } from 'vue';
   import { Message } from '@arco-design/web-vue';
+  import { useI18n } from 'vue-i18n';
   import { ResponseSchema } from '@/types/domain/api/requestModel/ResponseSchema';
   import { MockFieldRule } from '@/types/domain/api/requestModel/MockFieldRule';
   import { DataTemplate } from '@/types/domain/api/DataTemplate';
@@ -111,6 +112,8 @@
     (e: 'change'): void;
   }>();
 
+  const { t } = useI18n();
+
   const projectStore = useProjectStore();
 
   // 父组件未传模板列表时自行加载（与 TemplateDataSelector 一致）
@@ -124,7 +127,7 @@
       const {data} = await getDataTemplateList(projectId);
       innerTemplateList.value = data || [];
     } catch (e) {
-      Message.error('加载模板列表失败');
+      Message.error(t('api.template.loadFailed'));
     }
   };
 

@@ -1,6 +1,6 @@
 <template>
   <div class="report-detail-page" v-loading="loading">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', report.reportName || '报告详情']"/>
+    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', report.reportName || $t('qa.testPlan.report.detail')]"/>
     <template v-if="content">
       <div class="rd-body">
       <!-- 报告名称 + 计划执行时间 + 导出 -->
@@ -9,11 +9,11 @@
           <div class="rd-title">{{ report.reportName }}</div>
           <div class="rd-header-right">
             <span class="rd-exec-time" v-if="content.startTime || content.endTime">
-              计划执行时间：{{ content.startTime || '-' }} 至 {{ content.endTime || '-' }}
+              {{ $t('qa.testPlan.report.execTime', { start: content.startTime || '-', end: content.endTime || '-' }) }}
             </span>
             <a-button type="primary" @click="handlePrint">
               <template #icon><icon-printer /></template>
-              导出PDF
+              {{ $t('qa.testPlan.report.exportPdf') }}
             </a-button>
           </div>
         </div>
@@ -24,22 +24,22 @@
         <div class="rd-stat-row">
           <!-- 报告分析 -->
           <a-card class="rd-card rd-stat-card" size="small">
-              <div class="rd-card-title">报告分析</div>
+              <div class="rd-card-title">{{ $t('qa.testPlan.report.analysis') }}</div>
               <div class="rd-analysis-list">
                 <div class="rd-analysis-item">
-                  <span class="rd-analysis-label">通过阈值（预留）</span>
+                  <span class="rd-analysis-label">{{ $t('qa.testPlan.report.threshold') }}</span>
                   <span class="rd-analysis-value">-</span>
                 </div>
                 <div class="rd-analysis-item">
-                  <span class="rd-analysis-label">通过率</span>
+                  <span class="rd-analysis-label">{{ $t('qa.testPlan.passRate') }}</span>
                   <span class="rd-analysis-value" style="color:#00b42a">{{ pct(content.passRate) }}</span>
                 </div>
                 <div class="rd-analysis-item">
-                  <span class="rd-analysis-label">执行完成率</span>
+                  <span class="rd-analysis-label">{{ $t('qa.testPlan.report.execRate') }}</span>
                   <span class="rd-analysis-value">{{ pct(content.executeRate) }}</span>
                 </div>
                 <div class="rd-analysis-item">
-                  <span class="rd-analysis-label">缺陷总数</span>
+                  <span class="rd-analysis-label">{{ $t('qa.testPlan.report.totalBugs') }}</span>
                   <span class="rd-analysis-value" style="color:#f53f3f">{{ content.totalBug || 0 }}</span>
                 </div>
               </div>
@@ -47,13 +47,13 @@
 
           <!-- 执行分析（环形图，误报为预留展示位） -->
           <a-card class="rd-card rd-stat-card" size="small">
-              <div class="rd-card-title">执行分析</div>
+              <div class="rd-card-title">{{ $t('qa.testPlan.report.execAnalysis') }}</div>
               <Chart :options="execPieOption" height="200px" />
             </a-card>
 
           <!-- 功能用例分析 -->
           <a-card class="rd-card rd-stat-card" size="small">
-              <div class="rd-card-title">功能用例分析</div>
+              <div class="rd-card-title">{{ $t('qa.testPlan.report.caseAnalysis') }}</div>
               <Chart :options="casePieOption" height="130px" />
               <div class="rd-case-bars">
                 <div v-for="item in caseBarItems" :key="item.name" class="rd-case-bar-row">
@@ -70,49 +70,49 @@
         <!-- 报告总结 -->
         <a-card class="rd-card rd-section-card" size="small">
             <div class="rd-card-title rd-summary-head">
-              报告总结
-              <a-button size="mini" type="primary" :loading="summarySaving" @click="handleSaveSummary">保存</a-button>
+              {{ $t('qa.testPlan.report.summary') }}
+              <a-button size="mini" type="primary" :loading="summarySaving" @click="handleSaveSummary">{{ $t('qa.common.save') }}</a-button>
             </div>
             <RichEditor v-model="summary" height="180px" />
           </a-card>
 
         <!-- 缺陷列表 -->
         <a-card class="rd-card rd-section-card" size="small">
-            <div class="rd-card-title">缺陷列表（{{ bugList.length }}）</div>
+            <div class="rd-card-title">{{ $t('qa.testPlan.report.bugList', { count: bugList.length }) }}</div>
             <a-table :data="bugList" :pagination="false" size="small" row-key="bugId" :scroll="{ y: 360 }" class="rd-table">
               <template #columns>
-                <a-table-column title="编号" :width="130">
+                <a-table-column :title="$t('qa.testPlan.exec.bugCode')" :width="130">
                   <template #cell="{ record }">
                     <a-link @click="goBug(record)">{{ record.bugCode }}</a-link>
                   </template>
                 </a-table-column>
-                <a-table-column title="缺陷名称" data-index="title" :ellipsis="true"/>
-                <a-table-column title="状态" :width="100" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testPlan.report.bugName')" data-index="title" :ellipsis="true"/>
+                <a-table-column :title="$t('qa.bug.status')" :width="100" align="center" header-align="center">
                   <template #cell="{ record }">
                     <a-tag size="small" :color="bugStatusColor(record.status)">{{ bugStatusText(record.status) }}</a-tag>
                   </template>
                 </a-table-column>
-                <a-table-column title="处理人" data-index="assigneeName" :width="110" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testPlan.assignee')" data-index="assigneeName" :width="110" align="center" header-align="center">
                   <template #cell="{ record }">{{ record.assigneeName || '-' }}</template>
                 </a-table-column>
-                <a-table-column title="用例数" data-index="caseCount" :width="90" align="center" header-align="center"/>
+                <a-table-column :title="$t('qa.testPlan.caseCount')" data-index="caseCount" :width="90" align="center" header-align="center"/>
               </template>
-              <template #empty><a-empty description="无关联缺陷" /></template>
+              <template #empty><a-empty :description="$t('qa.testPlan.report.noBugs')" /></template>
             </a-table>
           </a-card>
 
         <!-- 用例明细 -->
         <a-card class="rd-card rd-section-card" size="small">
-            <div class="rd-card-title">用例明细（{{ caseDetails.length }}）</div>
+            <div class="rd-card-title">{{ $t('qa.testPlan.report.caseDetails', { count: caseDetails.length }) }}</div>
             <a-table :data="caseDetails" :pagination="false" size="small" row-key="planCaseId" :scroll="{ y: 360 }" class="rd-table">
               <template #columns>
-                <a-table-column title="编号" :width="130">
+                <a-table-column :title="$t('qa.testPlan.exec.bugCode')" :width="130">
                   <template #cell="{ record }">
                     <a-link @click="goCase(record)">{{ record.caseCode }}</a-link>
                   </template>
                 </a-table-column>
-                <a-table-column title="用例名称" data-index="caseName" :ellipsis="true"/>
-                <a-table-column title="执行结果" :width="100" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testCase.name')" data-index="caseName" :ellipsis="true"/>
+                <a-table-column :title="$t('qa.testPlan.execResult')" :width="100" align="center" header-align="center">
                   <template #cell="{ record }">
                     <a-tag size="small" :color="resultColor(record.executeResult)">
                       <template #icon><component :is="resultIcon(record.executeResult)" /></template>
@@ -120,7 +120,7 @@
                     </a-tag>
                   </template>
                 </a-table-column>
-                <a-table-column title="用例等级" :width="90" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testPlan.caseLevel')" :width="90" align="center" header-align="center">
                   <template #cell="{ record }">
                     <a-tag size="small" :color="priorityColor(record.priority)">
                       <template #icon><icon-flag /></template>
@@ -128,25 +128,25 @@
                     </a-tag>
                   </template>
                 </a-table-column>
-                <a-table-column title="所属模块" data-index="moduleName" :width="130">
+                <a-table-column :title="$t('qa.testPlan.module')" data-index="moduleName" :width="130">
                   <template #cell="{ record }">{{ record.moduleName || '-' }}</template>
                 </a-table-column>
-                <a-table-column title="执行人" data-index="executorName" :width="100" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testPlan.executor')" data-index="executorName" :width="100" align="center" header-align="center">
                   <template #cell="{ record }">{{ record.executorName || '-' }}</template>
                 </a-table-column>
-                <a-table-column title="缺陷数" data-index="bugCount" :width="90" align="center" header-align="center">
+                <a-table-column :title="$t('qa.testPlan.bugCount')" data-index="bugCount" :width="90" align="center" header-align="center">
                   <template #cell="{ record }">
                     <span :style="{ color: record.bugCount > 0 ? '#f53f3f' : '#86909c' }">{{ record.bugCount || 0 }}</span>
                   </template>
                 </a-table-column>
               </template>
-              <template #empty><a-empty description="无用例" /></template>
+              <template #empty><a-empty :description="$t('qa.testPlan.report.noCases')" /></template>
             </a-table>
           </a-card>
       </div>
       </div>
     </template>
-    <a-empty v-else-if="!loading" description="报告不存在或已删除" style="margin-top: 80px" />
+    <a-empty v-else-if="!loading" :description="$t('qa.testPlan.report.notFound')" style="margin-top: 80px" />
   </div>
 </template>
 
@@ -157,6 +157,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import Chart from '@/components/chart/index.vue';
@@ -165,6 +166,7 @@ import { getPlanReportDetail, updatePlanReportSummary } from '@/api/MyApi/qa';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const reportId = Number(route.params.id);
 
 const loading = ref(false);
@@ -190,39 +192,39 @@ const execPieOption = computed(() => {
       type: 'pie', radius: ['40%', '65%'], center: ['50%', '42%'],
       label: { show: true, formatter: '{b} {c}', fontSize: 11 },
       data: [
-        { name: '未执行', value: d.unexec || 0 },
-        { name: '成功', value: d.pass || 0 },
-        { name: '误报', value: d.falsePositive || 0 },
-        { name: '阻塞', value: d.block || 0 },
-        { name: '失败', value: d.fail || 0 },
+        { name: t('qa.testPlan.result.unexecuted'), value: d.unexec || 0 },
+        { name: t('qa.testPlan.result.success'), value: d.pass || 0 },
+        { name: t('qa.testPlan.report.falsePositive'), value: d.falsePositive || 0 },
+        { name: t('qa.testPlan.result.block'), value: d.block || 0 },
+        { name: t('qa.testPlan.result.fail'), value: d.fail || 0 },
       ],
     }],
   };
 });
 
 // 功能用例分析：环形图 + 分段占比
-const CASE_SEGS = [
-  { key: 'unexec', name: '未执行', color: '#c9cdd4' },
-  { key: 'pass', name: '成功', color: '#00b42a' },
-  { key: 'block', name: '阻塞', color: '#ff7d00' },
-  { key: 'fail', name: '失败', color: '#f53f3f' },
-];
+const CASE_SEGS = computed(() => [
+  { key: 'unexec', name: t('qa.testPlan.result.unexecuted'), color: '#c9cdd4' },
+  { key: 'pass', name: t('qa.testPlan.result.success'), color: '#00b42a' },
+  { key: 'block', name: t('qa.testPlan.result.block'), color: '#ff7d00' },
+  { key: 'fail', name: t('qa.testPlan.result.fail'), color: '#f53f3f' },
+]);
 const casePieOption = computed(() => {
   const d = content.value || {};
   return {
     tooltip: { trigger: 'item' },
-    color: CASE_SEGS.map(s => s.color),
+    color: CASE_SEGS.value.map(s => s.color),
     series: [{
       type: 'pie', radius: ['45%', '70%'], center: ['50%', '50%'],
       label: { show: false },
-      data: CASE_SEGS.map(s => ({ name: s.name, value: d[s.key] || 0 })),
+      data: CASE_SEGS.value.map(s => ({ name: s.name, value: d[s.key] || 0 })),
     }],
   };
 });
 const caseBarItems = computed(() => {
   const d = content.value || {};
   const total = d.total || 0;
-  return CASE_SEGS.map(s => ({
+  return CASE_SEGS.value.map(s => ({
     ...s,
     value: d[s.key] || 0,
     rate: total > 0 ? Math.round((d[s.key] || 0) * 100 / total) : 0,
@@ -230,12 +232,12 @@ const caseBarItems = computed(() => {
 });
 
 const bugStatusText = (s: string) => ({
-  NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中', FIXED: '已修复', VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回',
+  NEW: t('qa.testPlan.bugStatus.new'), CONFIRMED: t('qa.testPlan.bugStatus.confirmed'), FIXING: t('qa.testPlan.bugStatus.fixing'), FIXED: t('qa.testPlan.bugStatus.fixed'), VERIFIED: t('qa.testPlan.bugStatus.verified'), CLOSED: t('qa.testPlan.bugStatus.closed'), REJECTED: t('qa.testPlan.bugStatus.rejected'),
 } as Record<string, string>)[s] || s || '-';
 const bugStatusColor = (s: string) => ({
   NEW: 'red', CONFIRMED: 'orange', FIXING: 'gold', FIXED: 'green', VERIFIED: 'cyan', CLOSED: 'gray', REJECTED: 'gray',
 } as Record<string, string>)[s] || 'gray';
-const resultText = (r: string) => ({ PASS: '成功', FAIL: '失败', BLOCK: '阻塞', NA: '不适用' } as Record<string, string>)[r] || '未执行';
+const resultText = (r: string) => ({ PASS: t('qa.testPlan.result.success'), FAIL: t('qa.testPlan.result.fail'), BLOCK: t('qa.testPlan.result.block'), NA: t('qa.testPlan.result.na') } as Record<string, string>)[r] || t('qa.testPlan.result.unexecuted');
 const resultColor = (r: string) => ({ PASS: 'green', FAIL: 'red', BLOCK: 'orange' } as Record<string, string>)[r] || 'gray';
 const resultIcon = (r: string) => ({
   PASS: 'icon-check-circle-fill',
@@ -257,7 +259,7 @@ const loadDetail = async () => {
         content.value = res.data.content ? JSON.parse(res.data.content) : null;
       } catch {
         content.value = null;
-        Message.error('报告内容解析失败');
+        Message.error(t('qa.testPlan.report.parseFail'));
       }
       // 从列表「导出」进入时自动打印
       if (route.query.print === '1' && content.value) {
@@ -275,7 +277,7 @@ const handleSaveSummary = async () => {
   summarySaving.value = true;
   try {
     const res: any = await updatePlanReportSummary(reportId, summary.value);
-    if (res.code === 200) Message.success('保存成功');
+    if (res.code === 200) Message.success(t('qa.testPlan.saveSuccess'));
   } catch (e) {
     console.error(e);
   } finally {
@@ -296,7 +298,7 @@ const handlePrint = () => {
   if (!printWindow) return;
   const html = document.getElementById('report-print-area')?.innerHTML || '';
   printWindow.document.write(`
-    <html><head><title>${report.value.reportName || '测试报告'}</title>
+    <html><head><title>${report.value.reportName || t('qa.testPlan.report.defaultTitle')}</title>
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1d2129; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -304,7 +306,7 @@ const handlePrint = () => {
       th { background: #f7f8fa; font-weight: 600; }
       .rd-card-title { font-size: 15px; font-weight: 600; margin: 16px 0 10px; }
       .rd-analysis-item { display: flex; justify-content: space-between; padding: 4px 0; }
-    </style></head><body><h2>${report.value.reportName || '测试报告'}</h2>${html}</body></html>
+    </style></head><body><h2>${report.value.reportName || t('qa.testPlan.report.defaultTitle')}</h2>${html}</body></html>
   `);
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 300);

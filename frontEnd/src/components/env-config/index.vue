@@ -4,7 +4,7 @@
       <!-- 左侧菜单 -->
       <div class="left-menu">
         <div class="menu-header">
-          <span class="title">全局</span>
+          <span class="title">{{ $t('components.envConfig.globalSection') }}</span>
         </div>
 
         <!-- 全局配置项 -->
@@ -16,7 +16,7 @@
           @click="selectGlobalItem('params')"
         >
           <icon-settings class="menu-icon" />
-          <span>全局参数</span>
+          <span>{{ $t('components.envConfig.globalParams') }}</span>
         </div>
         <div
           class="menu-item"
@@ -26,14 +26,14 @@
           @click="selectGlobalItem('script')"
         >
           <icon-file class="menu-icon" />
-          <span>全局脚本</span>
+          <span>{{ $t('components.envConfig.globalScript') }}</span>
         </div>
 
         <div class="menu-divider"></div>
 
         <!-- 环境列表 -->
         <div class="menu-header">
-          <span class="title">环境</span>
+          <span class="title">{{ $t('components.envConfig.envSection') }}</span>
           <a-button v-permission="'auto:env:create'" type="text" size="mini" @click="openNewEnvModal">
             <icon-plus />
           </a-button>
@@ -60,9 +60,9 @@
                 <icon-more />
               </div>
               <template #content>
-                <a-doption v-permission="'auto:env:update'" key="rename" value="rename">重命名</a-doption>
-                <a-doption v-permission="'auto:env:create'" key="copy" value="copy">复制</a-doption>
-                <a-doption v-permission="'auto:env:delete'" key="delete" value="delete">删除</a-doption>
+                <a-doption v-permission="'auto:env:update'" key="rename" value="rename">{{ $t('components.envConfig.rename') }}</a-doption>
+                <a-doption v-permission="'auto:env:create'" key="copy" value="copy">{{ $t('components.envConfig.copy') }}</a-doption>
+                <a-doption v-permission="'auto:env:delete'" key="delete" value="delete">{{ $t('qa.common.delete') }}</a-doption>
               </template>
             </a-dropdown>
           </div>
@@ -77,7 +77,7 @@
           class="add-env-btn"
         >
           <icon-plus />
-          新建环境
+          {{ $t('components.envConfig.newEnv') }}
         </a-button>
       </div>
 
@@ -89,14 +89,14 @@
           class="content-panel"
         >
           <div class="panel-header">
-            <span class="title">全局参数</span>
+            <span class="title">{{ $t('components.envConfig.globalParams') }}</span>
           </div>
           <div class="panel-body">
             <a-tabs v-model:active-key="globalParamsActiveTab" type="line">
               <a-tab-pane :key="GlobalRequestVarType.COOKIE">
-                <template #title><a-badge :count="globalCookies.length" :number-style="tabBadgeStyle" :offset="[8, 0]">全局Cookie</a-badge></template>
+                <template #title><a-badge :count="globalCookies.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.globalCookie') }}</a-badge></template>
                 <div class="tab-description">
-                  开启状态的全局cookie将自动带到该团队下的每一个接口内
+                  {{ $t('components.envConfig.globalCookieDesc') }}
                 </div>
                 <GlobalParameterTable
                   ref="globalCookieTableRef"
@@ -110,7 +110,7 @@
                 />
               </a-tab-pane>
               <a-tab-pane :key="GlobalRequestVarType.HEADER">
-                <template #title><a-badge :count="globalHeaders.length" :number-style="tabBadgeStyle" :offset="[8, 0]">全局Header</a-badge></template>
+                <template #title><a-badge :count="globalHeaders.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.globalHeader') }}</a-badge></template>
                 <GlobalParameterTable
                   ref="globalHeaderTableRef"
                   :type="GlobalRequestVarType.HEADER"
@@ -123,7 +123,7 @@
                 />
               </a-tab-pane>
               <a-tab-pane :key="GlobalRequestVarType.VARIABLE">
-                <template #title><a-badge :count="globalVariables.length" :number-style="tabBadgeStyle" :offset="[8, 0]">全局变量</a-badge></template>
+                <template #title><a-badge :count="globalVariables.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.globalVariable') }}</a-badge></template>
                 <GlobalParameterTable
                   ref="globalVariableTableRef"
                   :type="GlobalRequestVarType.VARIABLE"
@@ -136,9 +136,9 @@
                 />
               </a-tab-pane>
               <a-tab-pane :key="GlobalRequestVarType.ASSERT">
-                <template #title><a-badge :count="globalAsserts.length" :number-style="tabBadgeStyle" :offset="[8, 0]">全局断言</a-badge></template>
+                <template #title><a-badge :count="globalAsserts.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.globalAssert') }}</a-badge></template>
                 <div class="tab-description">
-                  开启状态的全局断言将自动应用到该团队下的每一个接口的响应校验中
+                  {{ $t('components.envConfig.globalAssertDesc') }}
                 </div>
                 <a-table
                   :data="globalAsserts"
@@ -146,7 +146,7 @@
                   :pagination="false"
                 >
                   <template #columns>
-                    <a-table-column title="状态" :width=80>
+                    <a-table-column :title="$t('components.paramTable.status')" :width=80>
                       <template #cell="{ record }">
                         <a-switch
                           size="small"
@@ -158,17 +158,17 @@
                         />
                       </template>
                     </a-table-column>
-                    <a-table-column title="断言名称" :width=150>
+                    <a-table-column :title="$t('components.envConfig.assertName')" :width=150>
                       <template #cell="{ record }">
                         <span>{{ record.name }}</span>
                       </template>
                     </a-table-column>
-                    <a-table-column title="断言规则">
+                    <a-table-column :title="$t('components.envConfig.assertRule')">
                       <template #cell="{ record }">
                         <span class="assert-summary">{{ getAssertSummary(record) }}</span>
                       </template>
                     </a-table-column>
-                    <a-table-column title="操作" :width=120>
+                    <a-table-column :title="$t('qa.common.operation')" :width=120>
                       <template #cell="{ rowIndex }">
                         <a-space>
                           <a-button :disabled="!hasGlobalVarUpdatePermission" type="text" size="small" @click="openEditAssertModal(rowIndex)">
@@ -184,7 +184,7 @@
                 </a-table>
                 <a-button :disabled="!hasGlobalVarUpdatePermission" type="dashed" long size="small" @click="openAddAssertModal" class="add-btn">
                   <icon-plus />
-                  添加全局断言
+                  {{ $t('components.envConfig.addGlobalAssert') }}
                 </a-button>
               </a-tab-pane>
             </a-tabs>
@@ -197,23 +197,23 @@
           class="content-panel"
         >
           <div class="panel-header">
-            <span class="title">全局脚本</span>
+            <span class="title">{{ $t('components.envConfig.globalScript') }}</span>
           </div>
           <div class="panel-body">
             <a-tabs v-model:active-key="globalScriptActiveTab" type="line">
-              <a-tab-pane key="pre" title="前置脚本">
+              <a-tab-pane key="pre" :title="$t('components.envConfig.preScript')">
                 <a-textarea
                   v-model="globalPreScript"
-                  placeholder="前置脚本（在请求发送前执行）"
+                  :placeholder="$t('components.envConfig.preScriptPlaceholder')"
                   :auto-size="{ minRows: 15, maxRows: 20 }"
                   :disabled="!hasGlobalVarUpdatePermission"
                   @blur="saveGlobalScript"
                 />
               </a-tab-pane>
-              <a-tab-pane key="post" title="后置脚本">
+              <a-tab-pane key="post" :title="$t('components.envConfig.postScript')">
                 <a-textarea
                   v-model="globalPostScript"
-                  placeholder="后置脚本（在请求响应后执行）"
+                  :placeholder="$t('components.envConfig.postScriptPlaceholder')"
                   :auto-size="{ minRows: 15, maxRows: 20 }"
                   :disabled="!hasGlobalVarUpdatePermission"
                   @blur="saveGlobalScript"
@@ -227,7 +227,7 @@
         <div v-if="selectedType === 'env'" class="content-panel">
           <div class="panel-header">
             <a-space>
-              <span class="title">环境名称</span>
+              <span class="title">{{ $t('components.envConfig.envName') }}</span>
               <a-input
                 v-if="currentEnvData"
                 aria-label="1"
@@ -240,7 +240,7 @@
           <div class="panel-body env-detail">
             <a-tabs v-model:active-key="envActiveTab" type="line">
               <a-tab-pane key="envVar">
-                <template #title><a-badge :count="envVarCount" :number-style="tabBadgeStyle" :offset="[8, 0]">环境变量</a-badge></template>
+                <template #title><a-badge :count="envVarCount" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.envVar') }}</a-badge></template>
                 <EnvironmentParameterTable
                   ref="envVarTableRef"
                   :field-name="'envVar'"
@@ -253,7 +253,7 @@
               <a-tab-pane key="cookies">
                 <template #title><a-badge :count="envCookieCount" :number-style="tabBadgeStyle" :offset="[8, 0]">Cookie</a-badge></template>
                 <div class="tab-description">
-                  开启状态的Cookie将自动带到该环境下的每一个接口内
+                  {{ $t('components.envConfig.envCookieDesc') }}
                 </div>
                 <EnvironmentParameterTable
                   ref="envCookieTableRef"
@@ -276,7 +276,7 @@
                 />
               </a-tab-pane>
               <a-tab-pane key="serve">
-                <template #title><a-badge :count="currentEnvServices.length" :number-style="tabBadgeStyle" :offset="[8, 0]">服务</a-badge></template>
+                <template #title><a-badge :count="currentEnvServices.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.service') }}</a-badge></template>
                 <a-table
                   :columns="serviceColumns"
                   :data="currentEnvServices"
@@ -296,14 +296,14 @@
                         type="text"
                         size="mini"
                         @click="editService(rowIndex)"
-                      >编辑</a-button>
+                      >{{ $t('components.envConfig.edit') }}</a-button>
                       <a-button
                         :disabled="!hasEnvUpdatePermission"
                         type="text"
                         status="danger"
                         size="mini"
                         @click="deleteService(rowIndex)"
-                      >删除</a-button>
+                      >{{ $t('qa.common.delete') }}</a-button>
                     </a-space>
                   </template>
                 </a-table>
@@ -316,11 +316,11 @@
                   class="add-btn"
                 >
                   <icon-plus />
-                  新增服务
+                  {{ $t('components.envConfig.addService') }}
                 </a-button>
               </a-tab-pane>
               <a-tab-pane key="database">
-                <template #title><a-badge :count="currentEnvDatabases.length" :number-style="tabBadgeStyle" :offset="[8, 0]">数据库</a-badge></template>
+                <template #title><a-badge :count="currentEnvDatabases.length" :number-style="tabBadgeStyle" :offset="[8, 0]">{{ $t('components.envConfig.database') }}</a-badge></template>
                 <a-table
                   :columns="databaseColumns"
                   :data="currentEnvDatabases"
@@ -347,21 +347,21 @@
                         :loading="testConnLoading === record.name"
                         @click="testDbConnection(record)"
                       >
-                        {{ testConnLoading === record.name ? '测试中' : '测试' }}
+                        {{ testConnLoading === record.name ? $t('components.envConfig.testing') : $t('components.envConfig.test') }}
                       </a-button>
                       <a-button
                         :disabled="!hasEnvUpdatePermission"
                         type="text"
                         size="mini"
                         @click="editDatabase(rowIndex)"
-                      >编辑</a-button>
+                      >{{ $t('components.envConfig.edit') }}</a-button>
                       <a-button
                         :disabled="!hasEnvUpdatePermission"
                         type="text"
                         status="danger"
                         size="mini"
                         @click="deleteDatabase(rowIndex)"
-                      >删除</a-button>
+                      >{{ $t('qa.common.delete') }}</a-button>
                     </a-space>
                   </template>
                 </a-table>
@@ -374,7 +374,7 @@
                   class="add-btn"
                 >
                   <icon-plus />
-                  新增数据库
+                  {{ $t('components.envConfig.addDatabase') }}
                 </a-button>
               </a-tab-pane>
             </a-tabs>
@@ -386,14 +386,14 @@
     <!-- 新建环境弹窗 -->
     <a-modal
       v-model:visible="newEnvModalVisible"
-      title="新建环境"
+      :title="$t('components.envConfig.newEnv')"
       width="400px"
       @ok="createNewEnv"
       @cancel="newEnvModalVisible = false"
     >
       <a-form :model="newEnvForm" layout="vertical">
-        <a-form-item label="环境名称" required>
-          <a-input v-model="newEnvForm.envName" placeholder="请输入环境名称" />
+        <a-form-item :label="$t('components.envConfig.envName')" required>
+          <a-input v-model="newEnvForm.envName" :placeholder="$t('components.envConfig.envNamePlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -407,44 +407,44 @@
       @cancel="assertModalVisible = false"
     >
       <a-form :model="assertForm" layout="vertical">
-        <a-form-item label="断言名称" required>
-          <a-input v-model="assertForm.name" placeholder="请输入断言名称" :disabled="!hasGlobalVarUpdatePermission" />
+        <a-form-item :label="$t('components.envConfig.assertName')" required>
+          <a-input v-model="assertForm.name" :placeholder="$t('components.envConfig.assertNamePlaceholder')" :disabled="!hasGlobalVarUpdatePermission" />
         </a-form-item>
-        <a-form-item label="断言目标" required>
+        <a-form-item :label="$t('components.envConfig.assertTarget')" required>
           <a-select v-model="assertForm.apiAssertType" :disabled="!hasGlobalVarUpdatePermission">
-            <a-option value="BODY">响应体</a-option>
-            <a-option value="HEADER">响应头</a-option>
-            <a-option value="STATUS_CODE">响应码</a-option>
-            <a-option value="RESPONSE_TIME">响应时间</a-option>
-            <a-option value="CUSTOM">自定义</a-option>
+            <a-option value="BODY">{{ $t('components.envConfig.targetBody') }}</a-option>
+            <a-option value="HEADER">{{ $t('components.envConfig.targetHeader') }}</a-option>
+            <a-option value="STATUS_CODE">{{ $t('components.envConfig.targetStatusCode') }}</a-option>
+            <a-option value="RESPONSE_TIME">{{ $t('components.envConfig.targetResponseTime') }}</a-option>
+            <a-option value="CUSTOM">{{ $t('components.envConfig.targetCustom') }}</a-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="字段">
+        <a-form-item :label="$t('components.envConfig.fieldLabel')">
           <a-input
             v-model="assertForm.field"
-            placeholder="字段名（如：$.data.token，响应码和响应时间可不填）"
+            :placeholder="$t('components.envConfig.fieldPlaceholder')"
             :disabled="assertForm.apiAssertType === 'STATUS_CODE' || assertForm.apiAssertType === 'RESPONSE_TIME' || !hasGlobalVarUpdatePermission"
           />
         </a-form-item>
-        <a-form-item label="断言关系" required>
+        <a-form-item :label="$t('components.envConfig.assertRelation')" required>
           <a-select v-model="assertForm.assertRelationship" :disabled="!hasGlobalVarUpdatePermission">
-            <a-option value="EQUALS">等于</a-option>
-            <a-option value="NOT_EQUALS">不等于</a-option>
-            <a-option value="CONTAINS">包含</a-option>
-            <a-option value="NOT_CONTAINS">不包含</a-option>
-            <a-option value="GT">大于</a-option>
-            <a-option value="LT">小于</a-option>
-            <a-option value="GE">大于等于</a-option>
-            <a-option value="LE">小于等于</a-option>
-            <a-option value="REGULAR">正则匹配</a-option>
+            <a-option value="EQUALS">{{ $t('components.envConfig.relEquals') }}</a-option>
+            <a-option value="NOT_EQUALS">{{ $t('components.envConfig.relNotEquals') }}</a-option>
+            <a-option value="CONTAINS">{{ $t('components.envConfig.relContains') }}</a-option>
+            <a-option value="NOT_CONTAINS">{{ $t('components.envConfig.relNotContains') }}</a-option>
+            <a-option value="GT">{{ $t('components.envConfig.relGt') }}</a-option>
+            <a-option value="LT">{{ $t('components.envConfig.relLt') }}</a-option>
+            <a-option value="GE">{{ $t('components.envConfig.relGe') }}</a-option>
+            <a-option value="LE">{{ $t('components.envConfig.relLe') }}</a-option>
+            <a-option value="REGULAR">{{ $t('components.envConfig.relRegular') }}</a-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="期望值" required>
-          <a-input v-model="assertForm.assertValue" placeholder="期望的值" :disabled="!hasGlobalVarUpdatePermission" />
+        <a-form-item :label="$t('components.envConfig.expectedValue')" required>
+          <a-input v-model="assertForm.assertValue" :placeholder="$t('components.envConfig.expectedValuePlaceholder')" :disabled="!hasGlobalVarUpdatePermission" />
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item :label="$t('components.paramTable.status')">
           <a-switch v-model="assertForm.disabled" :checked-value="false" :unchecked-value="true" :disabled="!hasGlobalVarUpdatePermission" />
-          <span style="margin-left: 8px">{{ assertForm.disabled ? '禁用' : '启用' }}</span>
+          <span style="margin-left: 8px">{{ assertForm.disabled ? $t('components.paramTable.disabled') : $t('components.paramTable.enabled') }}</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -452,17 +452,17 @@
     <!-- 服务新增/编辑弹窗 -->
     <a-modal
       v-model:visible="serviceModalVisible"
-      :title="editingServiceIndex !== null ? '编辑服务' : '新增服务'"
+      :title="editingServiceIndex !== null ? $t('components.envConfig.editService') : $t('components.envConfig.addService')"
       width="480px"
       @ok="saveServiceForm"
       @cancel="serviceModalVisible = false"
     >
       <a-form :model="serviceForm" layout="horizontal">
-        <a-form-item label="服务名" required>
-          <a-input v-model="serviceForm.name" placeholder="用于区分不同服务，如 gateway" />
+        <a-form-item :label="$t('components.envConfig.serviceName')" required>
+          <a-input v-model="serviceForm.name" :placeholder="$t('components.envConfig.serviceNamePlaceholder')" />
         </a-form-item>
-        <a-form-item label="服务地址" required>
-          <a-input v-model="serviceForm.address" placeholder="如 http://192.168.1.10:8080" />
+        <a-form-item :label="$t('components.envConfig.serviceAddress')" required>
+          <a-input v-model="serviceForm.address" :placeholder="$t('components.envConfig.serviceAddressPlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -470,7 +470,7 @@
     <!-- 数据库新增/编辑弹窗 -->
 <a-modal
       v-model:visible="dbModalVisible"
-      :title="editingDbIndex !== null ? '编辑数据库' : '新增数据库'"
+      :title="editingDbIndex !== null ? $t('components.envConfig.editDatabase') : $t('components.envConfig.addDatabase')"
       width="520px"
       @ok="saveDbForm"
       @cancel="dbModalVisible = false"
@@ -482,43 +482,43 @@
           :loading="testConnLoading === dbForm.name"
           @click="testDbConnection(dbForm)"
         >
-          {{ testConnLoading === dbForm.name ? '测试中...' : '测试连接' }}
+          {{ testConnLoading === dbForm.name ? $t('components.envConfig.testingConnection') : $t('components.envConfig.testConnection') }}
         </a-button>
       </div>
       <a-form :model="dbForm" layout="horizontal">
-        <a-form-item label="数据库类型">
-          <a-select v-model="dbForm.dataBaseType" placeholder="选择数据库类型">
+        <a-form-item :label="$t('components.envConfig.dbType')">
+          <a-select v-model="dbForm.dataBaseType" :placeholder="$t('components.envConfig.dbTypePlaceholder')">
             <!-- 仅保留后端已有 JDBC 驱动的类型（与 SUPPORTED_DATA_BASE_TYPES 一致） -->
             <a-option value="MYSQL">MySQL</a-option>
             <a-option value="POSTGRESQL">PostgreSQL</a-option>
             <a-option value="SQLSERVER">SQL Server</a-option>
             <a-option value="ORACLE">Oracle</a-option>
-            <a-option value="OTHER">其他</a-option>
+            <a-option value="OTHER">{{ $t('components.envConfig.other') }}</a-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="连接名称" required>
-          <a-input v-model="dbForm.name" placeholder="用于区分不同数据库连接" />
+        <a-form-item :label="$t('components.envConfig.connName')" required>
+          <a-input v-model="dbForm.name" :placeholder="$t('components.envConfig.connNamePlaceholder')" />
         </a-form-item>
-        <a-form-item label="IP地址" required>
+        <a-form-item :label="$t('components.envConfig.ipAddress')" required>
           <a-input v-model="dbForm.ip" placeholder="127.0.0.1" />
         </a-form-item>
-        <a-form-item label="端口" required>
+        <a-form-item :label="$t('components.envConfig.port')" required>
           <a-input v-model="dbForm.port" placeholder="3306" />
         </a-form-item>
-        <a-form-item label="数据库名" required>
-          <a-input v-model="dbForm.dbName" placeholder="库名" />
+        <a-form-item :label="$t('components.envConfig.dbName')" required>
+          <a-input v-model="dbForm.dbName" :placeholder="$t('components.envConfig.dbNamePlaceholder')" />
         </a-form-item>
-        <a-form-item label="用户名" required>
+        <a-form-item :label="$t('components.envConfig.username')" required>
           <a-input v-model="dbForm.userName" placeholder="root" />
         </a-form-item>
-        <a-form-item label="密码">
-          <a-input-password v-model="dbForm.password" placeholder="密码" />
+        <a-form-item :label="$t('components.envConfig.password')">
+          <a-input-password v-model="dbForm.password" :placeholder="$t('components.envConfig.password')" />
         </a-form-item>
-        <a-form-item label="编码集">
+        <a-form-item :label="$t('components.envConfig.charset')">
           <a-input v-model="dbForm.charset" placeholder="utf8mb4" />
         </a-form-item>
-        <a-form-item label="备注">
-          <a-input v-model="dbForm.description" placeholder="备注说明" />
+        <a-form-item :label="$t('components.envConfig.remark')">
+          <a-input v-model="dbForm.description" :placeholder="$t('components.envConfig.remarkPlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -528,6 +528,7 @@
 <script setup lang="ts">
   import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
   import { Message, Modal } from '@arco-design/web-vue';
+  import { useI18n } from 'vue-i18n';
   import {
     IconDelete,
     IconEdit,
@@ -558,6 +559,8 @@
     testDbConnectionApi,
   } from '@/api/MyApi/environment';
   import usePermission from '@/hooks/permission';
+
+  const { t } = useI18n();
 
   // Props & Emits
   const props = defineProps<{
@@ -613,7 +616,7 @@
         visible.value = v;
         emit('update:modelValue', v);
       },
-      title: '环境管理',
+      title: t('components.navbar.envManagement'),
       width: '1000px',
       bodyStyle: { padding: '0', height: '600px' },
       footer: false,
@@ -690,19 +693,19 @@
   const newEnvForm = ref(new AddEnvDTO());
 
   // 表格列定义
-  const serviceColumns = [
-    { title: '服务名', slotName: 'name' },
-    { title: '服务地址', slotName: 'address' },
-    { title: '操作', slotName: 'operation', width: '130px' },
-  ];
+  const serviceColumns = computed(() => [
+    { title: t('components.envConfig.serviceName'), slotName: 'name' },
+    { title: t('components.envConfig.serviceAddress'), slotName: 'address' },
+    { title: t('qa.common.operation'), slotName: 'operation', width: '130px' },
+  ]);
 
-  const databaseColumns = [
-    { title: '连接名称', slotName: 'name', width: '140px' },
-    { title: '数据库类型', slotName: 'dataBaseType', width: '100px' },
-    { title: '主机地址', slotName: 'address' },
-    { title: '数据库名', slotName: 'dbName' },
-    { title: '操作', slotName: 'operation', width: '160px' },
-  ];
+  const databaseColumns = computed(() => [
+    { title: t('components.envConfig.connName'), slotName: 'name', width: '140px' },
+    { title: t('components.envConfig.dbType'), slotName: 'dataBaseType', width: '100px' },
+    { title: t('components.envConfig.hostAddress'), slotName: 'address' },
+    { title: t('components.envConfig.dbName'), slotName: 'dbName' },
+    { title: t('qa.common.operation'), slotName: 'operation', width: '160px' },
+  ]);
 
   // ========== 数据库连接测试 ==========
   const testConnLoading = ref<string | null>(null);
@@ -715,7 +718,7 @@
 
   const testDbConnection = async (record: any) => {
     if (!record.ip || !record.port || !record.userName) {
-      Message.warning('请先填写IP、端口和用户名');
+      Message.warning(t('components.envConfig.fillDbInfo'));
       return;
     }
     testConnLoading.value = record.name;
@@ -733,16 +736,16 @@
       });
       testConnResult.value = data;
       if (data.success) {
-        Message.success(`连接成功 — ${data.dbVersion || ''}，${data.latencyMs}ms`);
+        Message.success(t('components.envConfig.connectSuccess', { version: data.dbVersion || '', latency: data.latencyMs }));
       } else {
-        Message.error(data.message || '连接失败');
+        Message.error(data.message || t('components.envConfig.connectFailed'));
       }
     } catch (e: any) {
       testConnResult.value = {
         success: false,
-        message: e?.response?.data?.msg || e?.message || '连接失败',
+        message: e?.response?.data?.msg || e?.message || t('components.envConfig.connectFailed'),
       };
-      Message.error(testConnResult.value.message || '连接失败');
+      Message.error(testConnResult.value.message || t('components.envConfig.connectFailed'));
     } finally {
       testConnLoading.value = null;
     }
@@ -817,39 +820,43 @@
       case GlobalRequestVarType.HEADER:
         return 'Header';
       case GlobalRequestVarType.VARIABLE:
-        return '变量';
+        return t('components.envConfig.variable');
       case GlobalRequestVarType.ASSERT:
-        return '断言';
+        return t('components.envConfig.assert');
       default:
-        return '参数';
+        return t('components.envConfig.param');
     }
   };
 
   // 断言相关映射
-  const assertTypeMap: Record<string, string> = {
-    HEADER: '响应头',
-    BODY: '响应体',
-    STATUS_CODE: '响应码',
-    RESPONSE_TIME: '响应时间',
-    CUSTOM: '自定义',
-  };
+  const assertTypeMap = computed<Record<string, string>>(() => ({
+    HEADER: t('components.envConfig.targetHeader'),
+    BODY: t('components.envConfig.targetBody'),
+    STATUS_CODE: t('components.envConfig.targetStatusCode'),
+    RESPONSE_TIME: t('components.envConfig.targetResponseTime'),
+    CUSTOM: t('components.envConfig.targetCustom'),
+  }));
 
-  const assertRelationMap: Record<string, string> = {
-    EQUALS: '等于',
-    NOT_EQUALS: '不等于',
-    CONTAINS: '包含',
-    NOT_CONTAINS: '不包含',
-    GT: '大于',
-    LT: '小于',
-    GE: '大于等于',
-    LE: '小于等于',
-    REGULAR: '正则匹配',
-  };
+  const assertRelationMap = computed<Record<string, string>>(() => ({
+    EQUALS: t('components.envConfig.relEquals'),
+    NOT_EQUALS: t('components.envConfig.relNotEquals'),
+    CONTAINS: t('components.envConfig.relContains'),
+    NOT_CONTAINS: t('components.envConfig.relNotContains'),
+    GT: t('components.envConfig.relGt'),
+    LT: t('components.envConfig.relLt'),
+    GE: t('components.envConfig.relGe'),
+    LE: t('components.envConfig.relLe'),
+    REGULAR: t('components.envConfig.relRegular'),
+  }));
 
   // 全局断言弹窗
   const assertModalVisible = ref(false);
-  const assertModalTitle = ref('添加全局断言');
   const assertEditId = ref<number | null>(null);
+  const assertModalTitle = computed(() =>
+    assertEditId.value
+      ? t('components.envConfig.editGlobalAssert')
+      : t('components.envConfig.addGlobalAssert')
+  );
   const assertForm = reactive({
     name: '',
     apiAssertType: 'BODY',
@@ -872,8 +879,8 @@
   const getAssertSummary = (globalVar: GlobalVar): string => {
     if (!globalVar.globalAssert || globalVar.globalAssert.length === 0) return '-';
     const rule = globalVar.globalAssert[0];
-    const type = assertTypeMap[rule.apiAssertType as string] || rule.apiAssertType;
-    const relation = assertRelationMap[rule.assertRelationship as string] || rule.assertRelationship;
+    const type = assertTypeMap.value[rule.apiAssertType as string] || rule.apiAssertType;
+    const relation = assertRelationMap.value[rule.assertRelationship as string] || rule.assertRelationship;
     return `${type} ${rule.field ? '[' + rule.field + ']' : ''} ${relation} ${rule.assertValue}`;
   };
 
@@ -881,7 +888,6 @@
 
   const openAddAssertModal = () => {
     resetAssertForm();
-    assertModalTitle.value = '添加全局断言';
     assertModalVisible.value = true;
   };
 
@@ -889,7 +895,6 @@
     const globalVar = globalAsserts.value[index];
     if (!globalVar) return;
     assertEditId.value = globalVar.id || null;
-    assertModalTitle.value = '编辑全局断言';
     assertForm.name = globalVar.name || '';
     assertForm.disabled = globalVar.disabled || false;
     if (globalVar.globalAssert && globalVar.globalAssert.length > 0) {
@@ -906,7 +911,7 @@
     if (!hasGlobalVarUpdatePermission.value) return;
     if (!props.teamId) return;
     if (!assertForm.name.trim()) {
-      Message.warning('请输入断言名称');
+      Message.warning(t('components.envConfig.assertNamePlaceholder'));
       return;
     }
 
@@ -930,7 +935,7 @@
 
     const res = await saveOrUpdateGlobalVar(dto);
     if (res.code === 200) {
-      Message.success(assertEditId.value ? '更新成功' : '添加成功');
+      Message.success(assertEditId.value ? t('components.common.updateSuccess') : t('components.common.addSuccess'));
       assertModalVisible.value = false;
       await loadGlobalVars();
     }
@@ -941,8 +946,8 @@
     const globalVar = globalAsserts.value[index];
     if (!globalVar) return;
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除全局断言"${globalVar.name}"吗？`,
+      title: t('components.common.deleteTitle'),
+      content: t('components.envConfig.deleteAssertContent', { name: globalVar.name }),
       onOk: async () => {
         if (globalVar.id) {
           await deleteGlobalVarById(globalVar.id);
@@ -963,7 +968,7 @@
     dto.disabled = globalVar.disabled;
     dto.globalAssert = globalVar.globalAssert;
     await saveOrUpdateGlobalVar(dto);
-    Message.success('状态更新成功');
+    Message.success(t('components.envConfig.statusUpdateSuccess'));
   };
 
   // ========== 全局脚本操作 ==========
@@ -985,7 +990,7 @@
       globalPreScript.value,
       globalPostScript.value
     );
-    Message.success('脚本保存成功');
+    Message.success(t('components.envConfig.scriptSaveSuccess'));
   };
 
   // 根据type分组获取参数
@@ -1019,7 +1024,7 @@
     );
     const res = await saveOrUpdate(updateData);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('components.common.saveSuccess'));
       // 重新获取环境列表
       await loadEnvList();
     }
@@ -1114,7 +1119,7 @@
 
   const saveServiceForm = async () => {
     if (!serviceForm.name?.trim() || !serviceForm.address?.trim()) {
-      Message.warning('请填写完整的服务名和服务地址');
+      Message.warning(t('components.envConfig.serviceFormIncomplete'));
       return;
     }
     if (!currentEnvData.value) return;
@@ -1132,7 +1137,7 @@
     }
     currentEnvData.value.serve = services;
     await saveCurrentEnvironment();
-    Message.success(editingServiceIndex.value !== null ? '服务更新成功' : '服务添加成功');
+    Message.success(editingServiceIndex.value !== null ? t('components.envConfig.serviceUpdateSuccess') : t('components.envConfig.serviceAddSuccess'));
     serviceModalVisible.value = false;
   };
 
@@ -1143,7 +1148,7 @@
     services.splice(index, 1);
     currentEnvData.value.serve = services;
     await saveCurrentEnvironment();
-    Message.success('服务删除成功');
+    Message.success(t('components.envConfig.serviceDeleteSuccess'));
   };
 
   // 数据库操作
@@ -1197,7 +1202,7 @@
 
   const saveDbForm = async () => {
     if (!dbForm.name || !dbForm.ip || !dbForm.port || !dbForm.dbName || !dbForm.userName) {
-      Message.warning('请填写完整的数据库连接信息');
+      Message.warning(t('components.envConfig.dbFormIncomplete'));
       return;
     }
     if (!currentEnvData.value) return;
@@ -1210,7 +1215,7 @@
     }
     currentEnvData.value.dbs = databases;
     await saveCurrentEnvironment();
-    Message.success(editingDbIndex.value !== null ? '数据库更新成功' : '数据库添加成功');
+    Message.success(editingDbIndex.value !== null ? t('components.envConfig.dbUpdateSuccess') : t('components.envConfig.dbAddSuccess'));
     dbModalVisible.value = false;
   };
 
@@ -1221,13 +1226,13 @@
     databases.splice(index, 1);
     currentEnvData.value.dbs = databases;
     await saveCurrentEnvironment();
-    Message.success('数据库删除成功');
+    Message.success(t('components.envConfig.dbDeleteSuccess'));
   };
 
   const getEnvFieldName = (fieldName: string): string => {
     switch (fieldName) {
       case 'envVar':
-        return '环境变量';
+        return t('components.envConfig.envVar');
       case 'cookies':
         return 'Cookie';
       case 'headers':
@@ -1276,8 +1281,8 @@
     } else if (key === 'delete') {
       if (!hasEnvDeletePermission.value) return;
       Modal.confirm({
-        title: '确认删除',
-        content: `确认删除环境"${env.envName}"吗？`,
+        title: t('components.common.deleteTitle'),
+        content: t('components.envConfig.deleteEnvContent', { name: env.envName }),
         onOk: async () => {
           if (!env.id) return;
           await deleteEnvById(env.id);
@@ -1302,11 +1307,11 @@
   const createNewEnv = async () => {
     if (!hasEnvCreatePermission.value) return;
     if (!newEnvForm.value.envName.trim()) {
-      Message.warning('请输入环境名称');
+      Message.warning(t('components.envConfig.envNameRequired'));
       return;
     }
     if (envList.value.some((e) => e.envName === newEnvForm.value.envName)) {
-      Message.warning('环境名称已存在');
+      Message.warning(t('components.envConfig.envNameExists'));
       return;
     }
 
@@ -1315,13 +1320,13 @@
     addEnvDTO.teamId = props.teamId;
     const res = await saveOrUpdate(addEnvDTO);
     if (res.code === 200) {
-      Message.success('创建成功');
+      Message.success(t('components.common.createSuccess'));
       newEnvModalVisible.value = false;
       // 重新获取环境列表
       await loadEnvList();
       selectEnv(res.data);
     } else {
-      Message.error('创建失败');
+      Message.error(t('components.common.createFailed'));
       return;
     }
   };

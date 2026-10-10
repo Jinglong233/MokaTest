@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="ts">
-import { h } from 'vue'
+import { computed, h } from 'vue'
+import { useI18n } from 'vue-i18n';
 import { IconLink, IconStorage, IconWifi, IconMessage, IconCloud } from '@arco-design/web-vue/es/icon'
 
 interface ProtocolCard {
@@ -25,38 +26,40 @@ interface ProtocolCard {
   icon: any
 }
 
-const protocolCards: ProtocolCard[] = [
+const { t } = useI18n();
+
+const protocolCards = computed<ProtocolCard[]>(() => [
   {
     id: 'http',
-    title: '新建Http接口',
+    title: t('scene.protocol.newHttp'),
     color: 'rgba(255, 145, 77, 0.15)',
     icon: h(IconLink, { style: { color: '#FF914D', fontSize: '24px' } })
   },
   {
     id: 'sql',
-    title: '新建SQL',
+    title: t('scene.protocol.newSql'),
     color: 'rgba(22, 193, 243, 0.15)',
     icon: h(IconStorage, { style: { color: '#16C1F3', fontSize: '24px' } })
   },
   {
     id: 'tcp',
-    title: '新建TCP',
+    title: t('scene.protocol.newTcp'),
     color: 'rgba(168, 85, 247, 0.15)',
     icon: h('span', { style: { color: '#A855F7', fontSize: '14px', fontWeight: '600' } }, 'TCP')
   },
   {
     id: 'websocket',
-    title: '新建WebSocket',
+    title: t('scene.protocol.newWebsocket'),
     color: 'rgba(250, 204, 21, 0.15)',
     icon: h('span', { style: { color: '#FACC15', fontSize: '14px', fontWeight: '600' } }, 'WS')
   },
   {
     id: 'dubbo',
-    title: '新建DUBBO',
+    title: t('scene.protocol.newDubbo'),
     color: 'rgba(96, 165, 250, 0.15)',
     icon: h(IconCloud, { style: { color: '#60A5FA', fontSize: '24px' } })
   }
-]
+])
 
 const emit = defineEmits<{
   (e: 'select', card: ProtocolCard): void

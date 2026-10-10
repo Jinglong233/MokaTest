@@ -12,19 +12,20 @@
     </div>
     <!-- 画布右上角浮动工具栏 -->
     <div class="lib-mindmap-toolbar">
-      <a-button type="primary" size="small" :disabled="!dirty" :loading="saving" @click="handleSave">保存</a-button>
-      <a-button size="small" :disabled="!dirty" @click="handleReset">放弃修改</a-button>
-      <span v-if="dirty" class="hint dirty-hint">● 有未保存的修改</span>
-      <span v-if="loadingDetail" class="hint loading">用例详情加载中…</span>
+      <a-button type="primary" size="small" :disabled="!dirty" :loading="saving" @click="handleSave">{{ $t('qa.common.save') }}</a-button>
+      <a-button size="small" :disabled="!dirty" @click="handleReset">{{ $t('qa.testCase.mindmap.discard') }}</a-button>
+      <span v-if="dirty" class="hint dirty-hint">{{ $t('qa.testCase.mindmap.dirtyHint') }}</span>
+      <span v-if="loadingDetail" class="hint loading">{{ $t('qa.testCase.mindmap.loadingDetail') }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import {ref, onMounted, onBeforeUnmount, nextTick, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message, Modal} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
 import {
   getQaModuleList, getTestCaseList, getTestCaseDetail,
   updateTestCase, updateQaModule, saveQaModule, saveTestCase,
@@ -39,6 +40,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   openDetail: [caseId: number];
 }>();
+
+const { t } = useI18n();
 
 const mapRef = ref<HTMLElement>();
 let mind: any = null;
@@ -111,11 +114,11 @@ const childrenOf = (n: any): any[] => n?.children || n?.nodeData?.children || []
 // 节点类型视觉规范：tag（类型标识，SVG 原生渲染在文本后）+ 底色/文字色
 const mkTag = (text: string, fill: string) => ({text, style: {fill, radius: 3, fontSize: 12, height: 20, paddingX: 8}});
 const TYPE_TAG = {
-  mod: (count: number) => mkTag(`模块 ${count}`, '#165dff'),
-  case: () => mkTag('用例', '#0fc6c2'),
-  pre: () => mkTag('前置', '#86909c'),
-  step: (index?: number) => mkTag(index ? `步骤 ${index}` : '步骤', '#722ed1'),
-  expect: () => mkTag('预期', '#00b42a'),
+  mod: (count: number) => mkTag(t('qa.testCase.mindmap.tagModule', {count}), '#165dff'),
+  case: () => mkTag(t('qa.testCase.mindmap.tagCase'), '#0fc6c2'),
+  pre: () => mkTag(t('qa.testCase.mindmap.tagPre'), '#86909c'),
+  step: (index?: number) => mkTag(index ? t('qa.testCase.mindmap.tagStep', {index}) : t('qa.testCase.mindmap.tagStepPlain'), '#722ed1'),
+  expect: () => mkTag(t('qa.testCase.mindmap.tagExpect'), '#00b42a'),
 };
 // 各类型节点底色/文字色（data 里的 fillColor 等渲染为节点形状）
 const NODE_TYPE_STYLE = {
@@ -130,7 +133,7 @@ function buildCaseNode(c: any) {
   const icon = PRIORITY_ICON[c.priority];
   return {
     data: {
-      text: escapeHtml(c.caseName || `用例 ${c.id}`),
+      text: escapeHtml(c.caseName || t('qa.testCase.mindmap.caseFallback', {id: c.id})),
       uid,
       expand: true,
       tag: [TYPE_TAG.case()],
@@ -213,13 +216,13 @@ function buildMindData(modules: any[], cases: any[]) {
   }
 
   const root: any = {
-    data: {text: '全部用例', uid: 'root', expand: true},
+    data: {text: t('qa.testCase.allCases'), uid: 'root', expand: true},
     children: buildModuleNodes(modules, casesByModule),
   };
   if (noModule.length > 0) {
     root.children.push({
       data: {
-        text: '未分组',
+        text: t('qa.testCase.ungrouped'),
         uid: 'mod-0',
         expand: true,
         fillColor: '#f7f8fa',
@@ -413,10 +416,10 @@ function handleAddMenuAction(key: string) {
 }
 
 // 用例等级下拉项
-const PRIORITY_MENU_ITEMS = [
-  {key: 'P0', text: 'P0（最高）'},
-  {key: 'P1', text: 'P1（高）'},
-  {key: 'P2', text: 'P2（普通）'},
+const getPriorityMenuItems = () => [
+  {key: 'P0', text: t('qa.testCase.mindmap.priorityP0')},
+  {key: 'P1', text: t('qa.testCase.mindmap.priorityP1')},
+  {key: 'P2', text: t('qa.testCase.mindmap.priorityP2')},
 ];
 
 function getNodeActions(uid: string, node?: any): { key: string; icon: string; danger?: boolean; menuItems?: { key: string; text: string }[] }[] {
@@ -424,8 +427,8 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
   if (uid === 'root') {
     return [
       {key: 'add', icon: ICON_PLUS, menuItems: [
-        {key: 'addMod', text: '新建子模块'},
-        {key: 'addCase', text: '新建用例'},
+        {key: 'addMod', text: t('qa.testCase.mindmap.addSubModule')},
+        {key: 'addCase', text: t('qa.testCase.add')},
       ]},
     ];
   }
@@ -442,14 +445,14 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
   };
   // 子级菜单：前置条件已存在时隐藏该入口
   const childMenuItems = (n: any) => [
-    {key: 'addStep', text: '步骤描述'},
-    ...(hasPreChild(n) ? [] : [{key: 'addPre', text: '前置条件'}]),
+    {key: 'addStep', text: t('qa.testCase.stepDesc')},
+    ...(hasPreChild(n) ? [] : [{key: 'addPre', text: t('qa.testCase.preCondition')}]),
   ];
   if ((uid.startsWith('mod-') && uid !== 'mod-0') || uid.startsWith('new-mod-')) {
     return [
       {key: 'add', icon: ICON_PLUS, menuItems: [
-        {key: 'addMod', text: '新建子模块'},
-        {key: 'addCase', text: '新建用例'},
+        {key: 'addMod', text: t('qa.testCase.mindmap.addSubModule')},
+        {key: 'addCase', text: t('qa.testCase.add')},
       ]},
       {key: 'del', icon: ICON_TRASH, danger: true},
     ];
@@ -457,11 +460,11 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
   if (uid.startsWith('case-')) {
     return [
       {key: 'sibling', icon: ICON_SIBLING, menuItems: [
-        {key: 'addSiblingMod', text: '同级模块'},
-        {key: 'addSiblingCase', text: '同级用例'},
+        {key: 'addSiblingMod', text: t('qa.testCase.mindmap.addSiblingModule')},
+        {key: 'addSiblingCase', text: t('qa.testCase.mindmap.addSiblingCase')},
       ]},
       {key: 'child', icon: ICON_CHILD, menuItems: childMenuItems(node)},
-      {key: 'priority', icon: ICON_FLAG, menuItems: PRIORITY_MENU_ITEMS},
+      {key: 'priority', icon: ICON_FLAG, menuItems: getPriorityMenuItems()},
       {key: 'detail', icon: ICON_DETAIL},
       {key: 'del', icon: ICON_TRASH, danger: true},
     ];
@@ -470,11 +473,11 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
   if (uid.startsWith('new-case-')) {
     return [
       {key: 'sibling', icon: ICON_SIBLING, menuItems: [
-        {key: 'addSiblingMod', text: '同级模块'},
-        {key: 'addSiblingCase', text: '同级用例'},
+        {key: 'addSiblingMod', text: t('qa.testCase.mindmap.addSiblingModule')},
+        {key: 'addSiblingCase', text: t('qa.testCase.mindmap.addSiblingCase')},
       ]},
       {key: 'child', icon: ICON_CHILD, menuItems: childMenuItems(node)},
-      {key: 'priority', icon: ICON_FLAG, menuItems: PRIORITY_MENU_ITEMS},
+      {key: 'priority', icon: ICON_FLAG, menuItems: getPriorityMenuItems()},
       {key: 'del', icon: ICON_TRASH, danger: true},
     ];
   }
@@ -494,11 +497,7 @@ function getNodeActions(uid: string, node?: any): { key: string; icon: string; d
 function createNodeActions(node: any) {
   const uid: string = node?.nodeData?.data?.uid || '';
   const actions = getNodeActions(uid, node);
-  if (!actions.length) {
-    // simple-mind-map 要求 create 始终返回有效对象，null 会导致内部解构崩溃
-    const empty = document.createElement('span');
-    return {el: empty, width: 0, height: 0};
-  }
+  if (!actions.length) return null;
 
   const el = document.createElement('div');
   el.className = 'clm-actions';
@@ -603,18 +602,18 @@ function insertCaseTempNode(targetNode: any, asSibling: boolean) {
   if (!mind || !origExec || !targetNode) return;
   const ts = Date.now();
   const children = [
-    {data: {text: '前置条件', uid: `new-pre-${ts}p`, tag: [TYPE_TAG.pre()], ...NODE_TYPE_STYLE.pre}, children: []},
+    {data: {text: t('qa.testCase.preCondition'), uid: `new-pre-${ts}p`, tag: [TYPE_TAG.pre()], ...NODE_TYPE_STYLE.pre}, children: []},
     {
-      data: {text: '步骤描述', uid: `new-step-${ts}s`, tag: [TYPE_TAG.step()], ...NODE_TYPE_STYLE.step},
-      children: [{data: {text: '预期结果', uid: `new-expect-${ts}e`, tag: [TYPE_TAG.expect()], ...NODE_TYPE_STYLE.expect}, children: []}],
+      data: {text: t('qa.testCase.stepDesc'), uid: `new-step-${ts}s`, tag: [TYPE_TAG.step()], ...NODE_TYPE_STYLE.step},
+      children: [{data: {text: t('qa.testCase.expected'), uid: `new-expect-${ts}e`, tag: [TYPE_TAG.expect()], ...NODE_TYPE_STYLE.expect}, children: []}],
     },
   ];
   isInternalOp = true;
   try {
     if (asSibling) {
-      origExec('INSERT_NODE', false, [targetNode], {text: '用例', uid: `new-case-${ts}`, tag: [TYPE_TAG.case()], ...NODE_TYPE_STYLE.case}, children);
+      origExec('INSERT_NODE', false, [targetNode], {text: t('qa.testCase.mindmap.tagCase'), uid: `new-case-${ts}`, tag: [TYPE_TAG.case()], ...NODE_TYPE_STYLE.case}, children);
     } else {
-      origExec('INSERT_CHILD_NODE', false, [targetNode], {text: '用例', uid: `new-case-${ts}`, tag: [TYPE_TAG.case()], ...NODE_TYPE_STYLE.case}, children);
+      origExec('INSERT_CHILD_NODE', false, [targetNode], {text: t('qa.testCase.mindmap.tagCase'), uid: `new-case-${ts}`, tag: [TYPE_TAG.case()], ...NODE_TYPE_STYLE.case}, children);
     }
   } finally {
     isInternalOp = false;
@@ -656,7 +655,7 @@ async function handleAddPrecondition(node: any) {
   if (uid.startsWith('new-case-')) {
     const hasPre = (node.nodeData.children || []).some((c: any) => String(c.data?.uid || '').startsWith('new-pre-'));
     if (hasPre) {
-      Message.warning('该用例已有前置条件，双击节点可直接编辑');
+      Message.warning(t('qa.testCase.mindmap.preExists'));
       return;
     }
     insertEditableChild(node, `new-pre-${Date.now()}`);
@@ -668,7 +667,7 @@ async function handleAddPrecondition(node: any) {
   const children = node.nodeData.children || [];
   const hasPreOnTree = children.some((c: any) => String(c.data?.uid || '').startsWith('pre-') || String(c.data?.uid || '').startsWith('new-pre-'));
   if (hasPreOnTree) {
-    Message.warning('该用例已有前置条件，双击节点可直接编辑');
+    Message.warning(t('qa.testCase.mindmap.preExists'));
     return;
   }
   if (!children.length) {
@@ -677,7 +676,7 @@ async function handleAddPrecondition(node: any) {
       if (res.code === 200 && res.data) {
         caseDetailMap.set(caseId, res.data);
         if (stripHtml(res.data.preCondition)) {
-          Message.warning('该用例已有前置条件，双击节点可直接编辑');
+          Message.warning(t('qa.testCase.mindmap.preExists'));
           return;
         }
       }
@@ -722,12 +721,12 @@ function handleDeleteNode(node: any, uid: string) {
   if (uid.startsWith('mod-')) {
     // 仅空模块可删除（含未保存的临时子节点也算非空）
     if ((node.nodeData.children || []).length > 0) {
-      Message.warning('模块下存在子模块或用例，不能删除');
+      Message.warning(t('qa.testCase.mindmap.moduleNotEmpty'));
       return;
     }
     Modal.confirm({
-      title: '删除模块',
-      content: '删除后需点击「保存」生效，确认删除该模块？',
+      title: t('qa.testCase.mindmap.deleteModuleTitle'),
+      content: t('qa.testCase.mindmap.deleteModuleConfirm'),
       onOk: () => {
         const id = Number(uid.replace('mod-', ''));
         if (id) modDeletes.add(id);
@@ -738,8 +737,8 @@ function handleDeleteNode(node: any, uid: string) {
   }
   if (uid.startsWith('case-')) {
     Modal.confirm({
-      title: '删除用例',
-      content: '删除后需点击「保存」生效，确认删除该用例？',
+      title: t('qa.testCase.mindmap.deleteCaseTitle'),
+      content: t('qa.testCase.mindmap.deleteCaseConfirm'),
       onOk: () => {
         const id = Number(uid.replace('case-', ''));
         if (id) caseDeletes.add(id);
@@ -791,7 +790,7 @@ function onTextEditEnd(node: any) {
     if (!text) {
       // 模块名不允许为空：还原为基线文本
       mind?.renderer?.setNodeText?.(node, textSnapshot.get(uid) || '');
-      Message.warning('模块名称不能为空');
+      Message.warning(t('qa.testCase.mindmap.moduleNameRequired'));
       return;
     }
     modRenames.set(Number(uid.replace('mod-', '')), text);
@@ -819,7 +818,7 @@ function onDataChange() {
           if (!value) {
             // 模块名不允许为空：还原为基线文本
             mind.renderer?.setNodeText?.(n, textSnapshot.get(uid));
-            Message.warning('模块名称不能为空');
+            Message.warning(t('qa.testCase.mindmap.moduleNameRequired'));
           } else {
             modRenames.set(Number(uid.replace('mod-', '')), value);
           }
@@ -884,7 +883,7 @@ function onBeforeDragEnd({overlapNodeUid, prevNodeUid, nextNodeUid, beingDragNod
   lastDragUid = dragUid;
   const allowed = validateDrag(dragUid, overlapNodeUid || '', prevNodeUid || '', nextNodeUid || '');
   if (!allowed) {
-    Message.warning('该节点不允许拖拽到此处');
+    Message.warning(t('qa.testCase.mindmap.dragNotAllowed'));
   }
   return !allowed; // 返回 true 取消拖拽
 }
@@ -1060,7 +1059,7 @@ async function handleSave() {
 
     const emptyCreate = creates.find(c => !c.name);
     if (emptyCreate) {
-      Message.warning('存在未填写名称的新建节点，请先完善或删除');
+      Message.warning(t('qa.testCase.mindmap.emptyCreateWarning'));
       return;
     }
 
@@ -1081,12 +1080,12 @@ async function handleSave() {
     for (const c of creates.filter(x => x.type === 'mod')) {
       const parentId = resolveModId(c.parentUid);
       if (parentId === undefined) {
-        Message.error(`模块「${c.name}」的父模块尚未保存，请分次保存`);
+        Message.error(t('qa.testCase.mindmap.parentNotSaved', {name: c.name}));
         return;
       }
       const res: any = await saveQaModule({projectId: props.projectId, parentId, moduleType: 'CASE', moduleName: c.name});
       if (res.code !== 200 || !res.data) {
-        Message.error(`模块「${c.name}」创建失败`);
+        Message.error(t('qa.testCase.mindmap.moduleCreateFailed', {name: c.name}));
         return;
       }
       modIdMap.set(c.uid, res.data);
@@ -1123,7 +1122,7 @@ async function handleSave() {
         status: 'DRAFT',
       });
       if (res.code !== 200 || !res.data) {
-        Message.error(`用例「${c.name}」创建失败`);
+        Message.error(t('qa.testCase.mindmap.caseCreateFailed', {name: c.name}));
         return;
       }
       // 默认子节点（前置条件/步骤/预期结果）有实际内容时补充保存
@@ -1155,7 +1154,7 @@ async function handleSave() {
       if (caseDeletes.has(caseId)) continue;
       const ok = await saveTouchedCase(caseId);
       if (!ok) {
-        Message.error(`用例 #${caseId} 保存失败`);
+        Message.error(t('qa.testCase.mindmap.caseSaveFailed', {id: caseId}));
         return;
       }
     }
@@ -1194,11 +1193,11 @@ async function handleSave() {
       await sortTestCase(ids);
     }
 
-    Message.success('保存成功');
+    Message.success(t('qa.testCase.saveSuccess'));
     await rebuild();
   } catch (e) {
     console.error(e);
-    Message.error('保存失败，请重试');
+    Message.error(t('qa.testCase.saveRetryFailed'));
   } finally {
     saving.value = false;
   }
@@ -1206,8 +1205,8 @@ async function handleSave() {
 
 function handleReset() {
   Modal.confirm({
-    title: '放弃修改',
-    content: '将放弃所有未保存的修改并恢复为已保存状态，确认？',
+    title: t('qa.testCase.mindmap.discard'),
+    content: t('qa.testCase.mindmap.discardConfirm'),
     onOk: () => rebuild(),
   });
 }

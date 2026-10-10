@@ -12,7 +12,7 @@
       <div class="session-panel">
         <a-button type="primary" long size="small" @click="startNewSession">
           <template #icon><icon-plus/></template>
-          新会话
+          {{ $t('components.aiGenerate.newSession') }}
         </a-button>
         <a-spin :loading="sessionsLoading" style="width: 100%">
           <div class="session-list">
@@ -28,18 +28,18 @@
                 <div class="session-title-row">
                   <icon-loading v-if="sessionGenerating(s)" class="session-spin"/>
                   <span class="session-title">{{ sessionTitle(s) }}</span>
-                  <a-popconfirm content="删除该会话？（不影响已入库用例）" @ok="handleDeleteSession(s)">
+                  <a-popconfirm :content="$t('components.aiGenerate.deleteSessionConfirm')" @ok="handleDeleteSession(s)">
                     <icon-delete class="session-delete" @click.stop/>
                   </a-popconfirm>
                 </div>
                 <div class="session-meta">
                   <span>{{ formatTime(s.createTime) }}</span>
-                  <span v-if="adoptCount(s) > 0" class="adopted">已采纳 {{ adoptCount(s) }}</span>
-                  <a-tag v-if="isExpired(s)" size="small">已过期</a-tag>
+                  <span v-if="adoptCount(s) > 0" class="adopted">{{ $t('components.aiGenerate.adoptedCount', { count: adoptCount(s) }) }}</span>
+                  <a-tag v-if="isExpired(s)" size="small">{{ $t('components.aiGenerate.expired') }}</a-tag>
                 </div>
               </div>
             </template>
-            <a-empty v-if="!sessions.length" description="暂无历史会话" :image-size="60"/>
+            <a-empty v-if="!sessions.length" :description="$t('components.aiGenerate.emptySessions')" :image-size="60"/>
           </div>
         </a-spin>
       </div>
@@ -51,30 +51,30 @@
             <div v-for="(round, idx) in rounds" :key="idx" class="round">
               <!-- 用户消息 -->
               <div class="msg user-msg">
-                <div class="bubble">{{ round.instruction || '（无指令）' }}</div>
+                <div class="bubble">{{ round.instruction || $t('components.aiGenerate.noInstruction') }}</div>
               </div>
               <!-- AI 消息 -->
               <div class="msg ai-msg">
                 <div class="bubble ai-bubble" :class="{ 'error-bubble': isFailed(round) }">
                   <!-- 生成中：流式文字实时渲染 -->
                   <template v-if="round.status === 'GENERATING'">
-                    <div class="round-tag"><icon-loading/> AI 正在生成…</div>
+                    <div class="round-tag"><icon-loading/> {{ $t('components.aiGenerate.generating') }}</div>
                     <pre class="stream-text">{{ round.rawText || ' ' }}<span class="cursor">▍</span></pre>
                   </template>
                   <!-- 失败 -->
                   <template v-else-if="isFailed(round)">
-                    <div class="round-tag">生成失败</div>
+                    <div class="round-tag">{{ $t('components.aiGenerate.generateFailed') }}</div>
                     <div class="error-text">{{ round.error }}</div>
                   </template>
                   <!-- 停止/完成：原文（可折叠） + 草稿卡片 -->
                   <template v-else>
-                    <div v-if="round.status === 'STOPPED'" class="round-tag stopped-tag">已停止（保留部分内容）</div>
+                    <div v-if="round.status === 'STOPPED'" class="round-tag stopped-tag">{{ $t('components.aiGenerate.stoppedTag') }}</div>
                     <!-- 问答轮：markdown 渲染展示回答 -->
                     <div v-if="round.type === 'qa'" class="stream-text md-body" v-html="renderMarkdown(round.rawText)"></div>
                     <template v-else>
                       <pre v-if="round.rawText && round._showRaw" class="stream-text">{{ round.rawText }}</pre>
                       <a-link v-if="round.rawText" class="raw-toggle" @click="round._showRaw = !round._showRaw">
-                        {{ round._showRaw ? '收起原文' : '查看原文' }}
+                        {{ round._showRaw ? $t('components.aiGenerate.collapseRaw') : $t('components.aiGenerate.viewRaw') }}
                       </a-link>
                     </template>
 
@@ -82,7 +82,7 @@
                     <div v-if="round.citations?.length" class="cite-banner">
                       <div class="cite-title" @click="round._showCites = !round._showCites">
                         <icon-book/>
-                        <span>依据 {{ citeTitles(round) }}</span>
+                        <span>{{ $t('components.aiGenerate.citeBasedOn', { titles: citeTitles(round) }) }}</span>
                         <icon-down v-if="!round._showCites"/>
                         <icon-up v-else/>
                       </div>
@@ -97,7 +97,7 @@
                     <div v-if="round.uncertainties?.length" class="unc-banner">
                       <div class="unc-title">
                         <icon-exclamation-circle-fill/>
-                        需求存在 {{ round.uncertainties.length }} 处不明确，可能影响用例准确性：
+                        {{ $t('components.aiGenerate.uncertaintiesTitle', { count: round.uncertainties.length }) }}
                       </div>
                       <ul class="unc-list">
                         <li v-for="(u, i) in round.uncertainties" :key="i">{{ u }}</li>
@@ -108,7 +108,7 @@
                           type="outline"
                           @click="fillSupplement"
                       >
-                        补充说明后重新生成
+                        {{ $t('components.aiGenerate.supplementRegenerate') }}
                       </a-button>
                     </div>
 
@@ -126,39 +126,39 @@
                             <a-checkbox v-model="record._checked" :disabled="record._adopted"/>
                           </template>
                         </a-table-column>
-                        <a-table-column title="名称" :width="200">
+                        <a-table-column :title="$t('components.aiGenerate.colName')" :width="200">
                           <template #cell="{ record }">
                             <a-input v-if="isLatest(idx) && !currentExpired && !record._adopted" v-model="record.caseName" size="mini"/>
                             <span v-else>{{ record.caseName }}</span>
-                            <a-tag v-if="record._adopted" size="small" color="green" style="margin-left: 4px">已入库</a-tag>
+                            <a-tag v-if="record._adopted" size="small" color="green" style="margin-left: 4px">{{ $t('components.aiGenerate.adoptedTag') }}</a-tag>
                           </template>
                         </a-table-column>
                         <template v-if="scene === 'case'">
-                          <a-table-column title="类型" :width="90">
+                          <a-table-column :title="$t('components.aiGenerate.colType')" :width="90">
                             <template #cell="{ record }">
                               <a-tag size="small" :color="record.enumFallback ? 'orange' : undefined">{{ record.caseType }}</a-tag>
                             </template>
                           </a-table-column>
-                          <a-table-column title="优先级" :width="70">
+                          <a-table-column :title="$t('components.aiGenerate.colPriority')" :width="70">
                             <template #cell="{ record }">
                               <a-tag size="small" :color="record.enumFallback ? 'orange' : undefined">{{ record.priority }}</a-tag>
                             </template>
                           </a-table-column>
-                          <a-table-column title="步骤数" :width="70">
+                          <a-table-column :title="$t('components.aiGenerate.colSteps')" :width="70">
                             <template #cell="{ record }">{{ record.testSteps?.length || 0 }}</template>
                           </a-table-column>
                         </template>
                         <template v-else>
-                          <a-table-column title="场景说明" :width="200">
+                          <a-table-column :title="$t('components.aiGenerate.colDescription')" :width="200">
                             <template #cell="{ record }">{{ record.description || '-' }}</template>
                           </a-table-column>
-                          <a-table-column title="断言" :width="60">
+                          <a-table-column :title="$t('components.aiGenerate.colAssert')" :width="60">
                             <template #cell="{ record }">{{ record.assertions?.length || 0 }}</template>
                           </a-table-column>
                           <a-table-column title="Body" :width="70">
                             <template #cell="{ record }">
-                              <a-tag v-if="record.bodyJson" size="small" color="blue">覆盖</a-tag>
-                              <span v-else style="color: var(--color-text-3)">沿用</span>
+                              <a-tag v-if="record.bodyJson" size="small" color="blue">{{ $t('components.aiGenerate.bodyOverride') }}</a-tag>
+                              <span v-else style="color: var(--color-text-3)">{{ $t('components.aiGenerate.bodyInherit') }}</span>
                             </template>
                           </a-table-column>
                         </template>
@@ -168,19 +168,19 @@
 
                   <!-- 消息动作条（最新一轮） -->
                   <div v-if="isLatest(idx) && !currentExpired && round.status !== 'GENERATING'" class="round-actions">
-                    <a-tooltip content="按同一指令重新生成">
+                    <a-tooltip :content="$t('components.aiGenerate.regenerateTip')">
                       <a-button size="mini" :loading="generating" :disabled="!recordNo" @click="handleRegenerate">
                         <template #icon><icon-refresh/></template>
-                        重新生成
+                        {{ $t('components.aiGenerate.regenerate') }}
                       </a-button>
                     </a-tooltip>
                     <a-button v-if="isFailed(round) || round.status === 'STOPPED'" size="mini" type="primary"
                               @click="handleRetry(round)">
-                      {{ round.status === 'STOPPED' ? '继续生成' : '重试' }}
+                      {{ round.status === 'STOPPED' ? $t('components.aiGenerate.continueGenerate') : $t('components.aiGenerate.retry') }}
                     </a-button>
                     <template v-if="round.drafts.length">
                       <a-button size="mini" :disabled="adoptableCount(round) === 0" @click="toggleAll(round)">
-                        {{ allChecked(round) ? '取消全选' : '全选' }}
+                        {{ allChecked(round) ? $t('components.aiGenerate.deselectAll') : $t('components.aiGenerate.selectAll') }}
                       </a-button>
                       <a-button
                           v-if="adoptableCount(round) > 0"
@@ -190,9 +190,9 @@
                           :disabled="checkedCount(round) === 0"
                           @click="handleAdopt(round)"
                       >
-                        入库所选（{{ checkedCount(round) }}）
+                        {{ $t('components.aiGenerate.adoptSelected', { count: checkedCount(round) }) }}
                       </a-button>
-                      <a-tag v-else color="green">已全部入库 ✓</a-tag>
+                      <a-tag v-else color="green">{{ $t('components.aiGenerate.allAdopted') }}</a-tag>
                     </template>
                   </div>
                 </div>
@@ -203,24 +203,24 @@
           <!-- 新会话流式输出中 -->
           <div v-if="generating && !rounds.length" class="msg ai-msg">
             <div class="bubble ai-bubble">
-              <div class="round-tag"><icon-loading/> AI 正在生成…</div>
+              <div class="round-tag"><icon-loading/> {{ $t('components.aiGenerate.generating') }}</div>
               <pre class="stream-text">{{ streamText || ' ' }}<span class="cursor">▍</span></pre>
             </div>
           </div>
 
           <a-empty v-if="!rounds.length && !generating"
-                   :description="`在下方输入指令，AI 将基于当前${sceneConfig.entityName}设计用例`"/>
+                   :description="$t('components.aiGenerate.emptyHint', { entity: sceneConfig.entityName })"/>
         </div>
 
         <!-- 输入区 -->
         <div class="chat-input">
           <a-alert v-if="currentExpired" type="info" style="margin-bottom: 8px">
-            该会话已过期（24h），仅供查看；点击左侧「新会话」重新开始。
+            {{ $t('components.aiGenerate.expiredAlert') }}
           </a-alert>
           <div class="input-row">
             <a-textarea
                 v-model="form.instruction"
-                :placeholder="recordNo && !currentExpired ? '追加指令，如：再补充 3 条异常场景' : '生成指令，如：生成 5 条，重点覆盖边界场景'"
+                :placeholder="recordNo && !currentExpired ? $t('components.aiGenerate.appendPlaceholder') : $t('components.aiGenerate.generatePlaceholder')"
                 :auto-size="{ minRows: 2, maxRows: 4 }"
                 :disabled="generating || currentExpired"
                 @keydown.enter.ctrl.exact="handleSend"
@@ -228,7 +228,7 @@
             <div class="send-btns">
               <a-button v-if="generating" status="danger" @click="handleStop">
                 <template #icon><icon-stop/></template>
-                停止
+                {{ $t('components.aiGenerate.stop') }}
               </a-button>
               <a-button
                   v-else
@@ -237,7 +237,7 @@
                   @click="handleSend"
               >
                 <template #icon><icon-send/></template>
-                {{ recordNo ? '追加' : '生成' }}
+                {{ recordNo ? $t('components.aiGenerate.append') : $t('components.aiGenerate.generate') }}
               </a-button>
             </div>
           </div>
@@ -250,6 +250,7 @@
 <script setup lang="ts">
 import {computed, nextTick, reactive, ref} from 'vue';
 import {Message} from '@arco-design/web-vue';
+import {useI18n} from 'vue-i18n';
 import {renderMarkdown} from '@/utils/markdown';
 import {
   adoptAiCases,
@@ -287,16 +288,7 @@ const emit = defineEmits<{
   (e: 'adopted', caseIds: number[]): void;
 }>();
 
-const SCENE_CONFIG = {
-    case: {
-        title: 'AI 生成测试用例',
-        entityName: '需求',
-    },
-    apiCase: {
-        title: 'AI 生成接口用例',
-        entityName: '接口',
-    },
-};
+const {t} = useI18n();
 
 /** 场景 API 选择器 */
 const api = computed(() => props.scene === 'case' ? {
@@ -319,7 +311,9 @@ const api = computed(() => props.scene === 'case' ? {
     deleteRecord: deleteAiApiCaseRecord,
 });
 
-const sceneConfig = computed(() => SCENE_CONFIG[props.scene]);
+const sceneConfig = computed(() => props.scene === 'case'
+    ? {title: t('components.aiGenerate.titleCase'), entityName: t('components.aiGenerate.entityRequirement')}
+    : {title: t('components.aiGenerate.titleApiCase'), entityName: t('components.aiGenerate.entityApi')});
 
 const visible = ref(false);
 const generating = ref(false);
@@ -350,12 +344,12 @@ async function loadSessions() {
     }
 }
 
-function open() {
+function open(prefillInstruction?: string) {
     visible.value = true;
     recordNo.value = '';
     rounds.value = [];
     currentExpired.value = false;
-    form.instruction = '';
+    form.instruction = prefillInstruction || '';
     loadSessions();
 }
 
@@ -476,7 +470,7 @@ async function handleDeleteSession(s: any) {
         startNewSession();
     }
     loadSessions();
-    Message.success('会话已删除');
+    Message.success(t('components.aiGenerate.sessionDeleted'));
 }
 
 // ==================== 会话列表展示 ====================
@@ -484,7 +478,7 @@ async function handleDeleteSession(s: any) {
 function sessionTitle(s: any) {
     const roundsArr = parseRounds(s.outputSnapshot);
     const first = roundsArr.find((r: any) => r.instruction);
-    const text = first?.instruction || s.inputSummary || '未命名会话';
+    const text = first?.instruction || s.inputSummary || t('components.aiGenerate.unnamedSession');
     return text.length > 20 ? text.slice(0, 20) + '…' : text;
 }
 
@@ -497,16 +491,16 @@ const groupedSessions = computed(() => {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const groups = [
-        {label: '今天', items: [] as any[]},
-        {label: '昨天', items: [] as any[]},
-        {label: '7 天内', items: [] as any[]},
-        {label: '更早', items: [] as any[]},
+        {label: t('components.aiGenerate.groupToday'), items: [] as any[]},
+        {label: t('components.aiGenerate.groupYesterday'), items: [] as any[]},
+        {label: t('components.aiGenerate.group7Days'), items: [] as any[]},
+        {label: t('components.aiGenerate.groupEarlier'), items: [] as any[]},
     ];
     for (const s of sessions.value) {
-        const t = s.createTime ? new Date(s.createTime).getTime() : 0;
-        if (t >= startOfDay) groups[0].items.push(s);
-        else if (t >= startOfDay - 86400000) groups[1].items.push(s);
-        else if (t >= startOfDay - 7 * 86400000) groups[2].items.push(s);
+        const createTs = s.createTime ? new Date(s.createTime).getTime() : 0;
+        if (createTs >= startOfDay) groups[0].items.push(s);
+        else if (createTs >= startOfDay - 86400000) groups[1].items.push(s);
+        else if (createTs >= startOfDay - 7 * 86400000) groups[2].items.push(s);
         else groups[3].items.push(s);
     }
     return groups;
@@ -557,9 +551,9 @@ function adoptCount(s: any) {
     }
 }
 
-function formatTime(t: any) {
-    if (!t) return '';
-    const d = new Date(t);
+function formatTime(time: any) {
+    if (!time) return '';
+    const d = new Date(time);
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -596,7 +590,7 @@ function makeCallbacks(instruction: string, targetRound?: any) {
                 // 以服务端为准刷新整个会话（rawText/draftId 完整）
                 refreshCurrentSession(no);
                 loadSessions();
-                Message.success(`生成 ${drafts.length} 条草稿`);
+                Message.success(t('components.aiGenerate.draftsGenerated', {count: drafts.length}));
             },
             onError: (msg: string) => {
                 if (stale()) return;
@@ -605,17 +599,17 @@ function makeCallbacks(instruction: string, targetRound?: any) {
                 if (msg === '__STOPPED__') {
                     if (targetRound) targetRound.status = 'STOPPED';
                     if (recordNo.value) refreshCurrentSession(recordNo.value);
-                    Message.info('已停止，保留已生成内容');
+                    Message.info(t('components.aiGenerate.stoppedInfo'));
                 } else {
                     // 本地轮次标记失败，首轮失败也能就地看到失败卡片并重试，
                     // 不必关弹窗重进后再从会话列表找回
                     if (targetRound) {
                         targetRound.status = 'FAILED';
-                        targetRound.error = msg || '生成失败';
+                        targetRound.error = msg || t('components.aiGenerate.generateFailed');
                     }
                     if (recordNo.value) refreshCurrentSession(recordNo.value);
                     loadSessions();
-                    Message.error(msg || '生成失败');
+                    Message.error(msg || t('components.aiGenerate.generateFailed'));
                 }
             },
         },
@@ -652,7 +646,7 @@ async function handleStop() {
             refreshCurrentSession(no);
         }
     }
-    Message.info('已停止，保留已生成内容');
+    Message.info(t('components.aiGenerate.stoppedInfo'));
 }
 
 /** 重新生成：删除最后一轮，按同一指令重跑 */
@@ -675,12 +669,12 @@ function handleRetry(round: any) {
 /** 引用文档标题去重拼接：依据《XX》《YY》 */
 function citeTitles(round: any) {
     const titles = [...new Set<string>((round.citations || []).map((c: any) => c.title))];
-    return titles.map(t => `《${t}》`).join('');
+    return titles.map(title => `《${title}》`).join('');
 }
 
 /** uncertainties 引导：回填「补充说明：」前缀并聚焦输入框，用户补完按追加发送 */
 function fillSupplement() {
-    form.instruction = '补充说明：';
+    form.instruction = t('components.aiGenerate.supplementPrefix');
     nextTick(() => {
         const el = document.querySelector<HTMLElement>('.chat-input textarea');
         el?.focus();
@@ -725,9 +719,9 @@ async function handleAdopt(round: any) {
                 d._checked = false;
             }
         });
-        let msg = res.msg || '入库成功';
+        let msg = res.msg || t('components.aiGenerate.adoptSuccess');
         if (data.duplicateNames?.length) {
-            msg += `；注意：${data.duplicateNames.length} 条与已存在用例同名`;
+            msg += t('components.aiGenerate.duplicateNote', {count: data.duplicateNames.length});
         }
         Message.success(msg);
         emit('adopted', data.savedIds || []);

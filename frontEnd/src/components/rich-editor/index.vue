@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import {shallowRef, ref, watch, onBeforeUnmount, nextTick, computed} from 'vue';
+import {useI18n} from 'vue-i18n';
 import '@wangeditor/editor/dist/css/style.css';
 import {Editor, Toolbar} from '@wangeditor/editor-for-vue';
 import {Boot} from '@wangeditor/editor';
@@ -116,6 +117,8 @@ const emit = defineEmits<{
 const editorRef = shallowRef<any>(null);
 const valueHtml = ref(props.modelValue || '');
 const isEditorReady = ref(false);
+
+const {t} = useI18n();
 
 // @提及下拉状态
 const mentionVisible = ref(false);
@@ -252,7 +255,7 @@ const insertMention = (item: { label: string; value: string }) => {
 };
 
 const editorConfig = computed(() => ({
-  placeholder: props.placeholder || '请输入内容...',
+  placeholder: props.placeholder || t('components.richEditor.placeholder'),
   // autoHeight/readonly 模式下关闭编辑器内部滚动，高度随内容自动撑开
   scroll: !(props.autoHeight || props.readonly),
   readOnly: !!props.readonly,

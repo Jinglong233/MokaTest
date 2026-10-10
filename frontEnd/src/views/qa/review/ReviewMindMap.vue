@@ -19,9 +19,9 @@
       </div>
     </div>
     <div class="rm-mindmap-toolbar">
-      <span class="hint">{{ moduleCount }} 个模块 / {{ caseCount }} 条评审用例</span>
-      <span class="hint">单击节点展开详情/显示操作栏，折叠请点击节点上的收起按钮</span>
-      <span v-if="loadingDetail" class="hint loading">用例详情加载中…</span>
+      <span class="hint">{{ $t('qa.review.mapStats', { modules: moduleCount, cases: caseCount }) }}</span>
+      <span class="hint">{{ $t('qa.review.mapHint') }}</span>
+      <span v-if="loadingDetail" class="hint loading">{{ $t('qa.review.loadingDetail') }}</span>
     </div>
 
     <!-- 我的评审浮动面板（点击用例节点「评审」按钮后出现） -->
@@ -32,73 +32,73 @@
       @mousedown.stop
     >
       <div class="rm-review-title">
-        我的评审
+        {{ $t('qa.review.myReview') }}
         <span class="rm-review-case">{{ reviewPanel.record?.caseName }}</span>
         <a-tag v-if="reviewPanel.existing && reviewPanel.existing !== 'PENDING'" size="small" :color="reviewPanel.existing === 'PASS' ? 'green' : 'red'">
-          已评：{{ reviewPanel.existing === 'PASS' ? '通过' : '不通过' }}（可修改重提）
+          {{ $t('qa.review.reviewedTag', { conclusion: reviewPanel.existing === 'PASS' ? $t('qa.review.resultPass') : $t('qa.review.resultReject') }) }}
         </a-tag>
         <span class="rm-review-close" @click="reviewPanel.visible = false">×</span>
       </div>
       <a-radio-group v-model="reviewPanel.conclusion">
-        <a-radio value="PASS">通过</a-radio>
-        <a-radio value="REJECT">不通过</a-radio>
+        <a-radio value="PASS">{{ $t('qa.review.resultPass') }}</a-radio>
+        <a-radio value="REJECT">{{ $t('qa.review.resultReject') }}</a-radio>
       </a-radio-group>
       <a-textarea
         v-model="reviewPanel.comment"
         :auto-size="{ minRows: 2, maxRows: 4 }"
-        :placeholder="reviewPanel.conclusion === 'REJECT' ? '不通过时意见必填' : '评审意见（选填）'"
+        :placeholder="reviewPanel.conclusion === 'REJECT' ? $t('qa.review.commentRequired') : $t('qa.review.commentOptional')"
       />
       <div class="rm-review-actions">
-        <a-button type="primary" size="small" :loading="reviewPanel.submitting" @click="handleSubmitReview">提交</a-button>
+        <a-button type="primary" size="small" :loading="reviewPanel.submitting" @click="handleSubmitReview">{{ $t('qa.review.submit') }}</a-button>
       </div>
     </div>
 
     <!-- 用例详情抽屉：基本信息 + 评审历史 -->
     <a-drawer v-model:visible="detailDrawer.visible" :width="620" :footer="false">
       <template #title>
-        <span>{{ detailDrawer.detail?.caseName || '用例详情' }}</span>
+        <span>{{ detailDrawer.detail?.caseName || $t('qa.review.caseDetailTitle') }}</span>
         <a-tag v-if="detailDrawer.record" :color="finalResultColor(detailDrawer.record.finalResult)" size="small" style="margin-left: 8px">
           {{ finalResultText(detailDrawer.record.finalResult) }}
         </a-tag>
       </template>
       <a-tabs v-model:active-key="detailDrawer.tab">
-        <a-tab-pane key="basic" title="基本信息">
+        <a-tab-pane key="basic" :title="$t('qa.review.tabBasic')">
           <a-descriptions :column="1" size="small">
-            <a-descriptions-item label="用例编号">{{ detailDrawer.detail?.caseCode || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="所属模块">{{ detailDrawer.detail?.moduleName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="用例等级">
+            <a-descriptions-item :label="$t('qa.testCase.code')">{{ detailDrawer.detail?.caseCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('qa.review.module')">{{ detailDrawer.detail?.moduleName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('qa.review.caseLevel')">
               <a-tag v-if="detailDrawer.detail?.priority" :color="priorityColor(detailDrawer.detail.priority)" size="small">{{ detailDrawer.detail.priority }}</a-tag>
               <span v-else>-</span>
             </a-descriptions-item>
-            <a-descriptions-item label="标签">
+            <a-descriptions-item :label="$t('qa.review.tags')">
               <template v-if="detailDrawer.detail?.tags">
                 <a-tag v-for="tag in String(detailDrawer.detail.tags).split(',').filter(Boolean)" :key="tag" size="small">{{ tag }}</a-tag>
               </template>
               <span v-else>-</span>
             </a-descriptions-item>
-            <a-descriptions-item label="创建人">{{ detailDrawer.detail?.createUserName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="创建时间">{{ detailDrawer.detail?.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('qa.review.creator')">{{ detailDrawer.detail?.createUserName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('qa.review.createTime')">{{ detailDrawer.detail?.createTime || '-' }}</a-descriptions-item>
           </a-descriptions>
-          <div class="drawer-section-title">前置条件</div>
+          <div class="drawer-section-title">{{ $t('qa.testCase.preCondition') }}</div>
           <div v-if="detailDrawer.detail?.preCondition" class="pre-condition-view" v-html="detailDrawer.detail.preCondition"></div>
-          <div v-else class="pre-condition-empty">无</div>
-          <div class="drawer-section-title">测试步骤</div>
+          <div v-else class="pre-condition-empty">{{ $t('qa.review.none') }}</div>
+          <div class="drawer-section-title">{{ $t('qa.testCase.steps') }}</div>
           <a-table v-if="detailDrawer.steps.length" :data="detailDrawer.steps" :pagination="false" size="small" row-key="index" :bordered="{ cell: true }">
             <template #columns>
               <a-table-column title="#" :width="50" align="center">
                 <template #cell="{ rowIndex }">{{ rowIndex + 1 }}</template>
               </a-table-column>
-              <a-table-column title="步骤">
+              <a-table-column :title="$t('qa.testCase.step')">
                 <template #cell="{ record }"><div v-html="record.step || '-'"></div></template>
               </a-table-column>
-              <a-table-column title="预期结果">
+              <a-table-column :title="$t('qa.testCase.expected')">
                 <template #cell="{ record }"><div v-html="record.expected || '-'"></div></template>
               </a-table-column>
             </template>
           </a-table>
-          <a-empty v-else description="暂无测试步骤" />
+          <a-empty v-else :description="$t('qa.review.noSteps')" />
         </a-tab-pane>
-        <a-tab-pane key="history" title="评审历史">
+        <a-tab-pane key="history" :title="$t('qa.review.tabHistory')">
           <template v-if="detailDrawer.history.length">
             <div v-for="(h, idx) in detailDrawer.history" :key="idx" class="vote-item">
               <a-avatar :size="32" :image-url="h.reviewerAvatar || undefined" class="vote-avatar">
@@ -113,11 +113,11 @@
                 <div class="vote-time">{{ h.reviewTime || '' }}</div>
               </div>
               <a-tag class="vote-result" size="small" :color="h.conclusion === 'PASS' ? 'green' : h.conclusion === 'REJECT' ? 'red' : 'gray'">
-                {{ h.conclusion === 'PASS' ? '通过' : h.conclusion === 'REJECT' ? '不通过' : '待评审' }}
+                {{ h.conclusion === 'PASS' ? $t('qa.review.resultPass') : h.conclusion === 'REJECT' ? $t('qa.review.resultReject') : $t('qa.review.resultPending') }}
               </a-tag>
             </div>
           </template>
-          <a-empty v-else description="暂无评审历史" style="padding: 40px 0" />
+          <a-empty v-else :description="$t('qa.review.noHistory')" style="padding: 40px 0" />
         </a-tab-pane>
       </a-tabs>
     </a-drawer>
@@ -125,14 +125,14 @@
     <!-- 修改评审人弹窗 -->
     <a-modal
       v-model:visible="reviewerModal.visible"
-      title="修改评审人"
+      :title="$t('qa.review.editReviewers')"
       :ok-loading="reviewerModal.saving"
       @ok="handleSaveReviewers"
     >
       <a-select
         v-model="reviewerModal.ids"
         multiple
-        placeholder="选择评审人（清空则回退默认评审人）"
+        :placeholder="$t('qa.review.reviewerPlaceholder')"
         style="width: 100%"
       >
         <a-option v-for="r in reviewers" :key="r.reviewerId" :value="r.reviewerId">
@@ -145,9 +145,10 @@
 
 <script setup lang="ts">
 import {ref, onMounted, onBeforeUnmount, nextTick, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message, Modal} from '@arco-design/web-vue';
-import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.js';
-import 'simple-mind-map/dist/simpleMindMap.esm.css';
+import MindMap from 'simple-mind-map/dist/simpleMindMap.esm.min.js';
+import 'simple-mind-map/dist/simpleMindMap.esm.min.css';
 import {getTestCaseDetail, getCaseReviewHistory, updateReviewCaseReviewers, resetReviewCase, submitTestCaseReview} from '@/api/MyApi/qa';
 
 const props = defineProps<{
@@ -166,6 +167,8 @@ const emit = defineEmits<{
   (e: 'remove', record: any): void;   // 取消关联
   (e: 'refresh'): void;               // 需要父页刷新评审单数据
 }>();
+
+const {t} = useI18n();
 
 const mapRef = ref<HTMLElement>();
 let mind: any = null;
@@ -207,10 +210,10 @@ const childrenOf = (n: any): any[] => n?.children || n?.nodeData?.children || []
 // 节点类型视觉规范：tag（类型标识，SVG 原生渲染在文本后）+ 底色/文字色
 const mkTag = (text: string, fill: string) => ({text, style: {fill, radius: 3, fontSize: 12, height: 20, paddingX: 8}});
 const TYPE_TAG = {
-  mod: (count: number) => mkTag(`模块 ${count}`, '#165dff'),
-  pre: () => mkTag('前置', '#86909c'),
-  step: (index?: number) => mkTag(index ? `步骤 ${index}` : '步骤', '#722ed1'),
-  expect: () => mkTag('预期', '#00b42a'),
+  mod: (count: number) => mkTag(t('qa.review.tagModule', {count}), '#165dff'),
+  pre: () => mkTag(t('qa.review.tagPre'), '#86909c'),
+  step: (index?: number) => mkTag(index ? t('qa.review.tagStep', {index}) : t('qa.testCase.step'), '#722ed1'),
+  expect: () => mkTag(t('qa.review.tagExpect'), '#00b42a'),
 };
 // 各类型节点底色/文字色（data 里的 fillColor 等渲染为节点形状）
 const NODE_TYPE_STYLE = {
@@ -219,23 +222,23 @@ const NODE_TYPE_STYLE = {
   step: {fillColor: '#f5e8ff', color: '#722ed1'},
   expect: {fillColor: '#e8ffea', color: '#00b42a'},
 };
-// 评审结果 tag
-const RESULT_TAG: Record<string, {text: string; color: string}> = {
-  PASS: {text: '通过', color: '#00b42a'},
-  REJECT: {text: '不通过', color: '#f53f3f'},
-  PENDING: {text: '待评审', color: '#86909c'},
+// 评审结果 tag 颜色（文案走 finalResultText）
+const RESULT_COLOR: Record<string, string> = {
+  PASS: '#00b42a',
+  REJECT: '#f53f3f',
+  PENDING: '#86909c',
 };
 
 function buildCaseNode(c: any) {
   const uid = `case-${c.testCaseId}`;
   const icon = PRIORITY_ICON[c.priority];
-  const result = RESULT_TAG[c.finalResult] || RESULT_TAG.PENDING;
+  const resultColor = RESULT_COLOR[c.finalResult] || RESULT_COLOR.PENDING;
   return {
     data: {
-      text: escapeHtml(c.caseName || `用例 ${c.testCaseId}`),
+      text: escapeHtml(c.caseName || t('qa.review.caseFallback', {id: c.testCaseId})),
       uid,
       expand: true,
-      tag: [mkTag(result.text, result.color)],
+      tag: [mkTag(finalResultText(c.finalResult), resultColor)],
       ...(icon ? {icon: [icon]} : {}),
       ...NODE_TYPE_STYLE.case,
     },
@@ -323,13 +326,13 @@ function buildMindData(rawModules: any[], cases: any[]) {
 
   // 未选模块（全部用例）：根节点 = 全部用例，子节点 = 模块树 + 未分组
   const root: any = {
-    data: {text: '全部用例', uid: 'root', expand: true},
+    data: {text: t('qa.review.allCases'), uid: 'root', expand: true},
     children: buildModuleNodes(modules, casesByModule),
   };
   if (noModule.length > 0) {
     root.children.push({
       data: {
-        text: '未分组',
+        text: t('qa.review.ungrouped'),
         uid: 'mod-0',
         expand: true,
         fillColor: '#f7f8fa',
@@ -478,13 +481,13 @@ const ICON_MORE = '<svg width="12" height="12" viewBox="0 0 16 16" fill="current
 function getMoreMenuItems(record: any): {key: string; text: string; danger?: boolean}[] {
   const items: {key: string; text: string; danger?: boolean}[] = [];
   if (props.isCreator && props.reviewStatus === 'REVIEWING') {
-    items.push({key: 'reviewers', text: '修改评审人'});
+    items.push({key: 'reviewers', text: t('qa.review.editReviewers')});
   }
   if (props.isCreator && props.reviewStatus !== 'CANCELLED' && record?.finalResult && record.finalResult !== 'PENDING') {
-    items.push({key: 'reset', text: '重新评审'});
+    items.push({key: 'reset', text: t('qa.review.reReview')});
   }
   if (props.isCreator && ['REVIEWING', 'COMPLETED'].includes(props.reviewStatus)) {
-    items.push({key: 'remove', text: '取消关联', danger: true});
+    items.push({key: 'remove', text: t('qa.review.unlink'), danger: true});
   }
   return items;
 }
@@ -493,11 +496,11 @@ function getNodeActions(uid: string): {key: string; icon: string; title: string;
   if (!uid.startsWith('case-')) return [];
   const record = props.cases.find((c) => `case-${c.testCaseId}` === uid);
   const actions: {key: string; icon: string; title: string; more?: boolean}[] = [
-    {key: 'review', icon: ICON_REVIEW, title: props.reviewStatus !== 'CANCELLED' ? '评审' : '查看'},
-    {key: 'detail', icon: ICON_INFO, title: '详情'},
+    {key: 'review', icon: ICON_REVIEW, title: props.reviewStatus !== 'CANCELLED' ? t('qa.review.op.review') : t('qa.review.op.view')},
+    {key: 'detail', icon: ICON_INFO, title: t('qa.review.op.detail')},
   ];
   if (record && getMoreMenuItems(record).length) {
-    actions.push({key: 'more', icon: ICON_MORE, title: '更多', more: true});
+    actions.push({key: 'more', icon: ICON_MORE, title: t('qa.review.more'), more: true});
   }
   return actions;
 }
@@ -506,10 +509,7 @@ function getNodeActions(uid: string): {key: string; icon: string; title: string;
 function createNodeActions(node: any) {
   const uid = uidOf(node);
   const actions = getNodeActions(uid);
-  if (!actions.length) {
-    const empty = document.createElement('span');
-    return {el: empty, width: 0, height: 0};
-  }
+  if (!actions.length) return null;
 
   const el = document.createElement('div');
   el.className = 'clm-actions';
@@ -592,7 +592,7 @@ async function handleSubmitReview() {
   const panel = reviewPanel.value;
   if (!panel.record) return;
   if (panel.conclusion === 'REJECT' && !panel.comment.trim()) {
-    Message.warning('不通过时请填写评审意见');
+    Message.warning(t('qa.review.rejectCommentRequired'));
     return;
   }
   panel.submitting = true;
@@ -604,11 +604,11 @@ async function handleSubmitReview() {
       comment: panel.comment,
     });
     if (res.code === 200) {
-      Message.success('提交成功');
+      Message.success(t('qa.review.submitSuccess'));
       hideReviewPanel();
       emit('refresh');
     } else {
-      Message.error(res.msg || '提交失败');
+      Message.error(res.msg || t('qa.review.submitFailed'));
     }
   } catch (e) {
     console.error(e);
@@ -698,11 +698,11 @@ async function handleSaveReviewers() {
   try {
     const res: any = await updateReviewCaseReviewers(props.reviewId, Number(record.testCaseId), reviewerModal.value.ids);
     if (res.code === 200) {
-      Message.success('评审人已调整');
+      Message.success(t('qa.review.reviewersAdjusted'));
       reviewerModal.value.visible = false;
       emit('refresh');
     } else {
-      Message.error(res.msg || '调整失败');
+      Message.error(res.msg || t('qa.review.adjustFailed'));
     }
   } catch (e) {
     console.error(e);
@@ -714,16 +714,16 @@ async function handleSaveReviewers() {
 // ===== 重新评审 =====
 function confirmResetCase(record: any) {
   Modal.confirm({
-    title: '重新评审',
-    content: `确认将用例「${record.caseName}」的评审结果重置为待评审？所有评审人的结论将被清空。`,
+    title: t('qa.review.reReview'),
+    content: t('qa.review.resetContent', {name: record.caseName}),
     onOk: async () => {
       try {
         const res: any = await resetReviewCase(props.reviewId, Number(record.testCaseId));
         if (res.code === 200) {
-          Message.success('已重置为待评审');
+          Message.success(t('qa.review.resetSuccess'));
           emit('refresh');
         } else {
-          Message.error(res.msg || '操作失败');
+          Message.error(res.msg || t('qa.review.operationFailed'));
         }
       } catch (e) {
         console.error(e);
@@ -734,7 +734,7 @@ function confirmResetCase(record: any) {
 
 const priorityColor = (p: string) => ({P0: 'red', P1: 'orange', P2: 'blue'} as Record<string, string>)[p] || 'gray';
 const finalResultColor = (r: string) => ({PASS: 'green', REJECT: 'red', PENDING: 'gray'} as Record<string, string>)[r] || 'gray';
-const finalResultText = (r: string) => ({PASS: '通过', REJECT: '不通过', PENDING: '待评审'} as Record<string, string>)[r] || '待评审';
+const finalResultText = (r: string) => ({PASS: t('qa.review.resultPass'), REJECT: t('qa.review.resultReject'), PENDING: t('qa.review.resultPending')} as Record<string, string>)[r] || t('qa.review.resultPending');
 
 // ===== 数据重建（保持展开/折叠状态） =====
 async function rebuild() {

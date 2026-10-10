@@ -11,7 +11,7 @@
         @keydown="onKeydown"
     >
       <template #suffix>
-        <a-tooltip :content="showTemplate ? '插入函数 / 数据模板' : '插入函数'" :disabled="disabled">
+        <a-tooltip :content="showTemplate ? $t('api.expr.insertFnTemplate') : $t('api.expr.insertFn')" :disabled="disabled">
           <icon-thunderbolt
               v-if="!disabled"
               class="trigger-icon"
@@ -44,7 +44,7 @@
             <span class="suggest-desc">{{ item.desc }}</span>
           </div>
         </template>
-        <div v-else class="suggest-empty">无匹配函数</div>
+        <div v-else class="suggest-empty">{{ $t('api.expr.noMatch') }}</div>
       </div>
     </Teleport>
   </div>
@@ -60,6 +60,7 @@ import {getDataTemplateList} from '@/api/MyApi/dataTemplate';
 import {CustomFunction} from '@/types/domain/api/CustomFunction';
 import {DataTemplate} from '@/types/domain/api/DataTemplate';
 import useProjectStore from '@/store/modules/project';
+import {useI18n} from 'vue-i18n';
 
 interface SuggestItem {
   kind: 'builtin' | 'custom' | 'template';
@@ -90,6 +91,8 @@ const emit = defineEmits<{
   /** 失焦并完成表达式转换后触发（携带存储层文本） */
   (e: 'commit', value: string): void;
 }>();
+
+const {t: tr} = useI18n();
 
 const projectStore = useProjectStore();
 const inputRef = ref();
@@ -131,38 +134,38 @@ const resolveFnName = (id: number) => customFunctions.value.find(f => f.id === i
 const resolveFnId = (name: string) => customFunctions.value.find(f => f.funcName === name)?.id;
 
 // 系统内置函数（@ 语法，后端 FunctionParser/AtSyntaxMockGenerator 直接解析）
-const builtinSuggestions: SuggestItem[] = [
-  {kind: 'builtin', label: '@phone()', insert: '@phone()', desc: '随机手机号'},
-  {kind: 'builtin', label: '@email()', insert: '@email()', desc: '随机邮箱'},
-  {kind: 'builtin', label: '@uuid()', insert: '@uuid()', desc: '随机 UUID'},
-  {kind: 'builtin', label: '@cname()', insert: '@cname()', desc: '随机中文姓名'},
-  {kind: 'builtin', label: '@ename()', insert: '@ename()', desc: '随机英文姓名'},
-  {kind: 'builtin', label: '@idcard()', insert: '@idcard()', desc: '随机身份证号'},
-  {kind: 'builtin', label: '@bankcard()', insert: '@bankcard()', desc: '随机银行卡号'},
-  {kind: 'builtin', label: '@integer(min, max)', insert: "@integer(0, 100)", desc: '范围整数'},
-  {kind: 'builtin', label: "@character('lower', 8)", insert: "@character('lower', 8)", desc: '指定字符集随机字符'},
-  {kind: 'builtin', label: '@text(长度)', insert: '@text(10)', desc: '随机字符串'},
-  {kind: 'builtin', label: '@boolean()', insert: '@boolean()', desc: '随机布尔值'},
-  {kind: 'builtin', label: '@timestamp()', insert: '@timestamp()', desc: '当前时间戳'},
-  {kind: 'builtin', label: "@date('yyyy-MM-dd')", insert: "@date('yyyy-MM-dd')", desc: '随机日期'},
-  {kind: 'builtin', label: '@datetime()', insert: "@datetime('yyyy-MM-dd HH:mm:ss')", desc: '随机日期时间'},
-  {kind: 'builtin', label: "@choice('a', 'b')", insert: "@choice('a', 'b')", desc: '枚举随机选择'},
-  {kind: 'builtin', label: "@fixed('值')", insert: "@fixed('值')", desc: '固定值'},
-  {kind: 'builtin', label: '@md5(文本)', insert: '@md5()', desc: 'MD5 加密（内置函数）'},
-];
+const builtinSuggestions = computed<SuggestItem[]>(() => [
+  {kind: 'builtin', label: '@phone()', insert: '@phone()', desc: tr('api.expr.builtin.phone')},
+  {kind: 'builtin', label: '@email()', insert: '@email()', desc: tr('api.expr.builtin.email')},
+  {kind: 'builtin', label: '@uuid()', insert: '@uuid()', desc: tr('api.expr.builtin.uuid')},
+  {kind: 'builtin', label: '@cname()', insert: '@cname()', desc: tr('api.expr.builtin.cname')},
+  {kind: 'builtin', label: '@ename()', insert: '@ename()', desc: tr('api.expr.builtin.ename')},
+  {kind: 'builtin', label: '@idcard()', insert: '@idcard()', desc: tr('api.expr.builtin.idcard')},
+  {kind: 'builtin', label: '@bankcard()', insert: '@bankcard()', desc: tr('api.expr.builtin.bankcard')},
+  {kind: 'builtin', label: '@integer(min, max)', insert: "@integer(0, 100)", desc: tr('api.expr.builtin.integer')},
+  {kind: 'builtin', label: "@character('lower', 8)", insert: "@character('lower', 8)", desc: tr('api.expr.builtin.character')},
+  {kind: 'builtin', label: tr('api.expr.labelText'), insert: '@text(10)', desc: tr('api.expr.builtin.text')},
+  {kind: 'builtin', label: '@boolean()', insert: '@boolean()', desc: tr('api.expr.builtin.boolean')},
+  {kind: 'builtin', label: '@timestamp()', insert: '@timestamp()', desc: tr('api.expr.builtin.timestamp')},
+  {kind: 'builtin', label: "@date('yyyy-MM-dd')", insert: "@date('yyyy-MM-dd')", desc: tr('api.expr.builtin.date')},
+  {kind: 'builtin', label: '@datetime()', insert: "@datetime('yyyy-MM-dd HH:mm:ss')", desc: tr('api.expr.builtin.datetime')},
+  {kind: 'builtin', label: "@choice('a', 'b')", insert: "@choice('a', 'b')", desc: tr('api.expr.builtin.choice')},
+  {kind: 'builtin', label: tr('api.expr.labelFixed'), insert: tr('api.expr.labelFixed'), desc: tr('api.mock.fixedValue')},
+  {kind: 'builtin', label: tr('api.expr.labelMd5'), insert: '@md5()', desc: tr('api.expr.builtin.md5')},
+]);
 
 // 数据模板：每个模板一条具体建议（带真实 id，直接可搜模板名），无模板时回退到通用占位项。
 // 仅 showTemplate=true（JSON 语境）时才会出现在下拉里。
 const templateSuggestions = computed<SuggestItem[]>(() => {
   if (!props.showTemplate) return [];
   if (!dataTemplates.value.length) {
-    return [{kind: 'template', label: '@template(模板id)', insert: '@template()', desc: '按数据模板生成单条数据（当前项目暂无模板）'}];
+    return [{kind: 'template', label: tr('api.expr.templatePlaceholderLabel'), insert: '@template()', desc: tr('api.expr.templateEmptyDesc')}];
   }
-  return dataTemplates.value.map(t => ({
+  return dataTemplates.value.map(tmpl => ({
     kind: 'template' as const,
-    label: `@template(${t.templateName})`,
-    insert: `@template(${t.id})`,
-    desc: `数据模板·生成「${t.templateName}」单条数据`,
+    label: `@template(${tmpl.templateName})`,
+    insert: `@template(${tmpl.id})`,
+    desc: tr('api.expr.templateDesc', {name: tmpl.templateName}),
   }));
 });
 
@@ -171,7 +174,7 @@ const customSuggestions = computed<SuggestItem[]>(() =>
       kind: 'custom',
       label: `@fn.${fn.funcName}(${fn.funcParams || ''})`,
       insert: `@fn.${fn.funcName}(${fn.funcParams || ''})`,
-      desc: fn.description || '项目自定义函数',
+      desc: fn.description || tr('api.scriptFunc.customDesc'),
     })));
 
 // ==================== 下拉触发与选择 ====================
@@ -213,7 +216,7 @@ watch(suggestVisible, (val) => {
 
 const filteredSuggestions = computed(() => {
   const kw = keyword.value.toLowerCase();
-  const all = [...builtinSuggestions, ...templateSuggestions.value, ...customSuggestions.value];
+  const all = [...builtinSuggestions.value, ...templateSuggestions.value, ...customSuggestions.value];
   if (!kw) return all;
   return all.filter(item => item.label.toLowerCase().includes(kw));
 });
@@ -316,7 +319,7 @@ const commitToStorage = (text: string) => {
   emit('update:modelValue', storageText);
   emit('commit', storageText);
   if (unknownNames.length) {
-    Message.warning(`未找到自定义函数：${unknownNames.join('、')}（已按原文保留，不会生效）`);
+    Message.warning(tr('api.expr.unknownFns', {names: unknownNames.join('、')}));
   }
 };
 

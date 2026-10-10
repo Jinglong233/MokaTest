@@ -6,7 +6,7 @@
         <a-dropdown v-if="hasUpdatePermission" position="bottom">
           <a-button size="small" type="primary" :disabled="mutationsLocked">
             <template #icon><icon-plus/></template>
-            添加步骤
+            {{ $t('scene.workflow.addStep') }}
           </a-button>
           <template #content>
             <template v-for="item in availableStepTypes" :key="item.value">
@@ -14,10 +14,10 @@
                 <template #default>{{ item.label }}</template>
                 <template #content>
                   <a-doption @click="handleAddRootStep(item.value, 'new')">
-                    {{ item.value === 'sql' ? '新建SQL接口' : '新建接口' }}
+                    {{ item.value === 'sql' ? $t('scene.action.newSql') : $t('scene.action.newApi') }}
                   </a-doption>
                   <a-doption @click="handleAddRootStep(item.value, 'import')">
-                    {{ item.value === 'sql' ? '引入已有SQL接口' : '引入已有用例' }}
+                    {{ item.value === 'sql' ? $t('scene.action.importSql') : $t('scene.action.importApiCase') }}
                   </a-doption>
                 </template>
               </a-dsubmenu>
@@ -27,11 +27,11 @@
         </a-dropdown>
         <a-button size="small" @click="handleFitView">
           <template #icon><icon-expand/></template>
-          适应画布
+          {{ $t('scene.workflow.fitView') }}
         </a-button>
         <a-button size="small" @click="handleAutoLayout">
           <template #icon><icon-refresh/></template>
-          自动布局
+          {{ $t('scene.workflow.autoLayout') }}
         </a-button>
       </a-space>
     </div>
@@ -91,22 +91,22 @@
       >
         <div style="width: 1px; height: 1px;"></div>
         <template #content>
-          <a-doption value="edit" v-if="contextMenu.nodeId">编辑步骤</a-doption>
+          <a-doption value="edit" v-if="contextMenu.nodeId">{{ $t('scene.workflow.editStep') }}</a-doption>
           <a-doption value="runUntil" v-if="contextMenu.nodeId && !mutationsLocked && !isStepLocked(contextMenu.nodeId)">
-            执行到此步骤
+            {{ $t('scene.workflow.runUntil') }}
           </a-doption>
           <a-dsubmenu value="addAdjacent" v-if="contextMenu.nodeId && !mutationsLocked">
-            <template #default>添加相邻步骤</template>
+            <template #default>{{ $t('scene.workflow.addAdjacent') }}</template>
             <template #content>
               <template v-for="item in availableStepTypes" :key="'adj-' + item.value">
                 <a-dsubmenu v-if="item.value === 'api_request' || item.value === 'sql'" :value="'add-adj:' + item.value">
                   <template #default>{{ item.label }}</template>
                   <template #content>
                     <a-doption :value="'add-adj:' + item.value + ':new'">
-                      {{ item.value === 'sql' ? '新建SQL接口' : '新建接口' }}
+                      {{ item.value === 'sql' ? $t('scene.action.newSql') : $t('scene.action.newApi') }}
                     </a-doption>
                     <a-doption :value="'add-adj:' + item.value + ':import'">
-                      {{ item.value === 'sql' ? '引入已有SQL接口' : '引入已有用例' }}
+                      {{ item.value === 'sql' ? $t('scene.action.importSql') : $t('scene.action.importApiCase') }}
                     </a-doption>
                   </template>
                 </a-dsubmenu>
@@ -116,17 +116,17 @@
           </a-dsubmenu>
           <a-dsubmenu value="addChild" v-if="contextMenu.nodeId && contextMenu.isContainer && !mutationsLocked"
           >
-            <template #default>添加子步骤</template>
+            <template #default>{{ $t('scene.workflow.addChild') }}</template>
             <template #content>
               <template v-for="item in availableStepTypes" :key="'child-' + item.value">
                 <a-dsubmenu v-if="item.value === 'api_request' || item.value === 'sql'" :value="'add-child:' + item.value">
                   <template #default>{{ item.label }}</template>
                   <template #content>
                     <a-doption :value="'add-child:' + item.value + ':new'">
-                      {{ item.value === 'sql' ? '新建SQL接口' : '新建接口' }}
+                      {{ item.value === 'sql' ? $t('scene.action.newSql') : $t('scene.action.newApi') }}
                     </a-doption>
                     <a-doption :value="'add-child:' + item.value + ':import'">
-                      {{ item.value === 'sql' ? '引入已有SQL接口' : '引入已有用例' }}
+                      {{ item.value === 'sql' ? $t('scene.action.importSql') : $t('scene.action.importApiCase') }}
                     </a-doption>
                   </template>
                 </a-dsubmenu>
@@ -135,35 +135,35 @@
             </template>
           </a-dsubmenu>
           <a-dsubmenu value="moveInto" v-if="contextMenu.nodeId && moveIntoTargets.length > 0 && !isStepLocked(contextMenu.nodeId)">
-            <template #default>移入容器</template>
+            <template #default>{{ $t('scene.workflow.moveInto') }}</template>
             <template #content>
               <a-doption
-                  v-for="t in moveIntoTargets"
-                  :key="'move-into-' + t.id"
-                  :value="'move-into:' + t.id"
+                  v-for="target in moveIntoTargets"
+                  :key="'move-into-' + target.id"
+                  :value="'move-into:' + target.id"
               >
-                {{ t.name }}
+                {{ target.name }}
               </a-doption>
             </template>
           </a-dsubmenu>
-          <a-doption value="moveOut" v-if="contextMenu.nodeId && canMoveOut && !isStepLocked(contextMenu.nodeId)">移出当前容器</a-doption>
+          <a-doption value="moveOut" v-if="contextMenu.nodeId && canMoveOut && !isStepLocked(contextMenu.nodeId)">{{ $t('scene.workflow.moveOut') }}</a-doption>
           <a-doption value="delete" v-if="contextMenu.nodeId && hasDeletePermission && !isStepLocked(contextMenu.nodeId)" status="danger"
           >
-            删除步骤
+            {{ $t('scene.workflow.deleteStep') }}
           </a-doption>
           <template v-if="!contextMenu.nodeId && !mutationsLocked">
             <a-dsubmenu value="addRoot">
-              <template #default>添加步骤</template>
+              <template #default>{{ $t('scene.workflow.addStep') }}</template>
               <template #content>
                 <template v-for="item in availableStepTypes" :key="'root-' + item.value">
                   <a-dsubmenu v-if="item.value === 'api_request' || item.value === 'sql'" :value="'add-root:' + item.value">
                     <template #default>{{ item.label }}</template>
                     <template #content>
                       <a-doption :value="'add-root:' + item.value + ':new'">
-                        {{ item.value === 'sql' ? '新建SQL接口' : '新建接口' }}
+                        {{ item.value === 'sql' ? $t('scene.action.newSql') : $t('scene.action.newApi') }}
                       </a-doption>
                       <a-doption :value="'add-root:' + item.value + ':import'">
-                        {{ item.value === 'sql' ? '引入已有SQL接口' : '引入已有用例' }}
+                        {{ item.value === 'sql' ? $t('scene.action.importSql') : $t('scene.action.importApiCase') }}
                       </a-doption>
                     </template>
                   </a-dsubmenu>
@@ -187,7 +187,7 @@
     <StepDetailDraw
         :width="520"
         v-model:visible="stepFormVisible"
-        :title="`${stepTitle}${!hasUpdatePermission ? '（只读）' : (isCurrentStepLocked ? '（调试中只读）' : '')}`"
+        :title="`${stepTitle}${!hasUpdatePermission ? $t('scene.workflow.readonly') : (isCurrentStepLocked ? $t('scene.workflow.debugReadonly') : '')}`"
         :form-fields="currentOperationFormConfig"
         :form-data="currentStepDetail"
         :show-setting-tab="showSettingTab"
@@ -224,6 +224,7 @@
 
 <script setup lang="ts">
 import {computed, ref, watch, nextTick, markRaw, provide, toRef} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {collectSkippedDescendantIds} from '@/views/scene/component/skippedSteps';
 import {VueFlow, useVueFlow} from '@vue-flow/core';
 import {Background} from '@vue-flow/background';
@@ -298,6 +299,7 @@ const emits = defineEmits<{
 }>();
 
 const projectStore = useProjectStore();
+const { t } = useI18n();
 
 // ===== 调试期间的步骤编辑锁定 =====
 const {mutationsLocked, isStepLocked} = useDebugStepLock({
@@ -435,7 +437,7 @@ const contextMenu = ref({
 });
 
 const stepTitle = computed(() => {
-  if (!currentStep.value?.stepType) return '步骤详情';
+  if (!currentStep.value?.stepType) return t('scene.workflow.stepDetail');
   return getStepTypeChinese(currentStep.value.stepType as any);
 });
 
@@ -463,43 +465,43 @@ const moveIntoTargets = computed<{ id: string; name: string }[]>(() => {
 });
 
 // API 场景可用步骤类型
-const apiStepTypes = [
-  {value: 'api_request', label: 'HTTP请求'},
-  {value: 'sql', label: 'SQL查询'},
-  {value: 'script', label: '脚本'},
-  {value: 'for', label: 'FOR循环'},
-  {value: 'while', label: 'WHILE循环'},
-  {value: 'if', label: 'IF判断'},
-  {value: 'wait', label: '等待'},
-];
+const apiStepTypes = computed(() => [
+  {value: 'api_request', label: t('scene.action.httpRequest')},
+  {value: 'sql', label: t('scene.action.sqlQuery')},
+  {value: 'script', label: t('scene.action.script')},
+  {value: 'for', label: t('scene.stepType.forLoop')},
+  {value: 'while', label: t('scene.stepType.whileLoop')},
+  {value: 'if', label: t('scene.stepType.if')},
+  {value: 'wait', label: t('scene.action.wait')},
+]);
 
 // UI 场景可用步骤类型
-const uiStepTypes = [
-  {value: 'open_page', label: '打开页面'},
-  {value: 'close_page', label: '关闭页面'},
-  {value: 'switch_tab', label: '切换标签页'},
-  {value: 'forward', label: '前进'},
-  {value: 'back', label: '后退'},
-  {value: 'refresh', label: '刷新'},
-  {value: 'click', label: '点击'},
-  {value: 'hover', label: '悬停'},
-  {value: 'drag', label: '拖拽元素'},
-  {value: 'keyboard', label: '键盘操作'},
-  {value: 'element_dom_operation', label: '元素DOM操作'},
-  {value: 'wait', label: '等待'},
-  {value: 'assert', label: '断言'},
-  {value: 'extract', label: '关联提取'},
-  {value: 'if', label: 'IF判断'},
-  {value: 'for', label: 'FOR循环'},
-  {value: 'while', label: 'WHILE循环'},
-  {value: 'iframe', label: 'iframe切换'},
-  {value: 'dialog', label: '对话框'},
-  {value: 'api_request', label: 'HTTP请求'},
-  {value: 'sql', label: 'SQL查询'},
-  {value: 'script', label: '脚本'},
-];
+const uiStepTypes = computed(() => [
+  {value: 'open_page', label: t('scene.stepType.openPage')},
+  {value: 'close_page', label: t('scene.stepType.closePage')},
+  {value: 'switch_tab', label: t('scene.stepType.switchTab')},
+  {value: 'forward', label: t('scene.action.forward')},
+  {value: 'back', label: t('scene.action.back')},
+  {value: 'refresh', label: t('scene.action.refresh')},
+  {value: 'click', label: t('scene.action.click')},
+  {value: 'hover', label: t('scene.action.hover')},
+  {value: 'drag', label: t('scene.stepType.dragElement')},
+  {value: 'keyboard', label: t('scene.action.keyboardOp')},
+  {value: 'element_dom_operation', label: t('scene.action.elementDom')},
+  {value: 'wait', label: t('scene.action.wait')},
+  {value: 'assert', label: t('scene.action.assert')},
+  {value: 'extract', label: t('scene.action.extract')},
+  {value: 'if', label: t('scene.stepType.if')},
+  {value: 'for', label: t('scene.stepType.forLoop')},
+  {value: 'while', label: t('scene.stepType.whileLoop')},
+  {value: 'iframe', label: t('scene.action.iframe')},
+  {value: 'dialog', label: t('scene.action.dialog')},
+  {value: 'api_request', label: t('scene.action.httpRequest')},
+  {value: 'sql', label: t('scene.action.sqlQuery')},
+  {value: 'script', label: t('scene.action.script')},
+]);
 
-const availableStepTypes = computed(() => props.isApiScene ? apiStepTypes : uiStepTypes);
+const availableStepTypes = computed(() => props.isApiScene ? apiStepTypes.value : uiStepTypes.value);
 
 /**
  * 节点数据变更（inline 自动保存成功）
@@ -608,7 +610,7 @@ const dropIndicator = ref<DropState>({
   insertIndex: null,
   line: null,
   container: null,
-  label: '插入',
+  label: t('scene.workflow.dropInsert'),
 });
 
 // 节点容器 DOM id → 节点数据
@@ -642,7 +644,7 @@ const resetDropIndicator = () => {
     insertIndex: null,
     line: null,
     container: null,
-    label: '插入',
+    label: t('scene.workflow.dropInsert'),
   };
 };
 
@@ -724,7 +726,7 @@ const computeDropTarget = (mouseClientX: number, mouseClientY: number, draggingI
 
   // 默认：留在当前父级内排序
   let effectiveParentId: string | null = currentParentId;
-  let label = '插入';
+  let label = t('scene.workflow.dropInsert');
   let containerHighlight: { x: number; y: number; width: number; height: number } | null = null;
 
   // 鼠标下方所有节点 id，按 DOM 层叠顺序（顶→底）
@@ -742,11 +744,11 @@ const computeDropTarget = (mouseClientX: number, mouseClientY: number, draggingI
 
     if (pointInContainerHeader(canvasMouseX, canvasMouseY, deepest.id)) {
       effectiveParentId = String((deepest as any).parentNode || '') || null;
-      label = effectiveParentId ? '拖出容器' : '拖到根层级';
+      label = effectiveParentId ? t('scene.workflow.dropOutContainer') : t('scene.workflow.dropToRoot');
     } else if (pointInContainerBody(canvasMouseX, canvasMouseY, deepest.id)) {
       if (deepest.id !== currentParentId) {
         effectiveParentId = deepest.id;
-        label = '放入容器';
+        label = t('scene.workflow.dropIntoContainer');
         const r = getNodeRect(deepest.id);
         if (r) containerHighlight = {x: r.left, y: r.top, width: r.width, height: r.height};
       }
@@ -952,7 +954,7 @@ const applyReorder = async (draggingId: string, targetParentId: string | null, i
       emits('refresh');
     }
   } catch (e) {
-    Message.error('保存步骤顺序失败');
+    Message.error(t('scene.workflow.saveOrderFail'));
   }
 };
 
@@ -1071,7 +1073,7 @@ const saveOrderAndParent = async () => {
     const result = await updateStepSort(payload);
     if (result.data) emits('refresh');
   } catch (e) {
-    Message.error('保存步骤顺序失败');
+    Message.error(t('scene.workflow.saveOrderFail'));
   }
 };
 
@@ -1100,7 +1102,7 @@ const editStep = async (step: StepVO) => {
     currentOperationFormConfig.value = STEP_REGISTRY[testStepData.stepType as keyof typeof STEP_REGISTRY] || [];
     stepFormVisible.value = true;
   } catch (e) {
-    Message.error('获取步骤详情失败');
+    Message.error(t('scene.workflow.getDetailFail'));
   }
 };
 
@@ -1111,7 +1113,7 @@ const handleSubmit = async (stepDetail: any) => {
   if (!currentStep.value) return;
   // 调试锁定兜底：运行中禁止一切修改；暂停/失败挂起仅未执行步骤可保存
   if (mutationsLocked.value || isCurrentStepLocked.value) {
-    Message.warning('调试中，该步骤不可修改');
+    Message.warning(t('scene.debug.lockedModify'));
     return;
   }
 
@@ -1131,14 +1133,14 @@ const handleSubmit = async (stepDetail: any) => {
   try {
     const result = isNew ? await addStep(testStep) : await updateStep(testStep);
     if (result.data) {
-      Message.success({content: isNew ? '添加成功' : '更新成功', duration: 1000});
+      Message.success({content: isNew ? t('scene.common.addSuccess') : t('scene.common.updateSuccess'), duration: 1000});
       stepFormVisible.value = false;
       currentStep.value = null;
       currentStepDetail.value = {};
       emits('refresh');
     }
   } catch (e) {
-    Message.error(isNew ? '添加失败' : '更新失败');
+    Message.error(isNew ? t('scene.common.addFailed') : t('scene.common.updateFailed'));
   }
 };
 
@@ -1255,7 +1257,7 @@ const handleApiSourcePicked = (apiDetail: any) => {
 const addNewStep = (type: string, parentId: number, source?: 'new' | 'import') => {
   if (!props.hasUpdatePermission || !props.sceneId) return;
   if (mutationsLocked.value) {
-    Message.warning('调试运行中，暂停后可新增步骤');
+    Message.warning(t('scene.debug.lockedAdd'));
     return;
   }
 
@@ -1315,25 +1317,25 @@ const deleteStep = async (nodeId: string | number) => {
   if (!props.hasDeletePermission) return;
   if (String(nodeId).startsWith('temp-step-')) return;
   if (isStepLocked(nodeId)) {
-    Message.warning('调试中，已执行步骤不可删除');
+    Message.warning(t('scene.workflow.lockedDelete'));
     return;
   }
 
   Modal.confirm({
-    title: '确认删除',
-    content: '删除后将不可恢复，是否继续？',
-    okText: '删除',
-    cancelText: '取消',
+    title: t('qa.common.confirmDelete'),
+    content: t('scene.workflow.deleteContent'),
+    okText: t('qa.common.delete'),
+    cancelText: t('qa.common.cancel'),
     okButtonProps: {status: 'danger'},
     onOk: async () => {
       try {
         const result = await deleteStepById(nodeId as number);
         if (result.data) {
-          Message.success({content: '删除成功', duration: 1000});
+          Message.success({content: t('scene.common.deleteSuccess'), duration: 1000});
           emits('refresh');
         }
       } catch (e) {
-        Message.error('删除失败');
+        Message.error(t('scene.common.deleteFailed'));
       }
     }
   });
@@ -1409,7 +1411,7 @@ const handleContextMenuSelect = (value: any) => {
 const moveOutOfContainer = async (nodeId: string) => {
   if (!props.hasUpdatePermission) return;
   if (isStepLocked(nodeId)) {
-    Message.warning('调试中，已执行步骤不可移动');
+    Message.warning(t('scene.workflow.lockedMove'));
     return;
   }
   const node = nodes.value.find(n => n.id === nodeId);
@@ -1426,7 +1428,7 @@ const moveOutOfContainer = async (nodeId: string) => {
 const moveIntoContainer = async (nodeId: string, containerId: string) => {
   if (!props.hasUpdatePermission || !nodeId) return;
   if (isStepLocked(nodeId)) {
-    Message.warning('调试中，已执行步骤不可移动');
+    Message.warning(t('scene.workflow.lockedMove'));
     return;
   }
   await applyReorder(nodeId, containerId, Number.MAX_SAFE_INTEGER);

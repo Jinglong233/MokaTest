@@ -11,8 +11,8 @@
           <!-- 列表/脑图 视图切换 -->
           <div class="case-view-toggle">
             <a-radio-group :model-value="caseViewMode" type="button" size="small" @change="handleViewModeChange">
-              <a-radio value="list"><icon-list /> 列表</a-radio>
-              <a-radio value="mindmap"><icon-mind-mapping /> 脑图</a-radio>
+              <a-radio value="list"><icon-list /> {{ $t('qa.testCase.view.list') }}</a-radio>
+              <a-radio value="mindmap"><icon-mind-mapping /> {{ $t('qa.testCase.view.mindmap') }}</a-radio>
             </a-radio-group>
           </div>
         <div class="main-row">
@@ -36,7 +36,7 @@
                       size="small"
                       @click="handleAdd"
                     >
-                      新建
+                      {{ $t('qa.testCase.create') }}
                     </a-button>
                   </template>
                 </ModuleTreeManager>
@@ -60,35 +60,35 @@
               <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
                 <a-col flex="280px">
                   <div class="filter-field">
-                    <label class="filter-label">用例名称</label>
+                    <label class="filter-label">{{ $t('qa.testCase.name') }}</label>
                     <a-input v-model="searchKeyword" :placeholder="$t('qa.testCase.name')" allow-clear />
                   </div>
                 </a-col>
                 <a-col flex="280px">
                   <div class="filter-field">
-                    <label class="filter-label">状态</label>
-                    <a-select v-model="searchStatus" placeholder="请选择" allow-clear>
-                      <a-option value="DRAFT">草稿</a-option>
-                      <a-option value="REVIEWING">评审中</a-option>
-                      <a-option value="REVIEWED">已评审</a-option>
-                      <a-option value="DEPRECATED">已废弃</a-option>
+                    <label class="filter-label">{{ $t('qa.testCase.status') }}</label>
+                    <a-select v-model="searchStatus" :placeholder="$t('qa.testCase.pleaseSelect')" allow-clear>
+                      <a-option value="DRAFT">{{ $t('qa.testCase.status.draft') }}</a-option>
+                      <a-option value="REVIEWING">{{ $t('qa.testCase.status.reviewing') }}</a-option>
+                      <a-option value="REVIEWED">{{ $t('qa.testCase.status.reviewed') }}</a-option>
+                      <a-option value="DEPRECATED">{{ $t('qa.testCase.status.deprecated') }}</a-option>
                     </a-select>
                   </div>
                 </a-col>
                 <a-col flex="280px">
                   <div class="filter-field">
-                    <label class="filter-label">最近结果</label>
-                    <a-select v-model="searchLastResult" placeholder="请选择" allow-clear>
-                      <a-option value="PASS">成功</a-option>
-                      <a-option value="FAIL">失败</a-option>
-                      <a-option value="BLOCK">阻塞</a-option>
+                    <label class="filter-label">{{ $t('qa.testCase.lastResult') }}</label>
+                    <a-select v-model="searchLastResult" :placeholder="$t('qa.testCase.pleaseSelect')" allow-clear>
+                      <a-option value="PASS">{{ $t('qa.testCase.result.pass') }}</a-option>
+                      <a-option value="FAIL">{{ $t('qa.testCase.result.fail') }}</a-option>
+                      <a-option value="BLOCK">{{ $t('qa.testCase.result.block') }}</a-option>
                     </a-select>
                   </div>
                 </a-col>
                 <a-col flex="auto">
                   <div class="filter-actions">
-                    <a-button type="primary" :loading="loading" @click="handleSearch">搜索</a-button>
-                    <a-button @click="handleReset">重置</a-button>
+                    <a-button type="primary" :loading="loading" @click="handleSearch">{{ $t('qa.common.search') }}</a-button>
+                    <a-button @click="handleReset">{{ $t('qa.common.reset') }}</a-button>
                   </div>
                 </a-col>
               </a-row>
@@ -97,14 +97,14 @@
                 <!-- 批量操作工具栏：常驻显示，无选中时置灰 -->
                 <div class="batch-bar">
                   <span class="batch-count"
-                    >已选 {{ selectedIds.length }} 条</span
+                    >{{ $t('qa.testCase.selectedCount', { count: selectedIds.length }) }}</span
                   >
                   <a-dropdown-button
                     size="small"
                     type="outline"
                     :disabled="!selectedIds.length"
                   >
-                    批量操作
+                    {{ $t('qa.testCase.batchOperation') }}
                     <template #icon><icon-more /></template>
                     <template #content>
                       <a-doption
@@ -116,7 +116,7 @@
                         "
                       >
                         <template #icon><icon-to-right /></template>
-                        移动到模块
+                        {{ $t('qa.testCase.moveToModule') }}
                       </a-doption>
                       <a-doption
                         v-permission="'qa:testcase:delete'"
@@ -124,7 +124,7 @@
                         @click="handleBatchDeleteClick"
                       >
                         <template #icon><icon-delete /></template>
-                        <span style="color: #f53f3f">批量删除</span>
+                        <span style="color: #f53f3f">{{ $t('qa.testCase.batchDelete') }}</span>
                       </a-doption>
                     </template>
                   </a-dropdown-button>
@@ -211,8 +211,8 @@
                       v-if="record.lastResult"
                       :content="
                         record.lastExecuteTime
-                          ? `执行时间：${record.lastExecuteTime}`
-                          : '暂无执行时间'
+                          ? $t('qa.testCase.executeTimeAt', { time: record.lastExecuteTime })
+                          : $t('qa.testCase.noExecuteTime')
                       "
                     >
                       <a-tag
@@ -236,7 +236,7 @@
                       v-model="draftValue"
                       :data="inlineModuleTree"
                       :field-names="{ key: 'id', title: 'moduleName' }"
-                      placeholder="请选择所属模块"
+                      :placeholder="$t('qa.testCase.selectModule')"
                       allow-clear
                       size="small"
                       style="width: 100%"
@@ -260,7 +260,7 @@
                     <a-input-tag
                       v-if="isEditing(record, 'tags')"
                       v-model="draftValue"
-                      placeholder="输入标签后按回车"
+                      :placeholder="$t('qa.testCase.tagsPlaceholder')"
                       allow-clear
                       size="small"
                       style="width: 100%"
@@ -373,25 +373,25 @@
     <!-- 批量移动模块弹窗 -->
     <a-modal
       v-model:visible="moveModalVisible"
-      title="移动到模块"
+      :title="$t('qa.testCase.moveToModule')"
       :width="480"
       :ok-loading="moveLoading"
       @ok="handleBatchMove"
     >
       <div style="padding: 4px 0">
         <div class="move-label"
-          >目标模块 <span style="color: #f53f3f">*</span></div
+          >{{ $t('qa.testCase.targetModule') }} <span style="color: #f53f3f">*</span></div
         >
         <a-tree-select
           v-model="moveTargetModuleId"
           :data="moveModuleTree"
           :field-names="{ key: 'id', title: 'moduleName' }"
-          placeholder="请选择目标模块"
+          :placeholder="$t('qa.testCase.selectTargetModule')"
           allow-clear
           style="width: 100%; margin-bottom: 12px"
         />
         <p style="color: var(--color-text-3); font-size: 13px">
-          将把已选的 {{ selectedIds.length }} 条用例移动到目标模块下。
+          {{ $t('qa.testCase.moveHint', { count: selectedIds.length }) }}
         </p>
       </div>
     </a-modal>
@@ -405,8 +405,9 @@
 </script>
 
 <script setup lang="ts">
-  import { ref, onMounted, onActivated, onBeforeUnmount, watch, computed, nextTick } from 'vue';
-  import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router';
+  import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
+  import { useRouter, useRoute } from 'vue-router';
+  import { useDirtyGuard, confirmIfDirty } from '@/hooks/useDirtyGuard';
   import { Message, Modal } from '@arco-design/web-vue';
   import {
     IconPlus,
@@ -423,6 +424,7 @@
   import CaseLibMindMap from './CaseLibMindMap.vue';
   import { useProjectStore } from '@/store';
   import useProjectConfigStore from '@/store/modules/projectConfig';
+  import { useI18n } from 'vue-i18n';
   import {
     getTestCaseList,
     deleteTestCase,
@@ -438,6 +440,7 @@
 
   const permissionStore = usePermissionStore();
   const hasPerm = (code: string) => permissionStore.hasPermission(code);
+  const { t } = useI18n();
 
   const projectStore = useProjectStore();
   const router = useRouter();
@@ -447,19 +450,19 @@
     projectConfigStore.isFieldVisible('testCase', key);
 
   // 主表列定义
-  const columns = [
-    { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true, slotName: 'caseCode' },
-    { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true, slotName: 'caseName' },
-    { title: '用例等级', dataIndex: 'priority', width: 80, slotName: 'priority' },
-    { title: '最近结果', dataIndex: 'lastResult', width: 100, slotName: 'lastResult' },
-    { title: '状态', dataIndex: 'status', width: 90, slotName: 'status' },
-    { title: '所属模块', dataIndex: 'moduleName', ellipsis: true, tooltip: true, slotName: 'moduleName' },
-    { title: '标签', dataIndex: 'tags', width: 120, ellipsis: true, tooltip: true, slotName: 'tags' },
-    { title: '更新人', dataIndex: 'updateUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'updateUserName' },
-    { title: '创建人', dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'createUserName' },
-    { title: '更新时间', dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true },
-    { title: '操作', width: 200, fixed: 'right' as const, slotName: 'operations' },
-  ];
+  const columns = computed(() => [
+    { title: t('qa.testCase.code'), dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true, slotName: 'caseCode' },
+    { title: t('qa.testCase.name'), dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true, slotName: 'caseName' },
+    { title: t('qa.testCase.priorityLevel'), dataIndex: 'priority', width: 80, slotName: 'priority' },
+    { title: t('qa.testCase.lastResult'), dataIndex: 'lastResult', width: 100, slotName: 'lastResult' },
+    { title: t('qa.testCase.status'), dataIndex: 'status', width: 90, slotName: 'status' },
+    { title: t('qa.testCase.module'), dataIndex: 'moduleName', ellipsis: true, tooltip: true, slotName: 'moduleName' },
+    { title: t('qa.testCase.tags'), dataIndex: 'tags', width: 120, ellipsis: true, tooltip: true, slotName: 'tags' },
+    { title: t('qa.testCase.updateUser'), dataIndex: 'updateUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'updateUserName' },
+    { title: t('qa.testCase.createUser'), dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'createUserName' },
+    { title: t('qa.testCase.updateTime'), dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true },
+    { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, slotName: 'operations' },
+  ]);
 
   // 浏览器窗口宽度（弹窗宽度、侧栏最大宽度等都跟随它自适应）
   const windowWidth = ref(window.innerWidth);
@@ -471,10 +474,8 @@
     window.removeEventListener('resize', handleWindowResize)
   );
 
-  // 浏览器刷新/关闭时的未保存拦截（beforeunload 只能触发原生确认框）
-  // 注意：handler 在下方 onBeforeRouteLeave 旁定义，这里只负责挂载/卸载
-  onMounted(() => window.addEventListener('beforeunload', handleBeforeUnload));
-  onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload));
+  // 脑图未保存拦截（路由离开 + 浏览器刷新/关闭）
+  useDirtyGuard(() => caseViewMode.value === 'mindmap' && !!caseMindmapRef.value?.isDirty?.(), t('qa.testCase.mindmap.dirtyLeave'));
 
   // ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏 =====
   const SIDEBAR_DEFAULT_WIDTH = 240;
@@ -582,15 +583,7 @@
   // 未保存拦截：脑图有未保存修改时，切回列表需确认（脑图组件会被销毁，修改丢失）
   const handleViewModeChange = (mode: 'list' | 'mindmap') => {
     if (mode === 'list' && caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
-      Modal.confirm({
-        title: '有未保存的修改',
-        content: '脑图中有未保存的修改，切换到列表将丢失这些修改，确认切换？',
-        okText: '放弃并切换',
-        cancelText: '继续编辑',
-        onOk: () => {
-          caseViewMode.value = 'list';
-        },
-      });
+      confirmIfDirty(!!caseMindmapRef.value?.isDirty?.(), () => { caseViewMode.value = 'list'; }, t('qa.testCase.mindmap.dirtySwitch'));
       return;
     }
     caseViewMode.value = mode;
@@ -601,28 +594,6 @@
       Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
     }
   });
-  // 离开页面前的全局拦截：脑图有未保存修改时需确认
-  onBeforeRouteLeave((_to, _from, next) => {
-    if (caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
-      Modal.confirm({
-        title: '有未保存的修改',
-        content: '脑图中有未保存的修改，离开将丢失这些修改，确认离开？',
-        okText: '放弃并离开',
-        cancelText: '继续编辑',
-        onOk: () => next(),
-        onCancel: () => next(false),
-      });
-      return;
-    }
-    next();
-  });
-  // 浏览器刷新/关闭的兜底拦截（此场景只能用原生确认框，自定义弹窗无效）
-  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-    if (caseViewMode.value === 'mindmap' && caseMindmapRef.value?.isDirty?.()) {
-      e.preventDefault();
-      e.returnValue = '';
-    }
-  };
   const testCaseList = ref<any[]>([]);
   const selectedIds = ref<number[]>([]);
   const onSelectionChange = (keys: (string | number)[]) => {
@@ -646,10 +617,10 @@
 
   const handleBatchDeleteClick = () => {
     Modal.warning({
-      title: '批量删除',
-      content: `确认删除选中的 ${selectedIds.value.length} 条用例？`,
+      title: t('qa.testCase.batchDelete'),
+      content: t('qa.testCase.batchDeleteConfirm', { count: selectedIds.value.length }),
       hideCancel: false,
-      okText: '删除',
+      okText: t('qa.common.delete'),
       onOk: handleBatchDelete,
     });
   };
@@ -658,7 +629,7 @@
     try {
       const res: any = await batchDeleteTestCase(selectedIds.value);
       if (res.code === 200) {
-        Message.success(`已删除 ${selectedIds.value.length} 条用例`);
+        Message.success(t('qa.testCase.batchDeleteSuccess', { count: selectedIds.value.length }));
         selectedIds.value = [];
         await loadData();
       }
@@ -669,7 +640,7 @@
 
   const handleBatchMove = async () => {
     if (moveTargetModuleId.value === undefined) {
-      Message.warning('请选择目标模块');
+      Message.warning(t('qa.testCase.selectTargetModule'));
       return;
     }
     moveLoading.value = true;
@@ -679,7 +650,7 @@
         moveTargetModuleId.value
       );
       if (res.code === 200) {
-        Message.success(`已移动 ${selectedIds.value.length} 条用例`);
+        Message.success(t('qa.testCase.moveSuccess', { count: selectedIds.value.length }));
         selectedIds.value = [];
         moveModalVisible.value = false;
         moveTargetModuleId.value = undefined;
@@ -882,7 +853,7 @@
     if (field === 'caseName') {
       value = (value || '').trim();
       if (!value) {
-        Message.warning('用例名称不能为空');
+        Message.warning(t('qa.testCase.nameRequired'));
         cancelEdit();
         return;
       }
@@ -987,7 +958,7 @@
     try {
       const res: any = await updateTestCase(payload);
       if (res.code === 200) {
-        Message.success('已保存');
+        Message.success(t('qa.testCase.saved'));
         if (field === 'caseName') record.caseName = value;
         if (field === 'priority') record.priority = value;
         if (field === 'tags') record.tags = payload.tags;
@@ -997,7 +968,7 @@
         }
         record.updateTime = formatNow();
       } else {
-        Message.error(res.msg || '保存失败');
+        Message.error(res.msg || t('qa.testCase.saveFailed'));
       }
     } catch (e) {
       console.error(e);
@@ -1036,7 +1007,7 @@
     try {
       const res: any = await deleteTestCase(id);
       if (res.code === 200) {
-        Message.success('删除成功');
+        Message.success(t('qa.testCase.deleteSuccess'));
         // 后台刷新，不阻塞 UI
         Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
       }
@@ -1050,7 +1021,7 @@
     try {
       const res: any = await getTestCaseDetail(record.id);
       if (res.code !== 200 || !res.data) {
-        Message.error('获取用例详情失败');
+        Message.error(t('qa.testCase.getDetailFailed'));
         return;
       }
       const src = res.data;
@@ -1070,15 +1041,15 @@
       };
       const saveRes: any = await saveTestCase(copy);
       if (saveRes.code === 200) {
-        Message.success('复制成功，已生成草稿态副本');
+        Message.success(t('qa.testCase.copySuccess'));
         // 后台刷新，不阻塞 UI
         Promise.all([loadData(), moduleTreeRef.value?.loadData()]);
       } else {
-        Message.error(saveRes.msg || '复制失败');
+        Message.error(saveRes.msg || t('qa.testCase.copyFailed'));
       }
     } catch (e) {
       console.error(e);
-      Message.error('复制失败');
+      Message.error(t('qa.testCase.copyFailed'));
     }
   };
 
@@ -1093,11 +1064,11 @@
   }
   const confirmDelete = (record: any) => {
     Modal.confirm({
-      title: '删除用例',
-      content: `确认删除用例「${record.caseName}」吗？该操作不可恢复。`,
-      okText: '确认删除',
+      title: t('qa.testCase.deleteTitle'),
+      content: t('qa.testCase.deleteConfirm', { name: record.caseName }),
+      okText: t('qa.testCase.deleteConfirmOk'),
       okButtonProps: { status: 'danger' },
-      cancelText: '再想想',
+      cancelText: t('qa.testCase.deleteCancelThink'),
       hideCancel: false,
       onOk: async () => {
         await handleDelete(record.id);
@@ -1107,19 +1078,19 @@
   const opsFor = (record: any): CaseOp[] => [
     {
       key: 'edit',
-      label: '编辑',
+      label: t('qa.testCase.actionEdit'),
       permission: 'qa:testcase:update',
       handler: handleEdit,
     },
     {
       key: 'copy',
-      label: '复制',
+      label: t('qa.testCase.actionCopy'),
       permission: 'qa:testcase:create',
       handler: handleCopy,
     },
     {
       key: 'delete',
-      label: '删除',
+      label: t('qa.common.delete'),
       permission: 'qa:testcase:delete',
       danger: true,
       handler: confirmDelete,
@@ -1139,7 +1110,7 @@
   };
   const renderHtml = (
     content: string | undefined,
-    defaultText: string = '暂无'
+    defaultText: string = t('qa.testCase.none')
   ) => {
     if (!content || content.trim() === '') return defaultText;
     // 如果内容已经包含 HTML 标签，直接返回
@@ -1160,10 +1131,10 @@
   };
   const statusText = (status: string) => {
     const map: Record<string, string> = {
-      DRAFT: '草稿',
-      REVIEWING: '评审中',
-      REVIEWED: '已评审',
-      DEPRECATED: '已废弃',
+      DRAFT: t('qa.testCase.status.draft'),
+      REVIEWING: t('qa.testCase.status.reviewing'),
+      REVIEWED: t('qa.testCase.status.reviewed'),
+      DEPRECATED: t('qa.testCase.status.deprecated'),
     };
     return map[status] || status;
   };
@@ -1178,10 +1149,10 @@
   };
   const lastResultText = (result: string) => {
     const map: Record<string, string> = {
-      PASS: '成功',
-      FAIL: '失败',
-      BLOCK: '阻塞',
-      NA: '不适用',
+      PASS: t('qa.testCase.result.pass'),
+      FAIL: t('qa.testCase.result.fail'),
+      BLOCK: t('qa.testCase.result.block'),
+      NA: t('qa.testCase.result.na'),
     };
     return map[result] || result;
   };
@@ -1200,15 +1171,10 @@
           activeDetailTab.value = '';
           previewVisible.value = true;
         } else {
-          Message.warning('该用例不存在或已删除');
+          Message.warning(t('qa.testCase.notFoundOrDeleted'));
         }
-      }).catch(() => Message.warning('该用例不存在或已删除'));
+      }).catch(() => Message.warning(t('qa.testCase.notFoundOrDeleted')));
     }
-  });
-  // keep-alive 激活时刷新（新建/编辑用例返回后列表同步）
-  onActivated(() => {
-    loadData();
-    loadModuleOptions();
   });
 
   watch(

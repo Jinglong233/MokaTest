@@ -9,9 +9,9 @@
     <template #upload-button>
       <div class="record-upload-area">
         <icon-upload style="font-size: 32px; color: var(--color-text-3)" />
-        <div style="margin-top: 8px">点击或拖拽上传录制 JSON 文件</div>
+        <div style="margin-top: 8px">{{ $t('scene.record.uploadTitle') }}</div>
         <div style="font-size: 12px; color: var(--color-text-3)"
-          >仅支持 .json，大小不超过 2MB</div
+          >{{ $t('scene.record.uploadDesc') }}</div
         >
       </div>
     </template>
@@ -21,11 +21,14 @@
 <script setup lang="ts">
 import { Message } from '@arco-design/web-vue';
 import { IconUpload } from '@arco-design/web-vue/es/icon';
+import { useI18n } from 'vue-i18n';
 import {
   importRecord,
   RecordStepDraft,
   RecordImportResult,
 } from '@/api/MyApi/record';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   projectId: string;
@@ -48,7 +51,7 @@ async function handleFileChange(fileList: any[]) {
     return;
   }
   if (rawFile.size > 2 * 1024 * 1024) {
-    Message.error('文件大小超过 2MB');
+    Message.error(t('scene.record.fileTooLarge'));
     return;
   }
   try {
@@ -56,7 +59,7 @@ async function handleFileChange(fileList: any[]) {
     const data: RecordImportResult = result.data;
     emit('stepsChange', data.steps || []);
   } catch (err: any) {
-    Message.error(err?.response?.data?.msg || err?.message || '解析失败');
+    Message.error(err?.response?.data?.msg || err?.message || t('scene.record.parseFailed'));
   }
 }
 

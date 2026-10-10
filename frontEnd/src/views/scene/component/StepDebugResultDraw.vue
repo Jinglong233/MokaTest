@@ -10,11 +10,11 @@
       <!-- 循环步骤：按每次执行展示 -->
       <div v-if="hasIterations">
         <a-tabs>
-          <a-tab-pane v-for="(value,key) in stepResult.iterations" :key="key" :title="`第${key}次循环`">
+          <a-tab-pane v-for="(value,key) in stepResult.iterations" :key="key" :title="$t('scene.debugResult.iterationTitle', { index: key })">
             <!-- API 请求步骤：复用 API 调试结果组件 -->
             <template v-if="isApiRequestStep">
               <ApiDebugResult v-if="getApiResponse(value)" :debug-result="getApiResponse(value)" :api-type="resultApiType"/>
-              <a-empty v-else description="该次循环无响应数据"/>
+              <a-empty v-else :description="$t('scene.debugResult.noIterationResponse')"/>
             </template>
             <!-- 非 API 步骤：通用展示（基本信息 + 截图 + 断言/提取 tab） -->
             <CommonStepResult v-else :value="value" :step-type="stepResult.step.stepType"/>
@@ -27,7 +27,7 @@
         <!-- API 请求步骤：复用 API 调试结果组件，与 API 测试页/场景实时调试保持一致 -->
         <template v-if="isApiRequestStep">
           <ApiDebugResult v-if="apiResponse" :debug-result="apiResponse" :api-type="resultApiType"/>
-          <a-empty v-else description="暂无调试结果"/>
+          <a-empty v-else :description="$t('scene.debugResult.empty')"/>
         </template>
         <!-- 非 API 步骤：通用展示（基本信息 + 截图 + 断言/提取 tab） -->
         <CommonStepResult v-else :value="stepResult.result" :step-type="stepResult.step.stepType"/>

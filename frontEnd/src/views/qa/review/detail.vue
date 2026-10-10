@@ -6,23 +6,23 @@
       <div class="detail-header">
         <a-button size="small" @click="handleBack">
           <template #icon><icon-left /></template>
-          返回
+          {{ $t('qa.review.back') }}
         </a-button>
         <span class="detail-code">{{ detail?.reviewCode || '' }}</span>
-        <span class="detail-title">{{ detail?.title || '评审详情' }}</span>
+        <span class="detail-title">{{ detail?.title || $t('menu.qa.reviewDetail') }}</span>
         <a-tag v-if="detail" :color="statusColor(detail.status)" size="small">{{ statusText(detail.status) }}</a-tag>
         <div class="detail-meta" v-if="detail">
-          <span class="detail-meta-item">创建人：{{ detail.creatorName || '-' }}</span>
+          <span class="detail-meta-item">{{ $t('qa.review.creatorLine', { name: detail.creatorName || '-' }) }}</span>
         </div>
         <a-space class="detail-actions">
           <a-button v-if="detail?.status === 'REVIEWING'" size="small" @click="handleEdit">
-            <template #icon><icon-edit /></template>编辑
+            <template #icon><icon-edit /></template>{{ $t('qa.review.op.edit') }}
           </a-button>
           <a-button v-if="canManageCases" type="primary" size="small" @click="openCaseFormDrawer">
-            <template #icon><icon-plus /></template>新建用例
+            <template #icon><icon-plus /></template>{{ $t('qa.testCase.add') }}
           </a-button>
           <a-button v-if="canManageCases" size="small" @click="caseDrawerVisible = true">
-            <template #icon><icon-link /></template>关联用例
+            <template #icon><icon-link /></template>{{ $t('qa.review.linkCases') }}
           </a-button>
         </a-space>
       </div>
@@ -30,16 +30,16 @@
       <!-- 评审进度条 -->
       <div v-if="detail && progressStats.total > 0" class="detail-progress">
         <div class="progress-info">
-          <span class="progress-label">评审进度</span>
-          <span class="progress-text">已评 {{ progressStats.finished }}/{{ progressStats.total }} 条用例</span>
+          <span class="progress-label">{{ $t('qa.review.progress') }}</span>
+          <span class="progress-text">{{ $t('qa.review.progressText', { finished: progressStats.finished, total: progressStats.total }) }}</span>
           <span class="progress-stat">
-            <i class="dot dot-pass" />通过 {{ progressStats.pass }}
+            <i class="dot dot-pass" />{{ $t('qa.review.passCount', { count: progressStats.pass }) }}
           </span>
           <span class="progress-stat">
-            <i class="dot dot-reject" />不通过 {{ progressStats.reject }}
+            <i class="dot dot-reject" />{{ $t('qa.review.rejectCount', { count: progressStats.reject }) }}
           </span>
           <span class="progress-stat">
-            <i class="dot dot-pending" />待评审 {{ progressStats.pending }}
+            <i class="dot dot-pending" />{{ $t('qa.review.pendingCount', { count: progressStats.pending }) }}
           </span>
         </div>
         <div class="progress-bar">
@@ -58,7 +58,7 @@
         <div class="col side-col" :style="sideColStyle">
           <a-card class="pane-card" size="small" :bordered="true">
             <div class="side-tree">
-              <a-input-search v-model="moduleKeyword" placeholder="搜索模块" size="small" style="margin-bottom: 8px" />
+              <a-input-search v-model="moduleKeyword" :placeholder="$t('qa.review.searchModule')" size="small" style="margin-bottom: 8px" />
               <a-scrollbar style="flex: 1; overflow: auto;">
                 <a-tree
                   :data="filteredModuleTree"
@@ -93,24 +93,24 @@
           <div class="main-toolbar">
             <a-input-search
               v-model="caseKeyword"
-              placeholder="搜索用例编号 / 名称"
+              :placeholder="$t('qa.review.searchCase')"
               size="small"
               style="width: 240px"
               allow-clear
             />
             <!-- 列表/脑图 视图切换 -->
             <a-radio-group v-model="viewMode" type="button" size="small">
-              <a-radio value="list">列表</a-radio>
-              <a-radio value="mindmap">脑图</a-radio>
+              <a-radio value="list">{{ $t('qa.review.viewList') }}</a-radio>
+              <a-radio value="mindmap">{{ $t('qa.review.viewMindmap') }}</a-radio>
             </a-radio-group>
-            <span class="case-total">共 {{ filteredCases.length }} 条用例</span>
+            <span class="case-total">{{ $t('qa.review.totalCases', { count: filteredCases.length }) }}</span>
             <a-dropdown-button
               size="small"
               type="outline"
               :disabled="!reviewSelectedIds.length"
               style="margin-left: auto;"
             >
-              批量操作
+              {{ $t('qa.review.batchOperation') }}
               <template #icon><icon-more /></template>
               <template #content>
                 <a-doption
@@ -118,7 +118,7 @@
                   @click="handleBatchRemoveFromReview"
                 >
                   <template #icon><icon-delete /></template>
-                  <span style="color: #f53f3f;">批量移除出评审</span>
+                  <span style="color: #f53f3f;">{{ $t('qa.review.batchRemove') }}</span>
                 </a-doption>
               </template>
             </a-dropdown-button>
@@ -137,24 +137,24 @@
               @selection-change="onReviewSelectionChange"
             >
               <template #columns>
-                <a-table-column title="用例编号" data-index="caseCode" :width="140" :ellipsis="true" :tooltip="true" />
-                <a-table-column title="用例名称" data-index="caseName" :width="200" :ellipsis="true" :tooltip="true" />
-                <a-table-column title="优先级" data-index="priority" :width="80" align="center">
+                <a-table-column :title="$t('qa.testCase.code')" data-index="caseCode" :width="140" :ellipsis="true" :tooltip="true" />
+                <a-table-column :title="$t('qa.testCase.name')" data-index="caseName" :width="200" :ellipsis="true" :tooltip="true" />
+                <a-table-column :title="$t('qa.testCase.priority')" data-index="priority" :width="80" align="center">
                   <template #cell="{ record }">
                     <a-tag :color="priorityColor(record.priority)" size="small">{{ record.priority }}</a-tag>
                   </template>
                 </a-table-column>
-                <a-table-column title="所属模块" data-index="moduleName" :width="140" :ellipsis="true" :tooltip="true">
+                <a-table-column :title="$t('qa.review.module')" data-index="moduleName" :width="140" :ellipsis="true" :tooltip="true">
                   <template #cell="{ record }">
                     {{ record.moduleName || '-' }}
                   </template>
                 </a-table-column>
-                <a-table-column title="创建人" :width="100" align="center">
+                <a-table-column :title="$t('qa.review.creator')" :width="100" align="center">
                   <template #cell="{ record }">
                     {{ record.caseCreatorName || '-' }}
                   </template>
                 </a-table-column>
-                <a-table-column title="评审人" :width="220">
+                <a-table-column :title="$t('qa.review.reviewers')" :width="220">
                   <template #cell="{ record }">
                     <!-- 行内编辑态：多选下拉，收起即自动保存 -->
                     <div v-if="editingCaseId === Number(record.testCaseId)" class="reviewer-cell">
@@ -162,7 +162,7 @@
                         v-model="reviewerEditIds"
                         multiple
                         size="mini"
-                        placeholder="选择评审人（清空则回退默认评审人）"
+                        :placeholder="$t('qa.review.reviewerPlaceholder')"
                         :max-tag-count="2"
                         :loading="savingReviewers"
                         style="flex: 1; min-width: 0"
@@ -190,7 +190,7 @@
                           {{ item.reviewerName || `#${item.reviewerId}` }}
                         </a-tag>
                       </a-tooltip>
-                      <a-tooltip v-if="detail?.status === 'REVIEWING' && isCreator" content="调整该用例评审人">
+                      <a-tooltip v-if="detail?.status === 'REVIEWING' && isCreator" :content="$t('qa.review.adjustReviewers')">
                         <a-button type="text" size="mini" @click="handleStartEditReviewers(record)">
                           <template #icon><icon-edit /></template>
                         </a-button>
@@ -198,12 +198,12 @@
                     </div>
                   </template>
                 </a-table-column>
-                <a-table-column title="评审结果" :width="100" align="center">
+                <a-table-column :title="$t('qa.review.result')" :width="100" align="center">
                   <template #cell="{ record }">
                     <a-tag :color="finalResultColor(record.finalResult)" size="small">{{ finalResultText(record.finalResult) }}</a-tag>
                   </template>
                 </a-table-column>
-                <a-table-column title="操作" :width="150" align="center" fixed="right">
+                <a-table-column :title="$t('qa.common.operation')" :width="150" align="center" fixed="right">
                   <template #cell="{ record }">
                     <!-- 所有行固定渲染同一组按钮（不适用则禁用），保证操作列内容宽度一致 -->
                     <a-space :size="4">
@@ -213,7 +213,7 @@
                         :status="detail?.status !== 'CANCELLED' && isCaseReviewer(record) ? 'success' : undefined"
                         @click="handleReview(record)"
                       >
-                        {{ detail?.status !== 'CANCELLED' && isCaseReviewer(record) ? '评审' : '查看' }}
+                        {{ detail?.status !== 'CANCELLED' && isCaseReviewer(record) ? $t('qa.review.op.review') : $t('qa.review.op.view') }}
                       </a-button>
                       <a-button
                         type="text"
@@ -222,7 +222,7 @@
                         :disabled="!(['REVIEWING', 'COMPLETED'].includes(detail?.status) && isCreator)"
                         @click="confirmRemoveCase(record)"
                       >
-                        取消关联
+                        {{ $t('qa.review.unlink') }}
                       </a-button>
                     </a-space>
                   </template>
@@ -242,7 +242,7 @@
             @change="(p: number) => currentPage = p"
             style="margin-top: 8px; flex-shrink: 0; justify-content: center;"
           >
-            <template #total>共 {{ totalPages }} 页</template>
+            <template #total>{{ $t('qa.review.totalPages', { count: totalPages }) }}</template>
           </a-pagination>
           <!-- 脑图视图：根节点跟随左侧模块选中状态 -->
           <ReviewMindMap
@@ -277,7 +277,7 @@
     <!-- 新建用例抽屉 -->
     <a-drawer
       v-model:visible="caseFormDrawerVisible"
-      title="新建用例"
+      :title="$t('qa.testCase.add')"
       :width="1000"
       :mask-closable="true"
       @cancel="handleCaseDrawerClose"
@@ -290,8 +290,8 @@
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="handleCaseDrawerClose">取消</a-button>
-          <a-button type="primary" :loading="savingCase" @click="handleCreateCase">保存并关联</a-button>
+          <a-button @click="handleCaseDrawerClose">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="savingCase" @click="handleCreateCase">{{ $t('qa.review.saveAndLink') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
@@ -305,10 +305,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconLeft, IconLink, IconPlus, IconEdit, IconMore, IconDelete, IconRight } from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import { useUserStore } from '@/store';
+import { confirmIfDirty } from '@/hooks/useDirtyGuard';
 import CaseSelectDrawer from './components/CaseSelectDrawer.vue';
 import ReviewMindMap from './ReviewMindMap.vue';
 import TestCaseForm from '../testCase/components/TestCaseForm.vue';
@@ -324,6 +326,7 @@ import {
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const { t } = useI18n();
 
 const reviewId = Number(route.params.id);
 const myId = computed(() => Number(userStore.id || (userStore.userInfo as any)?.id));
@@ -435,16 +438,16 @@ const onReviewSelectionChange = (keys: (string | number)[]) => {
 
 const handleBatchRemoveFromReview = () => {
   Modal.warning({
-    title: '批量移除出评审',
-    content: `确认将选中的 ${reviewSelectedIds.value.length} 条用例移出当前评审？`,
+    title: t('qa.review.batchRemove'),
+    content: t('qa.review.batchRemoveContent', { count: reviewSelectedIds.value.length }),
     hideCancel: false,
-    okText: '移除',
+    okText: t('qa.review.remove'),
     onOk: async () => {
       try {
         for (const testCaseId of reviewSelectedIds.value) {
           await removeReviewCase(reviewId, testCaseId);
         }
-        Message.success(`已移除 ${reviewSelectedIds.value.length} 条用例`);
+        Message.success(t('qa.review.removedCount', { count: reviewSelectedIds.value.length }));
         reviewSelectedIds.value = [];
         await loadDetail();
       } catch (e) {
@@ -621,10 +624,10 @@ const handleReview = (record: any) => {
 const confirmRemoveCase = (record: any) => {
   if (!(['REVIEWING', 'COMPLETED'].includes(detail.value?.status) && isCreator.value)) return;
   Modal.warning({
-    title: '取消关联',
-    content: '确认将该用例从评审单中移除吗？',
-    okText: '确认移除',
-    cancelText: '再想想',
+    title: t('qa.review.unlink'),
+    content: t('qa.review.unlinkContent'),
+    okText: t('qa.review.confirmRemove'),
+    cancelText: t('qa.review.thinkAgain'),
     hideCancel: false,
     onOk: () => handleRemoveCase(record),
   });
@@ -634,10 +637,10 @@ const handleRemoveCase = async (record: any) => {
   try {
     const res: any = await removeReviewCase(reviewId, Number(record.testCaseId));
     if (res.code === 200) {
-      Message.success('已移除');
+      Message.success(t('qa.review.removed'));
       await loadDetail();
     } else {
-      Message.error(res.msg || '移除失败');
+      Message.error(res.msg || t('qa.review.removeFailed'));
     }
   } catch (e) {
     console.error(e);
@@ -650,10 +653,10 @@ const handleAddCases = async (cases: any[]) => {
   try {
     const res: any = await addReviewCases(reviewId, caseIds);
     if (res.code === 200) {
-      Message.success(`成功追加 ${caseIds.length} 条用例`);
+      Message.success(t('qa.review.appended', { count: caseIds.length }));
       await loadDetail();
     } else {
-      Message.error(res.msg || '追加失败');
+      Message.error(res.msg || t('qa.review.appendFailed'));
     }
   } catch (e) {
     console.error(e);
@@ -672,11 +675,11 @@ const handleCreateCase = async () => {
     if (caseId) {
       const res: any = await addReviewCases(reviewId, [Number(caseId)]);
       if (res.code === 200) {
-        Message.success('已关联到当前评审');
+        Message.success(t('qa.review.linkedSuccess'));
         caseFormDrawerVisible.value = false;
         await loadDetail();
       } else {
-        Message.error(res.msg || '关联失败，请手动关联');
+        Message.error(res.msg || t('qa.review.linkFailed'));
       }
     }
   } catch (e) {
@@ -687,11 +690,7 @@ const handleCreateCase = async () => {
 };
 
 const handleCaseDrawerClose = () => {
-  if (caseFormRef.value?.isDirty?.()) {
-    const leave = confirm('您有未保存的更改，确定要离开吗？');
-    if (!leave) return;
-  }
-  caseFormDrawerVisible.value = false;
+  confirmIfDirty(!!caseFormRef.value?.isDirty?.(), () => { caseFormDrawerVisible.value = false; });
 };
 
 const handleBack = () => {
@@ -728,11 +727,11 @@ const handleSaveCaseReviewers = async (record: any) => {
   try {
     const res: any = await updateReviewCaseReviewers(reviewId, Number(record.testCaseId), reviewerEditIds.value);
     if (res.code === 200) {
-      Message.success('评审人已调整');
+      Message.success(t('qa.review.reviewersAdjusted'));
       editingCaseId.value = null;
       await loadDetail();
     } else {
-      Message.error(res.msg || '调整失败');
+      Message.error(res.msg || t('qa.review.adjustFailed'));
     }
   } catch (e) {
     console.error(e);
@@ -742,10 +741,10 @@ const handleSaveCaseReviewers = async (record: any) => {
 };
 
 const statusColor = (s: string) => ({ REVIEWING: 'gold', COMPLETED: 'green', CANCELLED: 'gray' } as Record<string, string>)[s] || 'gray';
-const statusText = (s: string) => ({ REVIEWING: '评审中', COMPLETED: '已完成', CANCELLED: '已取消' } as Record<string, string>)[s] || s;
+const statusText = (s: string) => ({ REVIEWING: t('qa.review.status.reviewing'), COMPLETED: t('qa.review.status.completed'), CANCELLED: t('qa.review.status.cancelled') } as Record<string, string>)[s] || s;
 const priorityColor = (p: string) => ({ P0: 'red', P1: 'orange', P2: 'blue' } as Record<string, string>)[p] || 'gray';
 const finalResultColor = (r: string) => ({ PASS: 'green', REJECT: 'red', PENDING: 'gray' } as Record<string, string>)[r] || 'gray';
-const finalResultText = (r: string) => ({ PASS: '通过', REJECT: '不通过', PENDING: '待评审' } as Record<string, string>)[r] || '待评审';
+const finalResultText = (r: string) => ({ PASS: t('qa.review.resultPass'), REJECT: t('qa.review.resultReject'), PENDING: t('qa.review.resultPending') } as Record<string, string>)[r] || t('qa.review.resultPending');
 
 const onWindowResize = () => {
   windowWidth.value = window.innerWidth;

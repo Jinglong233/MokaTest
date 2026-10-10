@@ -14,7 +14,7 @@
       <template #variableName="{ record }">
         <a-input
             v-model="record.variableName"
-            placeholder="变量名"
+            :placeholder="$t('api.sqlExtraction.variableNamePlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
@@ -23,17 +23,17 @@
       <template #columnName="{ record }">
         <a-input
             v-model="record.columnName"
-            placeholder="结果列名"
+            :placeholder="$t('api.sqlExtraction.columnNamePlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
         />
       </template>
       <template #jsonPath="{ record }">
-        <a-tooltip content="列值为 JSON 时按路径继续提取，如 $.data.id；留空取整列值" position="top">
+        <a-tooltip :content="$t('api.sqlExtraction.jsonPathTip')" position="top">
           <a-input
               v-model="record.jsonPath"
-              placeholder="选填，如 $.data.id"
+              :placeholder="$t('api.sqlAssertion.jsonPathPlaceholder')"
               size="small"
               :disabled="disabled"
               @input="onDataChange"
@@ -54,7 +54,7 @@
       <template #defaultValue="{ record }">
         <a-input
             v-model="record.defaultValue"
-            placeholder="默认值"
+            :placeholder="$t('api.sqlExtraction.defaultValuePlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
@@ -63,40 +63,43 @@
       <template #description="{ record }">
         <a-input
             v-model="record.description"
-            placeholder="描述"
+            :placeholder="$t('api.sqlAssertion.descPlaceholder')"
             size="small"
             :disabled="disabled"
             @input="onDataChange"
         />
       </template>
       <template #operation="{ rowIndex }">
-        <a-popconfirm content="确认删除该提取规则？" position="left" @ok="deleteRow(rowIndex)">
+        <a-popconfirm :content="$t('api.sqlExtraction.confirmDelete')" position="left" @ok="deleteRow(rowIndex)">
           <a-button type="text" status="danger" size="small" :disabled="disabled">
-            删除
+            {{ $t('qa.common.delete') }}
           </a-button>
         </a-popconfirm>
       </template>
     </a-table>
     <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">
-      + 添加提取规则
+      {{ $t('api.sqlExtraction.add') }}
     </a-button>
   </div>
 </template>
 
 <script setup lang="ts">
 import {ref, computed, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {SqlExtraction} from '@/types/domain/api/requestModel/SqlExtraction'
 
-const columns = [
-  {title: '启用', slotName: 'status', width: '70px'},
-  {title: '变量名', slotName: 'variableName'},
-  {title: '字段', slotName: 'columnName'},
-  {title: 'JSON路径', slotName: 'jsonPath', width: '150px'},
-  {title: '下标', slotName: 'rowIndex', width: '80px'},
-  {title: '默认值', slotName: 'defaultValue'},
-  {title: '描述', slotName: 'description'},
-  {title: '操作', slotName: 'operation', width: '80px'}
-]
+const {t} = useI18n()
+
+const columns = computed(() => [
+  {title: t('api.sqlAssertion.colEnabled'), slotName: 'status', width: '70px'},
+  {title: t('api.sqlExtraction.colVariableName'), slotName: 'variableName'},
+  {title: t('api.sqlAssertion.colField'), slotName: 'columnName'},
+  {title: t('api.sqlAssertion.colJsonPath'), slotName: 'jsonPath', width: '150px'},
+  {title: t('api.sqlAssertion.colRowIndex'), slotName: 'rowIndex', width: '80px'},
+  {title: t('api.sqlExtraction.colDefaultValue'), slotName: 'defaultValue'},
+  {title: t('api.sqlAssertion.colDesc'), slotName: 'description'},
+  {title: t('qa.common.operation'), slotName: 'operation', width: '80px'}
+])
 
 const props = defineProps<{
   disabled?: boolean;
@@ -151,10 +154,10 @@ const validateAll = (): { valid: boolean; message: string } => {
         .some(v => v != null && String(v).trim() !== '')
     if (!hasAny) continue
     if (!r.variableName?.trim()) {
-      return {valid: false, message: `提取规则第 ${i + 1} 行：请填写变量名`}
+      return {valid: false, message: t('api.sqlExtraction.rowVarRequired', {row: i + 1})}
     }
     if (!r.columnName?.trim()) {
-      return {valid: false, message: `提取规则第 ${i + 1} 行：请填写字段（结果列名）`}
+      return {valid: false, message: t('api.sqlExtraction.rowFieldRequired', {row: i + 1})}
     }
   }
   return {valid: true, message: ''}

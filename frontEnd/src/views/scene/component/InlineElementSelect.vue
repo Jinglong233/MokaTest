@@ -14,10 +14,10 @@
 
   <a-modal
       v-model:visible="visible"
-      title="选择元素"
+      :title="$t('scene.element.selectTitle')"
       :width="640"
       :mask-closable="true"
-      ok-text="完成"
+      :ok-text="$t('scene.element.done')"
       hide-cancel
       @ok="visible = false"
   >
@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import {computed, ref} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {IconEdit} from '@arco-design/web-vue/es/icon';
 import ElementSelect from './ElementSelect.vue';
 
@@ -42,6 +43,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const { t } = useI18n();
 const emits = defineEmits<{
   (e: 'update:modelValue', value: any): void;
   (e: 'change', value: any): void;
@@ -67,7 +69,7 @@ const handleChange = () => {
 // 库选元素取 locator，自定义元素取 customLocator
 const summary = computed(() => {
   const v = props.modelValue;
-  if (!v || typeof v !== 'object') return '未选择元素';
+  if (!v || typeof v !== 'object') return t('scene.element.notSelected');
 
   const pick = (loc: any): string => {
     const value = loc?.locatorValue;
@@ -76,7 +78,7 @@ const summary = computed(() => {
     return `${type}${String(value).trim()}`;
   };
 
-  return pick(v.locator) || pick(v.customLocator) || '未选择元素';
+  return pick(v.locator) || pick(v.customLocator) || t('scene.element.notSelected');
 });
 </script>
 

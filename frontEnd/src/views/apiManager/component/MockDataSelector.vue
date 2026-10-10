@@ -1,7 +1,7 @@
 <template>
   <a-modal
       v-model:visible="visible"
-      title="插入 Mock 数据"
+      :title="$t('api.mock.insertTitle')"
       @ok="handleOk"
       @cancel="handleCancel"
       :ok-button-props="{ disabled: !canInsert }"

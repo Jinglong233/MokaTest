@@ -14,7 +14,7 @@
       <template #name="{ record, rowIndex }">
         <a-input
           v-model="record.name"
-          placeholder="参数名"
+          :placeholder="$t('components.paramTable.name')"
           :disabled="disabled"
           @blur="() => handleUpdate(rowIndex, record)"
         />
@@ -22,7 +22,7 @@
       <template #value="{ record, rowIndex }">
         <a-input
           v-model="record.value"
-          placeholder="参数值"
+          :placeholder="$t('components.paramTable.value')"
           :disabled="disabled"
           @blur="() => handleUpdate(rowIndex, record)"
         />
@@ -43,35 +43,35 @@
     </a-table>
     <a-button :disabled="disabled" type="dashed" long @click="openAddModal" style="margin-top: 10px">
       <icon-plus />
-      添加参数
+      {{ $t('components.paramTable.add') }}
     </a-button>
 
     <!-- 添加参数弹窗 -->
     <a-modal
       v-model:visible="modalVisible"
-      title="添加参数"
+      :title="$t('components.paramTable.add')"
       width="500px"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
     >
       <a-form :model="formData" layout="vertical">
-        <a-form-item label="参数名" required>
+        <a-form-item :label="$t('components.paramTable.name')" required>
           <a-input
             v-model="formData.name"
-            placeholder="请输入参数名"
+            :placeholder="$t('components.paramTable.namePlaceholder')"
             allow-clear
             :disabled="disabled"
           />
         </a-form-item>
-        <a-form-item label="参数值">
+        <a-form-item :label="$t('components.paramTable.value')">
           <a-input
             v-model="formData.value"
-            placeholder="请输入参数值"
+            :placeholder="$t('components.paramTable.valuePlaceholder')"
             allow-clear
             :disabled="disabled"
           />
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item :label="$t('components.paramTable.status')">
           <a-switch
             v-model="formData.disabled"
             :checked-value="false"
@@ -79,7 +79,7 @@
             :disabled="disabled"
           />
           <span style="margin-left: 8px">{{
-            formData.disabled ? '禁用' : '启用'
+            formData.disabled ? $t('components.paramTable.disabled') : $t('components.paramTable.enabled')
           }}</span>
         </a-form-item>
       </a-form>
@@ -88,22 +88,25 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, reactive } from 'vue';
+  import { ref, reactive, computed } from 'vue';
   import { IconPlus, IconDelete } from '@arco-design/web-vue/es/icon';
   import { Message, Modal } from '@arco-design/web-vue';
+  import { useI18n } from 'vue-i18n';
   import { RequestParameter } from '@/types/domain/api/requestModel/RequestParameter';
+
+  const { t } = useI18n();
 
   const props = defineProps<{
     fieldName: string;
     disabled?: boolean;
   }>();
 
-  const columns = [
-    { title: '状态', slotName: 'status', width: '10%' },
-    { title: '参数名', slotName: 'name', width: '40%' },
-    { title: '参数值', slotName: 'value', width: '40%' },
-    { title: '操作', slotName: 'operation', width: '10%' },
-  ];
+  const columns = computed(() => [
+    { title: t('components.paramTable.status'), slotName: 'status', width: '10%' },
+    { title: t('components.paramTable.name'), slotName: 'name', width: '40%' },
+    { title: t('components.paramTable.value'), slotName: 'value', width: '40%' },
+    { title: t('qa.common.operation'), slotName: 'operation', width: '10%' },
+  ]);
 
   const tableData = ref<any[]>([]);
   const modalVisible = ref(false);
@@ -122,8 +125,8 @@
     if (props.disabled) return;
     const row = tableData.value[index];
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除参数"${row.name}"吗？`,
+      title: t('components.common.deleteTitle'),
+      content: t('components.paramTable.deleteContent', { name: row.name }),
       onOk: () => {
         emit('delete', props.fieldName, index);
       },
@@ -142,7 +145,7 @@
   const handleModalOk = () => {
     if (props.disabled) return;
     if (!formData.value.name.trim()) {
-      Message.warning('请输入参数名');
+      Message.warning(t('components.paramTable.namePlaceholder'));
       return;
     }
 

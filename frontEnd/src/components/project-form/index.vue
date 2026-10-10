@@ -1,32 +1,32 @@
 <template>
   <a-modal
     v-model:visible="visible"
-    :title="form.id ? '编辑项目' : '新建项目'"
+    :title="form.id ? $t('components.projectForm.editTitle') : $t('components.projectForm.createTitle')"
     @cancel="handleCancel"
     @before-ok="handleBeforeOk"
   >
     <a-form ref="formRef" :model="form" :rules="formRules">
-      <a-form-item field="projectName" label="项目名称" required>
-        <a-input v-model="form.projectName" placeholder="请输入项目名称"/>
+      <a-form-item field="projectName" :label="$t('components.projectForm.nameLabel')" required>
+        <a-input v-model="form.projectName" :placeholder="$t('components.projectForm.namePlaceholder')"/>
       </a-form-item>
-      <a-form-item field="description" label="描述">
-        <a-textarea v-model="form.description" placeholder="请输入项目描述"/>
+      <a-form-item field="description" :label="$t('components.projectForm.descLabel')">
+        <a-textarea v-model="form.description" :placeholder="$t('components.projectForm.descPlaceholder')"/>
       </a-form-item>
-      <a-form-item field="status" label="项目状态" required>
-        <a-select v-model="form.status" placeholder="请选择项目状态">
-          <a-option value="ACTIVE">运行中</a-option>
-          <a-option value="COMPLETED">完成</a-option>
-          <a-option value="SUSPENDED">搁置</a-option>
+      <a-form-item field="status" :label="$t('components.projectForm.statusLabel')" required>
+        <a-select v-model="form.status" :placeholder="$t('components.projectForm.statusPlaceholder')">
+          <a-option value="ACTIVE">{{ $t('components.projectForm.statusActive') }}</a-option>
+          <a-option value="COMPLETED">{{ $t('components.projectForm.statusCompleted') }}</a-option>
+          <a-option value="SUSPENDED">{{ $t('components.projectForm.statusSuspended') }}</a-option>
         </a-select>
       </a-form-item>
       <a-form-item
         v-if="canManageOwner"
         field="ownerId"
-        label="项目管理员"
+        :label="$t('components.projectForm.ownerLabel')"
       >
         <a-select
           v-model="form.ownerId"
-          placeholder="请选择项目管理员"
+          :placeholder="$t('components.projectForm.ownerPlaceholder')"
           allow-search
           allow-clear
         >
@@ -45,11 +45,11 @@
           </a-option>
         </a-select>
       </a-form-item>
-      <a-form-item field="tagClassify" label="标签">
+      <a-form-item field="tagClassify" :label="$t('components.projectForm.tagLabel')">
         <a-input-tag
           v-model="form.tagClassify"
           :style="{ width: '100%' }"
-          placeholder="输入后按回车添加标签"
+          :placeholder="$t('components.projectForm.tagPlaceholder')"
           :max-tag-count="3"
           allow-clear
           @press-enter="validateTagNum"
@@ -60,13 +60,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Message } from '@arco-design/web-vue';
+import { useI18n } from 'vue-i18n';
 import { Project } from '@/types/domain/Project';
 import { addProject, updateProject } from '@/api/MyApi/project';
 import { getTeamMembers } from '@/api/MyApi/team';
 import useTeamStore from '@/store/modules/team';
 import useDataStore from '@/store/modules/nav';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   visible: boolean;
@@ -122,10 +125,10 @@ const loadTeamMemberOptions = async () => {
   }
 };
 
-const formRules = {
-  projectName: [{ required: true, message: '请填写项目名称' }],
-  status: [{ required: true, message: '请选择项目状态' }]
-};
+const formRules = computed(() => ({
+  projectName: [{ required: true, message: t('components.projectForm.nameRequired') }],
+  status: [{ required: true, message: t('components.projectForm.statusRequired') }]
+}));
 
 const resetForm = () => {
   formRef.value?.clearValidate?.();
@@ -179,24 +182,24 @@ const handleBeforeOk = async () => {
   if (form.value.id != null) {
     const result = await updateProject(form.value);
     if (result.data) {
-      Message.success({ content: '更新成功', duration: 1000 });
+      Message.success({ content: t('components.common.updateSuccess'), duration: 1000 });
       await useDataStore().fetchData();
       visible.value = false;
       emit('success', form.value);
     } else {
-      Message.error({ content: '更新失败', duration: 1000 });
+      Message.error({ content: t('components.common.updateFailed'), duration: 1000 });
       return false;
     }
   } else {
     form.value.teamId = String(useTeamStore().teamId ?? '');
     const result = await addProject(form.value);
     if (result.data) {
-      Message.success({ content: '添加成功', duration: 1000 });
+      Message.success({ content: t('components.common.addSuccess'), duration: 1000 });
       await useDataStore().fetchData();
       visible.value = false;
       emit('success');
     } else {
-      Message.error({ content: '添加失败', duration: 1000 });
+      Message.error({ content: t('components.common.addFailed'), duration: 1000 });
       return false;
     }
   }
@@ -206,7 +209,7 @@ const validateTagNum = () => {
   const tags = form.value.tagClassify;
   if (Array.isArray(tags) && tags.length > 3) {
     form.value.tagClassify = tags.slice(0, 3);
-    Message.warning({ content: '最多添加 3 个标签', duration: 1000 });
+    Message.warning({ content: t('components.projectForm.tagLimit'), duration: 1000 });
   }
 };
 </script>

@@ -9,14 +9,14 @@
       <template #icon>
         <icon-settings />
       </template>
-      高级
+      {{ $t('api.mockAdv.title') }}
     </a-button>
     <template #content>
       <div class="mock-advanced-form">
         <a-row :gutter="[16, 12]">
           <a-col :span="12">
             <div class="form-item">
-              <label>数据类型</label>
+              <label>{{ $t('api.mock.dataType') }}</label>
               <a-select
                 :model-value="localRule.fieldType"
                 size="mini"
@@ -34,7 +34,7 @@
           </a-col>
           <a-col :span="12">
             <div class="form-item">
-              <label>规则类型</label>
+              <label>{{ $t('api.mockAdv.ruleType') }}</label>
               <a-select
                 :model-value="localRule.ruleType"
                 size="mini"
@@ -53,7 +53,7 @@
 
           <a-col :span="12">
             <div class="form-item">
-              <label>可空</label>
+              <label>{{ $t('api.mockAdv.nullable') }}</label>
               <a-switch
                 :model-value="localRule.nullable"
                 size="small"
@@ -64,7 +64,7 @@
           </a-col>
           <a-col :span="12">
             <div class="form-item">
-              <label>必填</label>
+              <label>{{ $t('api.mockAdv.required') }}</label>
               <a-switch
                 :model-value="localRule.required"
                 size="small"
@@ -76,7 +76,7 @@
 
           <a-col :span="12">
             <div class="form-item">
-              <label>常量</label>
+              <label>{{ $t('api.mockAdv.constant') }}</label>
               <a-switch
                 :model-value="localRule.isConstant"
                 size="small"
@@ -88,7 +88,7 @@
 
           <a-col v-if="showChoices" :span="24">
             <div class="form-item">
-              <label>枚举选项（逗号分隔）</label>
+              <label>{{ $t('api.mockAdv.choices') }}</label>
               <a-input
                 :model-value="localRule.choices"
                 size="mini"
@@ -101,7 +101,7 @@
 
           <a-col v-if="showFixedValue" :span="24">
             <div class="form-item">
-              <label>常量/固定值</label>
+              <label>{{ $t('api.mockAdv.fixedValue') }}</label>
               <a-input
                 :model-value="localRule.fixedValue"
                 size="mini"
@@ -113,10 +113,10 @@
 
           <a-col v-if="showFormat" :span="24">
             <div class="form-item">
-              <label>格式</label>
+              <label>{{ $t('api.mockAdv.format') }}</label>
               <a-select
                 :model-value="localRule.format"
-                placeholder="选择或输入格式"
+                :placeholder="$t('api.mock.formatPlaceholder')"
                 size="mini"
                 allow-create
                 allow-clear
@@ -135,41 +135,41 @@
 
           <a-col v-if="showTimestampUnit" :span="12">
             <div class="form-item">
-              <label>单位</label>
+              <label>{{ $t('api.mockAdv.unit') }}</label>
               <a-select
                 :model-value="localRule.format"
                 size="mini"
-                placeholder="毫秒"
+                :placeholder="$t('api.mockAdv.ms')"
                 allow-clear
                 :disabled="disabled"
                 @change="(v) => updateField('format', v as string)"
               >
-                <a-option value="ms">毫秒（ms）</a-option>
-                <a-option value="s">秒（s）</a-option>
-                <a-option value="ns">纳秒（ns）</a-option>
+                <a-option value="ms">{{ $t('api.mockAdv.msOption') }}</a-option>
+                <a-option value="s">{{ $t('api.mockAdv.sOption') }}</a-option>
+                <a-option value="ns">{{ $t('api.mockAdv.nsOption') }}</a-option>
               </a-select>
             </div>
           </a-col>
 
           <a-col v-if="showCaseType" :span="12">
             <div class="form-item">
-              <label>字符类型</label>
+              <label>{{ $t('api.mock.caseType') }}</label>
               <a-select
                 :model-value="localRule.caseType"
                 size="mini"
                 :disabled="disabled"
                 @change="(v) => updateField('caseType', v as string)"
               >
-                <a-option value="lower">小写</a-option>
-                <a-option value="upper">大写</a-option>
-                <a-option value="number">数字</a-option>
-                <a-option value="mixed">混合</a-option>
+                <a-option value="lower">{{ $t('api.mockAdv.lower') }}</a-option>
+                <a-option value="upper">{{ $t('api.mockAdv.upper') }}</a-option>
+                <a-option value="number">{{ $t('api.mockType.catNumber') }}</a-option>
+                <a-option value="mixed">{{ $t('api.mockAdv.mixed') }}</a-option>
               </a-select>
             </div>
           </a-col>
           <a-col v-if="showCaseType" :span="12">
             <div class="form-item">
-              <label>长度</label>
+              <label>{{ $t('api.mock.length') }}</label>
               <a-input-number
                 :model-value="localRule.length"
                 size="mini"
@@ -183,22 +183,22 @@
 
           <a-col v-if="showLocale" :span="12">
             <div class="form-item">
-              <label>语言</label>
+              <label>{{ $t('api.mockAdv.locale') }}</label>
               <a-select
                 :model-value="localRule.locale"
                 size="mini"
                 :disabled="disabled"
                 @change="(v) => updateField('locale', v as string)"
               >
-                <a-option value="zh">中文</a-option>
-                <a-option value="en">英文</a-option>
+                <a-option value="zh">{{ $t('api.mock.localeZh') }}</a-option>
+                <a-option value="en">{{ $t('api.mock.localeEn') }}</a-option>
               </a-select>
             </div>
           </a-col>
 
           <a-col v-if="showLength" :span="12">
             <div class="form-item">
-              <label>随机长度</label>
+              <label>{{ $t('api.mockAdv.randomLength') }}</label>
               <a-input-number
                 :model-value="localRule.length"
                 size="mini"
@@ -211,7 +211,7 @@
           </a-col>
           <a-col v-if="showLength" :span="12">
             <div class="form-item">
-              <label>字符集</label>
+              <label>{{ $t('api.mockAdv.charset') }}</label>
               <a-input
                 :model-value="localRule.charset"
                 size="mini"
@@ -224,7 +224,7 @@
 
           <a-col v-if="showArrayConstraints" :span="12">
             <div class="form-item">
-              <label>最小元素个数</label>
+              <label>{{ $t('api.mockAdv.minItems') }}</label>
               <a-input-number
                 :model-value="localRule.minItems"
                 size="mini"
@@ -237,7 +237,7 @@
           </a-col>
           <a-col v-if="showArrayConstraints" :span="12">
             <div class="form-item">
-              <label>最大元素个数</label>
+              <label>{{ $t('api.mockAdv.maxItems') }}</label>
               <a-input-number
                 :model-value="localRule.maxItems"
                 size="mini"
@@ -250,7 +250,7 @@
           </a-col>
           <a-col v-if="showArrayConstraints" :span="12">
             <div class="form-item">
-              <label>元素唯一</label>
+              <label>{{ $t('api.mockAdv.uniqueItems') }}</label>
               <a-switch
                 :model-value="localRule.uniqueItems"
                 size="small"
@@ -262,7 +262,7 @@
 
           <a-col v-if="showMinMaxLength" :span="12">
             <div class="form-item">
-              <label>最小长度（配置后按区间随机长度，优先于固定长度）</label>
+              <label>{{ $t('api.mockAdv.minLength') }}</label>
               <a-input-number
                 :model-value="localRule.minLength"
                 size="mini"
@@ -274,7 +274,7 @@
           </a-col>
           <a-col v-if="showMinMaxLength" :span="12">
             <div class="form-item">
-              <label>最大长度</label>
+              <label>{{ $t('api.mockAdv.maxLength') }}</label>
               <a-input-number
                 :model-value="localRule.maxLength"
                 size="mini"
@@ -287,11 +287,11 @@
 
           <a-col v-if="showPattern" :span="24">
             <div class="form-item">
-              <label>正则表达式</label>
+              <label>{{ $t('api.mockAdv.pattern') }}</label>
               <a-input
                 :model-value="localRule.pattern"
                 size="mini"
-                placeholder="^\\d+$（配置后优先生效，忽略规则类型）"
+                :placeholder="$t('api.mockAdv.patternPlaceholder')"
                 :disabled="disabled"
                 @update:model-value="(v) => updateField('pattern', v)"
               />
@@ -300,7 +300,7 @@
 
           <a-col v-if="showMinMax" :span="12">
             <div class="form-item">
-              <label>最小值</label>
+              <label>{{ $t('api.mock.min') }}</label>
               <a-input-number
                 :model-value="localRule.min"
                 size="mini"
@@ -311,7 +311,7 @@
           </a-col>
           <a-col v-if="showMinMax" :span="12">
             <div class="form-item">
-              <label>最大值</label>
+              <label>{{ $t('api.mock.max') }}</label>
               <a-input-number
                 :model-value="localRule.max"
                 size="mini"
@@ -323,7 +323,7 @@
 
           <a-col v-if="showScale" :span="12">
             <div class="form-item">
-              <label>精度（小数位）</label>
+              <label>{{ $t('api.mockAdv.scale') }}</label>
               <a-input-number
                 :model-value="localRule.scale"
                 size="mini"
@@ -337,11 +337,11 @@
 
           <a-col v-if="showDefaultValue" :span="24">
             <div class="form-item">
-              <label>默认值</label>
+              <label>{{ $t('api.sqlExtraction.colDefaultValue') }}</label>
               <a-input
                 :model-value="localRule.defaultValue"
                 size="mini"
-                placeholder="生成失败或规则不匹配时的兜底值"
+                :placeholder="$t('api.mockAdv.defaultValuePlaceholder')"
                 :disabled="disabled"
                 @update:model-value="(v) => updateField('defaultValue', v)"
               />
@@ -350,11 +350,11 @@
 
           <a-col v-if="isTemplate" :span="24">
             <div class="form-item">
-              <label>隐藏字段</label>
+              <label>{{ $t('api.responseSchema.hiddenFields') }}</label>
               <a-input-tag
                 :model-value="localRule.excludedFields"
                 size="mini"
-                placeholder="从模板中剔除的字段名，回车添加"
+                :placeholder="$t('api.mockAdv.excludedFieldsPlaceholder')"
                 :disabled="disabled"
                 allow-clear
                 @update:model-value="(v) => updateField('excludedFields', v as string[])"
@@ -371,11 +371,14 @@
   import { computed, reactive, watch } from 'vue';
   import { IconSettings } from '@arco-design/web-vue/es/icon';
   import { MockFieldRule } from '@/types/domain/api/requestModel/MockFieldRule';
+  import { useI18n } from 'vue-i18n';
 
   interface Props {
     rule: MockFieldRule;
     disabled?: boolean;
   }
+
+  const { t } = useI18n();
 
   const props = defineProps<Props>();
 
@@ -405,36 +408,36 @@
     { label: 'template', value: 'TEMPLATE' },
   ];
 
-  const ruleTypeOptions = [
-    { label: '中文姓名', value: 'cname', types: ['STRING'] },
-    { label: '英文姓名', value: 'ename', types: ['STRING'] },
-    { label: '姓名', value: 'name', types: ['STRING'] },
-    { label: '手机号', value: 'phone', types: ['STRING'] },
-    { label: '邮箱', value: 'email', types: ['STRING'] },
-    { label: '身份证号', value: 'idCard', types: ['STRING'] },
-    { label: '银行卡号', value: 'bankcard', types: ['STRING'] },
-    { label: '随机字符', value: 'character', types: ['STRING'] },
-    { label: '随机字符串', value: 'text', types: ['STRING'] },
+  const ruleTypeOptions = computed(() => [
+    { label: t('api.mockType.cname'), value: 'cname', types: ['STRING'] },
+    { label: t('api.mockType.ename'), value: 'ename', types: ['STRING'] },
+    { label: t('api.mockType.name'), value: 'name', types: ['STRING'] },
+    { label: t('api.mockType.phone'), value: 'phone', types: ['STRING'] },
+    { label: t('api.mockType.email'), value: 'email', types: ['STRING'] },
+    { label: t('api.mockType.idCard'), value: 'idCard', types: ['STRING'] },
+    { label: t('api.mockType.bankcard'), value: 'bankcard', types: ['STRING'] },
+    { label: t('api.mockType.character'), value: 'character', types: ['STRING'] },
+    { label: t('api.mockType.text'), value: 'text', types: ['STRING'] },
     { label: 'UUID', value: 'uuid', types: ['STRING'] },
-    { label: '整数', value: 'int', types: ['INT'] },
-    { label: '长整数', value: 'long', types: ['LONG'] },
-    { label: '浮点数', value: 'float', types: ['FLOAT'] },
-    { label: '双精度', value: 'double', types: ['DOUBLE'] },
-    { label: '布尔值', value: 'boolean', types: ['BOOLEAN'] },
-    { label: '时间戳', value: 'timestamp', types: ['STRING', 'INT', 'LONG'] },
-    { label: '日期', value: 'date', types: ['STRING'] },
-    { label: '日期时间', value: 'datetime', types: ['STRING'] },
-    { label: '时间', value: 'time', types: ['STRING'] },
-    { label: '枚举选择', value: 'choice', types: ['STRING'] },
-    { label: '公司名', value: 'company', types: ['STRING'] },
-    { label: '地址', value: 'address', types: ['STRING'] },
+    { label: t('api.mockType.int'), value: 'int', types: ['INT'] },
+    { label: t('api.mockType.long'), value: 'long', types: ['LONG'] },
+    { label: t('api.mockType.float'), value: 'float', types: ['FLOAT'] },
+    { label: t('api.mockType.double'), value: 'double', types: ['DOUBLE'] },
+    { label: t('api.mockType.boolean'), value: 'boolean', types: ['BOOLEAN'] },
+    { label: t('api.mockType.timestamp'), value: 'timestamp', types: ['STRING', 'INT', 'LONG'] },
+    { label: t('api.mockType.date'), value: 'date', types: ['STRING'] },
+    { label: t('api.mockType.datetime'), value: 'datetime', types: ['STRING'] },
+    { label: t('api.mockType.time'), value: 'time', types: ['STRING'] },
+    { label: t('api.mockType.choice'), value: 'choice', types: ['STRING'] },
+    { label: t('api.mockType.company'), value: 'company', types: ['STRING'] },
+    { label: t('api.mockType.address'), value: 'address', types: ['STRING'] },
     {
-      label: '固定值',
+      label: t('api.mockType.fixed'),
       value: 'fixed',
       types: ['STRING', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'BOOLEAN'],
     },
-    { label: '空值', value: 'null', types: ['STRING', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'BOOLEAN', 'OBJECT'] },
-  ];
+    { label: t('api.mockType.null'), value: 'null', types: ['STRING', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'BOOLEAN', 'OBJECT'] },
+  ]);
 
   const isContainer = computed(() => {
     const ft = localRule.fieldType;
@@ -444,7 +447,7 @@
   const applicableRuleTypes = computed(() => {
     const ft = localRule.fieldType;
     if (!ft || ft === 'ARRAY' || ft === 'OBJECT') return [];
-    return ruleTypeOptions.filter((rt) => rt.types.includes(ft));
+    return ruleTypeOptions.value.filter((rt) => rt.types.includes(ft));
   });
 
   const showChoices = computed(() => localRule.ruleType === 'choice');

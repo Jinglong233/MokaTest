@@ -2,7 +2,7 @@
   <div class="api-debug-panel">
     <!-- 外层 Tab：调试 | 用例列表（SQL 接口无用例列表，仅剩一个 Tab，隐藏 Tab 条直接展示内容） -->
     <a-tabs v-model:active-key="outerActiveTab" class="outer-tabs" :class="{ 'sql-single-tab': isSqlMode }">
-      <a-tab-pane key="debug" title="调试">
+      <a-tab-pane key="debug" :title="$t('api.detail.tabDebug')">
         <ApiDebugForm
             ref="apiDebugFormRef"
             v-model="localFormData"
@@ -15,7 +15,7 @@
             @save-as-case="(data) => emit('saveAsCase', data)"
         />
       </a-tab-pane>
-      <a-tab-pane v-if="!isSqlMode" key="caseList" title="用例列表">
+      <a-tab-pane v-if="!isSqlMode" key="caseList" :title="$t('api.detail.tabCaseList')">
         <div style="display: flex; justify-content: flex-end; margin-bottom: 8px">
           <a-button
               v-if="hasApiCreatePermission && localFormData.id"
@@ -24,7 +24,7 @@
               @click="aiModalRef?.open()"
           >
             <template #icon><icon-robot/></template>
-            AI 生成用例
+            {{ $t('api.detail.aiGenerateCase') }}
           </a-button>
         </div>
         <ApiCaseList
@@ -48,14 +48,14 @@
         v-model:visible="caseDrawerVisible"
         :width="1100"
         :footer="false"
-        title="编辑用例"
+        :title="$t('api.detail.editCase')"
         unmount-on-close
     >
       <a-spin
           class="case-drawer-spin"
           style="height: 100%"
           :loading="caseDebugLoading"
-          tip="正在调试..."
+          :tip="$t('api.detail.debugging')"
       >
         <div class="case-drawer-content">
           <a-split direction="vertical" :min="0.4" :max="0.8" style="height: 100%">
@@ -73,7 +73,7 @@
             <template #second>
               <div class="case-debug-result-wrapper">
                 <ApiDebugResult v-if="caseDebugResult" :debug-result="caseDebugResult"/>
-                <a-empty v-else description="点击发送后查看调试结果"/>
+                <a-empty v-else :description="$t('api.detail.debugResultHint')"/>
               </div>
             </template>
           </a-split>
@@ -98,6 +98,9 @@ import {saveApi, debug} from '@/api/MyApi/apiInterface';
 import {useProjectStore} from '@/store';
 import useTeamStore from '@/store/modules/team';
 import usePermission from '@/hooks/permission';
+import {useI18n} from 'vue-i18n';
+
+const {t} = useI18n();
 
 const permission = usePermission();
 const hasApiUpdatePermission = computed(() => permission.hasPermission('auto:api:update'));
@@ -199,33 +202,33 @@ const handleCaseSave = async () => {
 
   const res = await saveApi(saveData);
   if (res.code === 200) {
-    Message.success({ content: '保存用例成功', duration: 2000 });
+    Message.success({ content: t('api.detail.saveCaseSuccess'), duration: 2000 });
     // 刷新用例列表
     apiCaseListRef.value?.refreshCases();
     // 关闭抽屉
     caseDrawerVisible.value = false;
   } else {
-    Message.error({ content: res.msg || '保存用例失败', duration: 2000 });
+    Message.error({ content: res.msg || t('api.detail.saveCaseFailed'), duration: 2000 });
   }
 };
 
 // 发送用例（调试用例，不保存）
 const handleCaseSend = async (data: AddApiInterfaceDTO) => {
   if (!data.id) {
-    Message.error({ content: '用例未保存，无法调试', duration: 2000 });
+    Message.error({ content: t('api.detail.caseNotSaved'), duration: 2000 });
     return;
   }
   caseDebugLoading.value = true;
   try {
     const res = await debug(data.id);
     if (res.code === 200) {
-      Message.success({ content: '调试成功', duration: 2000 });
+      Message.success({ content: t('api.common.debugSuccess'), duration: 2000 });
       caseDebugResult.value = res.data;
     } else {
-      Message.error({ content: res.msg || '调试失败', duration: 2000 });
+      Message.error({ content: res.msg || t('api.common.debugFailed'), duration: 2000 });
     }
   } catch (e) {
-    Message.error({ content: '调试异常', duration: 2000 });
+    Message.error({ content: t('api.common.debugError'), duration: 2000 });
   } finally {
     caseDebugLoading.value = false;
   }

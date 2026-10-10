@@ -1,6 +1,6 @@
 <template>
   <div class="test-plan-detail-page" v-if="projectStore.hasProjectSelected">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', planData.planName || '计划详情']"/>
+    <Breadcrumb :items="['menu.qa', 'menu.qa.testPlan', planData.planName || $t('qa.testPlan.detail')]"/>
 
     <!-- 计划基本信息 -->
     <a-card class="plan-info-card" size="small">
@@ -9,39 +9,39 @@
         <a-space>
           <a-button v-permission="'qa:testplan:update'" @click="showEditModal">
             <template #icon><icon-edit /></template>
-            编辑
+            {{ $t('qa.testPlan.action.edit') }}
           </a-button>
           <a-button v-permission="'qa:testplan:create'" @click="handleCopyPlan">
             <template #icon><icon-copy /></template>
-            复制
+            {{ $t('qa.testPlan.action.copy') }}
           </a-button>
-          <a-popconfirm content="确认删除该测试计划吗？" type="warning" @ok="handleDeletePlan">
+          <a-popconfirm :content="$t('qa.testPlan.deleteConfirm')" type="warning" @ok="handleDeletePlan">
             <a-button v-permission="'qa:testplan:delete'" status="danger">
               <template #icon><icon-delete /></template>
-              删除
+              {{ $t('qa.common.delete') }}
             </a-button>
           </a-popconfirm>
           <a-button v-permission="'qa:testplan:execute'" @click="handleGenerateReport">
             <template #icon><icon-file /></template>
-            生成报告
+            {{ $t('qa.testPlan.generateReport') }}
           </a-button>
         </a-space>
       </div>
       <div class="plan-progress-row">
-        <span class="plan-progress-text">已执行 {{ resultStats.total - resultStats.unexec }}/{{ resultStats.total }}，通过率 {{ resultStats.total > 0 ? Math.round(resultStats.pass / resultStats.total * 100) : 0 }}%</span>
+        <span class="plan-progress-text">{{ $t('qa.testPlan.execProgress', { done: resultStats.total - resultStats.unexec, total: resultStats.total, rate: resultStats.total > 0 ? Math.round(resultStats.pass / resultStats.total * 100) : 0 }) }}</span>
       </div>
       <!-- 执行结果占比条：成功绿/失败红/阻塞橙/未执行灰 -->
       <div class="plan-progress-bar-bg">
-        <a-tooltip v-if="resultStats.pass" :content="`成功 ${resultStats.pass}`">
+        <a-tooltip v-if="resultStats.pass" :content="`${$t('qa.testPlan.result.success')} ${resultStats.pass}`">
           <div class="seg seg-pass" :style="{ width: (resultStats.pass / resultStats.total * 100) + '%' }"></div>
         </a-tooltip>
-        <a-tooltip v-if="resultStats.fail" :content="`失败 ${resultStats.fail}`">
+        <a-tooltip v-if="resultStats.fail" :content="`${$t('qa.testPlan.result.fail')} ${resultStats.fail}`">
           <div class="seg seg-fail" :style="{ width: (resultStats.fail / resultStats.total * 100) + '%' }"></div>
         </a-tooltip>
-        <a-tooltip v-if="resultStats.block" :content="`阻塞 ${resultStats.block}`">
+        <a-tooltip v-if="resultStats.block" :content="`${$t('qa.testPlan.result.block')} ${resultStats.block}`">
           <div class="seg seg-block" :style="{ width: (resultStats.block / resultStats.total * 100) + '%' }"></div>
         </a-tooltip>
-        <a-tooltip v-if="resultStats.unexec" :content="`未执行 ${resultStats.unexec}`">
+        <a-tooltip v-if="resultStats.unexec" :content="`${$t('qa.testPlan.result.unexecuted')} ${resultStats.unexec}`">
           <div class="seg seg-unexec" :style="{ width: (resultStats.unexec / resultStats.total * 100) + '%' }"></div>
         </a-tooltip>
       </div>
@@ -50,7 +50,7 @@
     <!-- 用例执行列表 -->
     <a-tabs :active-key="activeTab" type="line" size="small" class="plan-main-tabs" @change="handleTabChange">
         <!-- Tab: 测试规划（脑图） -->
-        <a-tab-pane key="mindmap" title="测试规划">
+        <a-tab-pane key="mindmap" :title="$t('qa.testPlan.tab.mindmap')">
           <a-card class="list-card" :bordered="false">
           <MindMapExec
               v-if="activeTab === 'mindmap'"
@@ -66,15 +66,15 @@
         <!-- Tab: 功能用例 -->
         <a-tab-pane key="cases">
           <template #title>
-            功能用例
+            {{ $t('qa.testPlan.tab.cases') }}
             <span class="tab-count-badge">{{ caseList.length }}</span>
           </template>
           <div class="case-view-wrap">
             <!-- 列表/脑图 视图切换 -->
             <div class="case-view-toggle">
               <a-radio-group v-model="caseViewMode" type="button" size="small">
-                <a-radio value="list"><icon-list /> 列表</a-radio>
-                <a-radio value="mindmap"><icon-mind-mapping /> 脑图</a-radio>
+                <a-radio value="list"><icon-list /> {{ $t('qa.testPlan.view.list') }}</a-radio>
+                <a-radio value="mindmap"><icon-mind-mapping /> {{ $t('qa.testPlan.view.mindmap') }}</a-radio>
               </a-radio-group>
             </div>
           <div class="main-row">
@@ -83,10 +83,10 @@
               <a-card class="tree-card" size="small" :bordered="false">
                 <div class="case-tree-panel">
               <a-radio-group v-model="treeMode" type="button" size="small" @change="onTreeModeChange" class="tree-mode-switch">
-                <a-radio value="testpoint">测试点</a-radio>
-                <a-radio value="module">模块</a-radio>
+                <a-radio value="testpoint">{{ $t('qa.testPlan.tree.testpoint') }}</a-radio>
+                <a-radio value="module">{{ $t('qa.testPlan.module') }}</a-radio>
               </a-radio-group>
-              <a-input-search v-model="treeKeyword" placeholder="搜索名称" allow-clear size="small" class="tree-search" />
+              <a-input-search v-model="treeKeyword" :placeholder="$t('qa.testPlan.tree.searchPlaceholder')" allow-clear size="small" class="tree-search" />
               <div class="case-tree-scroll">
                 <a-tree
                   v-model:expanded-keys="treeExpandedKeys"
@@ -137,26 +137,26 @@
         <a-space>
           <a-input
               v-model="caseFilterKeyword"
-              placeholder="搜索用例名称/编号"
+              :placeholder="$t('qa.testPlan.caseSearchPlaceholder')"
               allow-clear
               style="width: 200px;"
               @change="selectedCaseKeys = []"
           />
           <a-select
               v-model="caseFilterResult"
-              placeholder="执行结果"
+              :placeholder="$t('qa.testPlan.execResult')"
               allow-clear
               style="width: 130px;"
               @change="selectedCaseKeys = []"
           >
-            <a-option value="PASS">成功</a-option>
-            <a-option value="FAIL">失败</a-option>
-            <a-option value="BLOCK">阻塞</a-option>
-            <a-option value="UNEXECUTED">未执行</a-option>
+            <a-option value="PASS">{{ $t('qa.testPlan.result.success') }}</a-option>
+            <a-option value="FAIL">{{ $t('qa.testPlan.result.fail') }}</a-option>
+            <a-option value="BLOCK">{{ $t('qa.testPlan.result.block') }}</a-option>
+            <a-option value="UNEXECUTED">{{ $t('qa.testPlan.result.unexecuted') }}</a-option>
           </a-select>
           <a-select
               v-model="caseFilterPriority"
-              placeholder="优先级"
+              :placeholder="$t('qa.testCase.priority')"
               allow-clear
               style="width: 110px;"
               @change="selectedCaseKeys = []"
@@ -167,36 +167,36 @@
           </a-select>
           <a-button @click="handleResetCaseFilter">
             <template #icon><icon-refresh /></template>
-            重置
+            {{ $t('qa.common.reset') }}
           </a-button>
         </a-space>
       </div>
 
       <!-- 批量操作工具栏 -->
       <div v-if="selectedCaseKeys.length > 0" class="batch-toolbar">
-        <span class="batch-count">已选 {{ selectedCaseKeys.length }} 条</span>
+        <span class="batch-count">{{ $t('qa.testPlan.selectedCount', { count: selectedCaseKeys.length }) }}</span>
         <a-divider direction="vertical" />
         <a-space>
           <a-button v-permission="'qa:testplan:execute'" type="text" size="small" @click="handleBatchExecute('PASS')">
             <template #icon><icon-check style="color: rgb(var(--success-6));" /></template>
-            批量成功
+            {{ $t('qa.testPlan.batchPass') }}
           </a-button>
           <a-button v-permission="'qa:testplan:execute'" type="text" size="small" status="danger" @click="handleBatchExecute('FAIL')">
             <template #icon><icon-close /></template>
-            批量失败
+            {{ $t('qa.testPlan.batchFail') }}
           </a-button>
           <a-button v-permission="'qa:testplan:execute'" type="text" size="small" @click="handleBatchExecute('BLOCK')">
             <template #icon><icon-exclamation-circle style="color: rgb(var(--warning-6));" /></template>
-            批量阻塞
+            {{ $t('qa.testPlan.batchBlock') }}
           </a-button>
-          <a-popconfirm :content="`确认移除选中的 ${selectedCaseKeys.length} 条用例？`" type="warning" @ok="handleBatchRemove">
+          <a-popconfirm :content="$t('qa.testPlan.batchRemoveConfirm', { count: selectedCaseKeys.length })" type="warning" @ok="handleBatchRemove">
             <a-button v-permission="'qa:testplan:update'" type="text" size="small" status="danger">
               <template #icon><icon-delete /></template>
-              批量移除
+              {{ $t('qa.testPlan.batchRemove') }}
             </a-button>
           </a-popconfirm>
           <a-divider direction="vertical" />
-          <a-button type="text" size="small" @click="handleClearSelection">取消选择</a-button>
+          <a-button type="text" size="small" @click="handleClearSelection">{{ $t('qa.testPlan.clearSelection') }}</a-button>
         </a-space>
       </div>
 
@@ -229,16 +229,16 @@
             @change="(val: any) => handleInlineExecute(record, val)"
           >
             <a-option value="UNEXECUTED">
-              <icon-clock-circle :style="{ color: resultIconColor('UNEXECUTED'), marginRight: '4px' }" />未执行
+              <icon-clock-circle :style="{ color: resultIconColor('UNEXECUTED'), marginRight: '4px' }" />{{ $t('qa.testPlan.result.unexecuted') }}
             </a-option>
             <a-option value="PASS">
-              <icon-check-circle-fill :style="{ color: resultIconColor('PASS'), marginRight: '4px' }" />成功
+              <icon-check-circle-fill :style="{ color: resultIconColor('PASS'), marginRight: '4px' }" />{{ $t('qa.testPlan.result.success') }}
             </a-option>
             <a-option value="FAIL">
-              <icon-close-circle-fill :style="{ color: resultIconColor('FAIL'), marginRight: '4px' }" />失败
+              <icon-close-circle-fill :style="{ color: resultIconColor('FAIL'), marginRight: '4px' }" />{{ $t('qa.testPlan.result.fail') }}
             </a-option>
             <a-option value="BLOCK">
-              <icon-exclamation-circle-fill :style="{ color: resultIconColor('BLOCK'), marginRight: '4px' }" />阻塞
+              <icon-exclamation-circle-fill :style="{ color: resultIconColor('BLOCK'), marginRight: '4px' }" />{{ $t('qa.testPlan.result.block') }}
             </a-option>
           </a-select>
         </template>
@@ -299,7 +299,7 @@
         <!-- Tab: 缺陷列表 -->
         <a-tab-pane key="bugs">
           <template #title>
-            缺陷列表
+            {{ $t('qa.testPlan.tab.bugs') }}
             <span class="tab-count-badge">{{ planBugList.length }}</span>
           </template>
           <a-card class="list-card" :bordered="false">
@@ -316,12 +316,12 @@
             <template #assigneeName="{ record }">{{ record.assigneeName || '-' }}</template>
             <template #createTime="{ record }">{{ record.createTime || '-' }}</template>
           </a-table>
-          <a-empty v-if="planBugList.length === 0" description="暂无缺陷" style="padding: 40px 0;" />
+          <a-empty v-if="planBugList.length === 0" :description="$t('qa.testPlan.noPlanBugs')" style="padding: 40px 0;" />
           </a-card>
         </a-tab-pane>
 
         <!-- Tab: 执行历史 -->
-        <a-tab-pane key="history" title="执行历史">
+        <a-tab-pane key="history" :title="$t('qa.testPlan.tab.history')">
           <a-card class="list-card" :bordered="false">
           <a-table :data="planHistoryList" :columns="historyColumns" row-key="id" :sticky-header="true" :scroll="{ x: '125%' }">
             <template #historyResult="{ record }">
@@ -331,7 +331,7 @@
               </a-tag>
             </template>
           </a-table>
-          <a-empty v-if="planHistoryList.length === 0" description="暂无执行记录" style="padding: 40px 0;" />
+          <a-empty v-if="planHistoryList.length === 0" :description="$t('qa.testPlan.noHistory')" style="padding: 40px 0;" />
           </a-card>
         </a-tab-pane>
       </a-tabs>
@@ -339,48 +339,48 @@
     <!-- 编辑计划弹窗 -->
     <a-modal
         v-model:visible="editModalVisible"
-        title="编辑测试计划"
+        :title="$t('qa.testPlan.modal.edit')"
         width="560px"
         @ok="handleSaveEdit"
         @cancel="editModalVisible = false"
         :mask-closable="false"
     >
       <a-form :model="editForm" layout="vertical">
-        <a-form-item label="计划名称" required>
-          <a-input v-model="editForm.planName" placeholder="请输入计划名称"/>
+        <a-form-item :label="$t('qa.testPlan.name')" required>
+          <a-input v-model="editForm.planName" :placeholder="$t('qa.testPlan.namePlaceholder')"/>
         </a-form-item>
-        <a-form-item label="所属模块">
+        <a-form-item :label="$t('qa.testPlan.module')">
           <a-tree-select
               v-model="editForm.moduleId"
               :data="moduleTreeData"
               :field-names="{ key: 'id', title: 'moduleName', children: 'children' }"
               allow-clear
-              placeholder="选择所属模块"
+              :placeholder="$t('qa.testPlan.modulePlaceholder')"
               style="width: 100%"
           />
         </a-form-item>
-        <a-form-item label="计划描述">
-          <a-textarea v-model="editForm.description" :auto-size="{ minRows: 3 }" placeholder="请输入计划描述"/>
+        <a-form-item :label="$t('qa.testPlan.description')">
+          <a-textarea v-model="editForm.description" :auto-size="{ minRows: 3 }" :placeholder="$t('qa.testPlan.descPlaceholder')"/>
         </a-form-item>
-        <a-form-item label="标签">
-          <a-input-tag v-model="editForm.tags" placeholder="输入后回车添加标签" allow-clear style="width: 100%"/>
+        <a-form-item :label="$t('qa.testPlan.tags')">
+          <a-input-tag v-model="editForm.tags" :placeholder="$t('qa.testPlan.tagsPlaceholder')" allow-clear style="width: 100%"/>
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item :label="$t('qa.testPlan.status')">
           <a-select v-model="editForm.status">
-            <a-option value="DRAFT">草稿</a-option>
-            <a-option value="READY">就绪</a-option>
-            <a-option value="RUNNING">执行中</a-option>
-            <a-option value="COMPLETED">已完成</a-option>
+            <a-option value="DRAFT">{{ $t('qa.testPlan.status.draft') }}</a-option>
+            <a-option value="READY">{{ $t('qa.testPlan.status.ready') }}</a-option>
+            <a-option value="RUNNING">{{ $t('qa.testPlan.status.running') }}</a-option>
+            <a-option value="COMPLETED">{{ $t('qa.testPlan.status.completed') }}</a-option>
           </a-select>
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="开始时间">
+            <a-form-item :label="$t('qa.testPlan.startTime')">
               <a-date-picker v-model="editForm.startTime" show-time style="width: 100%;"/>
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="结束时间">
+            <a-form-item :label="$t('qa.testPlan.endTime')">
               <a-date-picker v-model="editForm.endTime" show-time style="width: 100%;"/>
             </a-form-item>
           </a-col>
@@ -397,25 +397,25 @@
         :footer="false"
     >
       <a-descriptions :data="[
-        { label: '用例编号', value: previewData.caseCode },
-        { label: '用例类型', value: caseTypeText(previewData.caseType) },
-        { label: '优先级', value: previewData.priority },
-        { label: '执行结果', value: resultText(previewData.executeResult) },
+        { label: $t('qa.testCase.code'), value: previewData.caseCode },
+        { label: $t('qa.testCase.type'), value: caseTypeText(previewData.caseType) },
+        { label: $t('qa.testCase.priority'), value: previewData.priority },
+        { label: $t('qa.testPlan.execResult'), value: resultText(previewData.executeResult) },
       ]" layout="inline-vertical" :column="2" :label-style="{ fontWeight: 'bold' }"/>
       <a-divider/>
-      <h4 style="margin-bottom: 8px;">前置条件</h4>
-      <div class="rich-text-preview" v-html="renderHtml(previewData.preCondition, '无')"/>
+      <h4 style="margin-bottom: 8px;">{{ $t('qa.testCase.preCondition') }}</h4>
+      <div class="rich-text-preview" v-html="renderHtml(previewData.preCondition, $t('qa.testPlan.none'))"/>
       <a-divider/>
-      <h4 style="margin-bottom: 8px;">测试步骤</h4>
+      <h4 style="margin-bottom: 8px;">{{ $t('qa.testCase.steps') }}</h4>
       <div v-if="previewData.testSteps && previewData.testSteps.length">
         <div v-for="(step, index) in previewData.testSteps" :key="index" style="margin-bottom: 12px;">
-          <div style="font-weight: bold; color: #86909c; margin-bottom: 4px;">步骤 {{ index + 1 }}</div>
+          <div style="font-weight: bold; color: #86909c; margin-bottom: 4px;">{{ $t('qa.testCase.step') }} {{ index + 1 }}</div>
           <div class="rich-text-preview" v-html="renderHtml(step.step, '-')"/>
-          <div style="color: #86909c; margin-top: 4px;">预期结果：</div>
+          <div style="color: #86909c; margin-top: 4px;">{{ $t('qa.testCase.expected') }}：</div>
           <div class="rich-text-preview" v-html="renderHtml(step.expected, '-')"/>
         </div>
       </div>
-      <div v-else style="color: #86909c;">暂无测试步骤</div>
+      <div v-else style="color: #86909c;">{{ $t('qa.testPlan.noSteps') }}</div>
     </a-drawer>
 
     <!-- BUG详情抽屉（复用BUG池同款，支持编辑/评论/操作日志） -->
@@ -427,7 +427,7 @@
 
     <!-- BUG预览抽屉 -->
     <a-drawer        v-model:visible="bugPreviewVisible"
-        title="BUG详情"
+        :title="$t('qa.testPlan.bugDetail')"
         width="560px"
         :mask-closable="true"
         :footer="false"
@@ -444,72 +444,72 @@
         <!-- 元信息区 -->
         <div class="bug-preview-meta">
           <div class="meta-item">
-            <span class="meta-label">编号</span>
+            <span class="meta-label">{{ $t('qa.testPlan.exec.bugCode') }}</span>
             <span class="meta-value">{{ bugPreviewData.bugCode || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">环境</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.environment') }}</span>
             <span class="meta-value">{{ environmentText(bugPreviewData.environment) }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">发现版本</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.foundVersion') }}</span>
             <span class="meta-value">{{ bugPreviewData.foundVersion || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">修复版本</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.fixedVersion') }}</span>
             <span class="meta-value">{{ bugPreviewData.fixedVersion || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">截止日期</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.deadline') }}</span>
             <span class="meta-value">{{ bugPreviewData.deadline || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">重现概率</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.reproduceRate') }}</span>
             <span class="meta-value">{{ reproduceRateText(bugPreviewData.reproduceRate) }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">报告人</span>
+            <span class="meta-label">{{ $t('qa.bug.reporter') }}</span>
             <span class="meta-value">{{ bugPreviewData.reporterName || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">指派人</span>
+            <span class="meta-label">{{ $t('qa.bug.assignee') }}</span>
             <span class="meta-value">{{ bugPreviewData.assigneeName || '-' }}</span>
           </div>
           <div class="meta-item" style="grid-column: span 2;">
-            <span class="meta-label">关联需求</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.requirement') }}</span>
             <span class="meta-value">{{ bugPreviewData.requirementTitle || '-' }}</span>
           </div>
           <div class="meta-item" style="grid-column: span 2;">
-            <span class="meta-label">关联用例</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.case') }}</span>
             <span class="meta-value">{{ bugPreviewData.caseName || '-' }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">创建时间</span>
+            <span class="meta-label">{{ $t('qa.testPlan.createTime') }}</span>
             <span class="meta-value">{{ bugPreviewData.createTime || '-' }}</span>
           </div>
           <div class="meta-item" v-if="bugPreviewData.closeReason">
-            <span class="meta-label">关闭原因</span>
+            <span class="meta-label">{{ $t('qa.testPlan.bug.closeReason') }}</span>
             <span class="meta-value">{{ closeReasonText(bugPreviewData.closeReason) }}</span>
           </div>
         </div>
 
         <!-- 描述区 -->
         <div class="bug-preview-section">
-          <div class="section-title">BUG描述</div>
-          <div class="rich-text-preview" v-html="renderHtml(bugPreviewData.description, '暂无描述')"/>
+          <div class="section-title">{{ $t('qa.testPlan.bug.description') }}</div>
+          <div class="rich-text-preview" v-html="renderHtml(bugPreviewData.description, $t('qa.testPlan.noDescription'))"/>
         </div>
 
         <!-- 复现步骤区 -->
         <div class="bug-preview-section" v-if="bugPreviewData.reproduceSteps">
-          <div class="section-title">复现步骤</div>
-          <div class="rich-text-preview" v-html="renderHtml(bugPreviewData.reproduceSteps, '暂无')"/>
+          <div class="section-title">{{ $t('qa.bug.reproduce') }}</div>
+          <div class="rich-text-preview" v-html="renderHtml(bugPreviewData.reproduceSteps, $t('qa.testPlan.empty'))"/>
         </div>
       </div>
 
       <div class="bug-preview-footer">
         <a-space>
-          <a-button @click="bugPreviewVisible = false">关闭</a-button>
-          <a-button v-permission="'qa:bug:update'" type="primary" @click="handleEditBugFromPreview">编辑</a-button>
+          <a-button @click="bugPreviewVisible = false">{{ $t('qa.testPlan.close') }}</a-button>
+          <a-button v-permission="'qa:bug:update'" type="primary" @click="handleEditBugFromPreview">{{ $t('qa.testPlan.action.edit') }}</a-button>
         </a-space>
       </div>
     </a-drawer>
@@ -542,7 +542,7 @@
               <div class="bug-drawer-title" :title="bug.title">{{ bug.title }}</div>
             </div>
           </div>
-          <a-empty v-else description="暂无关联BUG" />
+          <a-empty v-else :description="$t('qa.testPlan.noLinkedBugs')" />
         </div>
       </div>
     </a-drawer>
@@ -559,7 +559,7 @@
     <a-modal
         class="qa-edit-modal"
         v-model:visible="bugModalVisible"
-        :title="bugFormIsEdit ? '编辑BUG' : '提交BUG'"
+        :title="bugFormIsEdit ? $t('qa.bug.edit') : $t('qa.testPlan.submitBug')"
         width="960px"
         @ok="handleConfirmBug"
         @cancel="bugModalVisible = false"
@@ -569,16 +569,16 @@
         <a-form :model="bugForm" layout="vertical">
           <!-- 关联信息（只读） -->
           <a-divider orientation="left" style="margin-top: 0;">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">关联信息</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.related') }}</span>
           </a-divider>
           <a-row :gutter="24">
             <a-col :span="12">
-              <a-form-item label="关联用例">
+              <a-form-item :label="$t('qa.testPlan.bug.case')">
                 <a-input :model-value="bugFormCaseName" disabled/>
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="关联需求">
+              <a-form-item :label="$t('qa.testPlan.bug.requirement')">
                 <a-input :model-value="bugFormRequirementTitle || '-'" disabled/>
               </a-form-item>
             </a-col>
@@ -586,43 +586,43 @@
 
           <!-- 基本信息 -->
           <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">基本信息</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.basic') }}</span>
           </a-divider>
-          <a-form-item label="BUG标题" required>
-            <a-input v-model="bugForm.title" placeholder="请输入BUG标题" size="large"/>
+          <a-form-item :label="$t('qa.testPlan.bug.title')" required>
+            <a-input v-model="bugForm.title" :placeholder="$t('qa.testPlan.bug.titlePlaceholder')" size="large"/>
           </a-form-item>
 
           <a-row :gutter="24">
             <a-col :span="8">
-              <a-form-item label="严重程度">
+              <a-form-item :label="$t('qa.bug.severity')">
                 <a-select v-model="bugForm.severity">
-                  <a-option value="FATAL">致命</a-option>
-                  <a-option value="SERIOUS">严重</a-option>
-                  <a-option value="NORMAL">一般</a-option>
-                  <a-option value="TIPS">提示</a-option>
+                  <a-option value="FATAL">{{ $t('qa.testPlan.severity.fatal') }}</a-option>
+                  <a-option value="SERIOUS">{{ $t('qa.testPlan.severity.serious') }}</a-option>
+                  <a-option value="NORMAL">{{ $t('qa.testPlan.severity.normal') }}</a-option>
+                  <a-option value="TIPS">{{ $t('qa.testPlan.severity.tips') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="优先级">
+              <a-form-item :label="$t('qa.bug.priority')">
                 <a-select v-model="bugForm.priority">
-                  <a-option value="URGENT">紧急</a-option>
-                  <a-option value="HIGH">高</a-option>
-                  <a-option value="MEDIUM">中</a-option>
-                  <a-option value="LOW">低</a-option>
+                  <a-option value="URGENT">{{ $t('qa.testPlan.priority.urgent') }}</a-option>
+                  <a-option value="HIGH">{{ $t('qa.testPlan.priority.high') }}</a-option>
+                  <a-option value="MEDIUM">{{ $t('qa.testPlan.priority.medium') }}</a-option>
+                  <a-option value="LOW">{{ $t('qa.testPlan.priority.low') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="状态">
+              <a-form-item :label="$t('qa.bug.status')">
                 <a-select v-model="bugForm.status">
-                  <a-option value="NEW">新建</a-option>
-                  <a-option value="CONFIRMED">已确认</a-option>
-                  <a-option value="FIXING">修复中</a-option>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="VERIFIED">已验证</a-option>
-                  <a-option value="CLOSED">已关闭</a-option>
-                  <a-option value="REJECTED">已驳回</a-option>
+                  <a-option value="NEW">{{ $t('qa.testPlan.bugStatus.new') }}</a-option>
+                  <a-option value="CONFIRMED">{{ $t('qa.testPlan.bugStatus.confirmed') }}</a-option>
+                  <a-option value="FIXING">{{ $t('qa.testPlan.bugStatus.fixing') }}</a-option>
+                  <a-option value="FIXED">{{ $t('qa.testPlan.bugStatus.fixed') }}</a-option>
+                  <a-option value="VERIFIED">{{ $t('qa.testPlan.bugStatus.verified') }}</a-option>
+                  <a-option value="CLOSED">{{ $t('qa.testPlan.bugStatus.closed') }}</a-option>
+                  <a-option value="REJECTED">{{ $t('qa.testPlan.bugStatus.rejected') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
@@ -630,28 +630,28 @@
 
           <!-- 环境信息 -->
           <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">环境信息</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.env') }}</span>
           </a-divider>
           <a-row :gutter="24">
             <a-col :span="8">
-              <a-form-item label="所属模块">
-                <a-select v-model="bugForm.moduleId" allow-clear placeholder="请选择所属模块">
+              <a-form-item :label="$t('qa.testPlan.module')">
+                <a-select v-model="bugForm.moduleId" allow-clear :placeholder="$t('qa.testPlan.moduleSelectPlaceholder')">
                   <a-option v-for="mod in moduleOptions" :key="mod.id" :value="mod.id">{{ mod.moduleName }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="环境">
-                <a-select v-model="bugForm.environment" placeholder="请选择环境" allow-clear>
-                  <a-option value="TEST">测试环境</a-option>
-                  <a-option value="STAGING">预发环境</a-option>
-                  <a-option value="PROD">生产环境</a-option>
+              <a-form-item :label="$t('qa.testPlan.bug.environment')">
+                <a-select v-model="bugForm.environment" :placeholder="$t('qa.testPlan.envPlaceholder')" allow-clear>
+                  <a-option value="TEST">{{ $t('qa.testPlan.env.test') }}</a-option>
+                  <a-option value="STAGING">{{ $t('qa.testPlan.env.staging') }}</a-option>
+                  <a-option value="PROD">{{ $t('qa.testPlan.env.prod') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="截止日期">
-                <a-date-picker v-model="bugForm.deadline" value-format="YYYY-MM-DD" placeholder="请选择截止日期"
+              <a-form-item :label="$t('qa.testPlan.bug.deadline')">
+                <a-date-picker v-model="bugForm.deadline" value-format="YYYY-MM-DD" :placeholder="$t('qa.testPlan.deadlinePlaceholder')"
                                style="width: 100%"/>
               </a-form-item>
             </a-col>
@@ -659,26 +659,26 @@
 
           <!-- 版本与复现 -->
           <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">版本与复现</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.version') }}</span>
           </a-divider>
           <a-row :gutter="24">
             <a-col :span="8">
-              <a-form-item label="发现版本">
-                <a-input v-model="bugForm.foundVersion" placeholder="如 v1.0.0"/>
+              <a-form-item :label="$t('qa.testPlan.bug.foundVersion')">
+                <a-input v-model="bugForm.foundVersion" :placeholder="$t('qa.testPlan.versionPlaceholder', { version: 'v1.0.0' })"/>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="修复版本">
-                <a-input v-model="bugForm.fixedVersion" placeholder="如 v1.0.1"/>
+              <a-form-item :label="$t('qa.testPlan.bug.fixedVersion')">
+                <a-input v-model="bugForm.fixedVersion" :placeholder="$t('qa.testPlan.versionPlaceholder', { version: 'v1.0.1' })"/>
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="重现概率">
-                <a-select v-model="bugForm.reproduceRate" placeholder="请选择重现概率" allow-clear>
-                  <a-option value="ALWAYS">必现</a-option>
-                  <a-option value="OFTEN">高概率</a-option>
-                  <a-option value="SOMETIMES">偶现</a-option>
-                  <a-option value="RARE">难现</a-option>
+              <a-form-item :label="$t('qa.testPlan.bug.reproduceRate')">
+                <a-select v-model="bugForm.reproduceRate" :placeholder="$t('qa.testPlan.reproduceRatePlaceholder')" allow-clear>
+                  <a-option value="ALWAYS">{{ $t('qa.testPlan.reproduce.always') }}</a-option>
+                  <a-option value="OFTEN">{{ $t('qa.testPlan.reproduce.often') }}</a-option>
+                  <a-option value="SOMETIMES">{{ $t('qa.testPlan.reproduce.sometimes') }}</a-option>
+                  <a-option value="RARE">{{ $t('qa.testPlan.reproduce.rare') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
@@ -686,44 +686,44 @@
 
           <!-- 详细描述 -->
           <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">详细描述</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.detail') }}</span>
           </a-divider>
-          <a-form-item label="BUG描述">
-            <RichEditor v-model="bugForm.description" placeholder="请输入BUG描述" @uploaded="handleUploadedBugFile"/>
+          <a-form-item :label="$t('qa.testPlan.bug.description')">
+            <RichEditor v-model="bugForm.description" :placeholder="$t('qa.testPlan.bug.descPlaceholder')" @uploaded="handleUploadedBugFile"/>
           </a-form-item>
-          <a-form-item label="复现步骤">
-            <RichEditor v-model="bugForm.reproduceSteps" placeholder="请输入复现步骤" @uploaded="handleUploadedBugFile"/>
+          <a-form-item :label="$t('qa.bug.reproduce')">
+            <RichEditor v-model="bugForm.reproduceSteps" :placeholder="$t('qa.testPlan.bug.reproducePlaceholder')" @uploaded="handleUploadedBugFile"/>
           </a-form-item>
 
           <!-- 其他 -->
           <a-divider orientation="left">
-            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">其他</span>
+            <span style="font-size: 14px; font-weight: 600; color: rgb(var(--primary-6));">{{ $t('qa.testPlan.bugSection.other') }}</span>
           </a-divider>
           <a-row :gutter="24">
             <a-col :span="12">
-              <a-form-item label="标签">
-                <a-input-tag v-model="bugForm.tags" placeholder="输入标签后按回车" allow-clear/>
+              <a-form-item :label="$t('qa.testPlan.tags')">
+                <a-input-tag v-model="bugForm.tags" :placeholder="$t('qa.testPlan.bug.tagsPlaceholder')" allow-clear/>
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item v-if="bugForm.status === 'CLOSED'" label="关闭原因">
-                <a-select v-model="bugForm.closeReason" placeholder="请选择关闭原因" allow-clear>
-                  <a-option value="FIXED">已修复</a-option>
-                  <a-option value="DUPLICATE">重复</a-option>
-                  <a-option value="NOT_BUG">不是BUG</a-option>
-                  <a-option value="CANNOT_REPRODUCE">无法复现</a-option>
-                  <a-option value="WONT_FIX">暂不处理</a-option>
+              <a-form-item v-if="bugForm.status === 'CLOSED'" :label="$t('qa.testPlan.bug.closeReason')">
+                <a-select v-model="bugForm.closeReason" :placeholder="$t('qa.testPlan.closeReasonPlaceholder')" allow-clear>
+                  <a-option value="FIXED">{{ $t('qa.testPlan.closeReason.fixed') }}</a-option>
+                  <a-option value="DUPLICATE">{{ $t('qa.testPlan.closeReason.duplicate') }}</a-option>
+                  <a-option value="NOT_BUG">{{ $t('qa.testPlan.closeReason.notBug') }}</a-option>
+                  <a-option value="CANNOT_REPRODUCE">{{ $t('qa.testPlan.closeReason.cannotReproduce') }}</a-option>
+                  <a-option value="WONT_FIX">{{ $t('qa.testPlan.closeReason.wontFix') }}</a-option>
                 </a-select>
               </a-form-item>
             </a-col>
           </a-row>
-          <a-form-item label="指派人">
+          <a-form-item :label="$t('qa.bug.assignee')">
             <a-select
                 v-model="bugForm.assigneeId"
                 allow-clear
                 allow-search
                 :filter-option="false"
-                placeholder="请输入关键词搜索用户"
+                :placeholder="$t('qa.testPlan.userSearchPlaceholder')"
                 @search="handleSearchUser"
                 @dropdown-visible-change="handleUserDropdownVisibleChange"
             >
@@ -744,8 +744,10 @@
 </script>
 
 <script setup lang="ts">
-import {ref, onMounted, onActivated, onBeforeUnmount, computed, watch, nextTick} from 'vue';
-import {useRoute, useRouter, onBeforeRouteLeave} from 'vue-router';
+import {ref, onMounted, onBeforeUnmount, computed, watch, nextTick} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {useI18n} from 'vue-i18n';
+import {useDirtyGuard, confirmIfDirty} from '@/hooks/useDirtyGuard';
 import {Message, Modal} from '@arco-design/web-vue';
 import {
   IconCheck, IconClose,
@@ -775,6 +777,7 @@ import {
 const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
+const {t} = useI18n();
 
 // 用于渲染 dropdownRender 插槽中的 VNode
 const VNodeRenderer = {
@@ -806,43 +809,13 @@ const isMindmapDirty = () => activeTab.value === 'mindmap' && !!mindMapRef.value
 const handleTabChange = (key: string | number) => {
   const k = String(key);
   if (k !== 'mindmap' && isMindmapDirty()) {
-    Modal.confirm({
-      title: '有未保存的修改',
-      content: '测试规划脑图有未保存的修改，切换后将丢失，确定离开吗？',
-      okText: '放弃修改',
-      cancelText: '继续编辑',
-      onOk: () => { activeTab.value = k; },
-    });
+    confirmIfDirty(true, () => { activeTab.value = k; }, t('qa.testPlan.mindmapDirtySwitch'));
     return;
   }
   activeTab.value = k;
 };
 
-// 2. 路由离开
-onBeforeRouteLeave((_to, _from, next) => {
-  if (isMindmapDirty()) {
-    Modal.confirm({
-      title: '有未保存的修改',
-      content: '测试规划脑图有未保存的修改，离开后将丢失，确定离开吗？',
-      okText: '放弃修改',
-      cancelText: '继续编辑',
-      onOk: () => next(),
-      onCancel: () => next(false),
-    });
-    return;
-  }
-  next();
-});
-
-// 3. 浏览器刷新/关闭的兜底拦截（此场景只能用原生确认框，自定义弹窗无效）
-const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-  if (isMindmapDirty()) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-};
-onMounted(() => window.addEventListener('beforeunload', handleBeforeUnload));
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload));
+useDirtyGuard(isMindmapDirty, t('qa.testPlan.mindmapDirtyLeave'));
 
 // 左栏树：测试点/模块切换 + 联动筛选
 const treeMode = ref<'testpoint' | 'module'>('testpoint');
@@ -979,11 +952,11 @@ const filteredTreeData = computed(() => {
     // 测试点挂在「全部测试点」根节点下，整棵树可折叠
     let children = testPointTreeData.value;
     if (kw) children = children.filter(n => (n.label || '').toLowerCase().includes(kw));
-    return [{ key: 0, label: '全部测试点', count: total, children }];
+    return [{ key: 0, label: t('qa.testPlan.allTestPoints'), count: total, children }];
   }
   // 模块树
   const moduleNodes = recountModuleTree(moduleTreeData.value);
-  const root: any = { id: 0, moduleName: '全部模块', caseCount: total, children: moduleNodes };
+  const root: any = { id: 0, moduleName: t('qa.testPlan.allModules'), caseCount: total, children: moduleNodes };
   if (!kw) return [root];
   const filterNodes = (nodes: any[]): any[] => {
     const result: any[] = [];
@@ -1005,7 +978,7 @@ async function loadTestPointTree() {
   if (res.code === 200) {
     testPointTreeData.value = (res.data?.testPoints || []).map((tp: any) => ({
       key: tp.id,
-      label: tp.name || '默认测试点',
+      label: tp.name || t('qa.testPlan.defaultTestPoint'),
       count: tp.cases?.length || 0,
     }));
   }
@@ -1095,12 +1068,12 @@ const findModuleName = (nodes: any[], id: any): string => {
 };
 const mindmapRootLabel = computed(() => {
   if (treeMode.value === 'module' && selectedTreeKey.value !== 0) {
-    return findModuleName(moduleTreeData.value, selectedTreeKey.value) || '功能用例';
+    return findModuleName(moduleTreeData.value, selectedTreeKey.value) || t('qa.testPlan.tab.cases');
   }
   if (treeMode.value === 'testpoint' && selectedTreeKey.value !== 0) {
-    return testPointTreeData.value.find(n => n.key === selectedTreeKey.value)?.label || '功能用例';
+    return testPointTreeData.value.find(n => n.key === selectedTreeKey.value)?.label || t('qa.testPlan.tab.cases');
   }
-  return '功能用例';
+  return t('qa.testPlan.tab.cases');
 });
 // 脑图平铺：选中具体测试点/模块时该节点作为根、用例平铺；模块模式选全部模块时按模块分组
 const mindmapFlat = computed(() => selectedTreeKey.value !== 0);
@@ -1154,15 +1127,15 @@ const handleBatchExecute = async (result: string) => {
   try {
     const res: any = await batchExecutePlanCases(planId.value, selectedCaseKeys.value.map(k => Number(k)), result);
     if (res.code === 200) {
-      Message.success(`批量执行 ${selectedCaseKeys.value.length} 条用例完成`);
+      Message.success(t('qa.testPlan.batchExecDone', { count: selectedCaseKeys.value.length }));
       selectedCaseKeys.value = [];
       await loadPlanDetail();
     } else {
-      Message.error(res.msg || '批量执行失败');
+      Message.error(res.msg || t('qa.testPlan.batchExecFail'));
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '批量执行失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.batchExecFail'));
   }
 };
 
@@ -1173,12 +1146,12 @@ const handleBatchRemove = async () => {
     for (const id of ids) {
       await removeCaseFromPlan(id);
     }
-    Message.success(`批量移除 ${ids.length} 条用例完成`);
+    Message.success(t('qa.testPlan.batchRemoveDone', { count: ids.length }));
     selectedCaseKeys.value = [];
     await loadPlanDetail();
   } catch (e: any) {
     console.error(e);
-    Message.error('批量移除失败');
+    Message.error(t('qa.testPlan.batchRemoveFail'));
     await loadPlanDetail();
   }
 };
@@ -1193,7 +1166,7 @@ const currentTpId = ref<string>('');
 
 const handleOpenCaseDrawer = (tpId: string) => {
   if (tpId === 'unassigned') {
-    Message.info('未分配用例无需关联测试点，请在功能用例中管理');
+    Message.info(t('qa.testPlan.unassignedHint'));
     return;
   }
   currentTpId.value = tpId;
@@ -1210,12 +1183,12 @@ const handleCaseSelectConfirm = async (cases: any[]) => {
   try {
     const res: any = await addCasesToPlan(planId.value, newIds);
     if (res.code !== 200) {
-      Message.error(res.msg || '加入计划失败');
+      Message.error(res.msg || t('qa.testPlan.addToPlanFail'));
       return;
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '加入计划失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.addToPlanFail'));
     return;
   }
   // 替换测试点全部关联（已有+新选）→ saveTestPoints → loadTestPoints 刷新脑图节点数，handleSave 提示“保存成功”
@@ -1307,11 +1280,11 @@ const handleGenerateReport = async () => {
     if (res.code === 200 && res.data?.id) {
       router.push({ name: 'TestPlanReportDetail', params: { id: res.data.id } });
     } else {
-      Message.error(res.msg || '生成报告失败');
+      Message.error(res.msg || t('qa.testPlan.generateReportFail'));
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '生成报告失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.generateReportFail'));
   } finally {
     reportLoading.value = false;
   }
@@ -1367,7 +1340,7 @@ const showEditModal = () => {
 
 const handleSaveEdit = async () => {
   if (!editForm.value.planName || editForm.value.planName.trim() === '') {
-    Message.warning('请输入计划名称');
+    Message.warning(t('qa.testPlan.namePlaceholder'));
     return;
   }
   try {
@@ -1375,7 +1348,7 @@ const handleSaveEdit = async () => {
     if (Array.isArray(payload.tags)) payload.tags = payload.tags.join(',');
     const res: any = await updateTestPlan(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.testPlan.saveSuccess'));
       editModalVisible.value = false;
       await loadPlanDetail();
     }
@@ -1389,7 +1362,7 @@ const handleCopyPlan = async () => {
   try {
     const newPlan = {
       projectId: planData.value.projectId,
-      planName: `${planData.value.planName}（副本）`,
+      planName: `${planData.value.planName}${t('qa.testPlan.copySuffix')}`,
       description: planData.value.description,
       status: 'DRAFT',
       startTime: null,
@@ -1397,18 +1370,18 @@ const handleCopyPlan = async () => {
     };
     const createRes: any = await saveTestPlan(newPlan);
     if (createRes.code !== 200 || !createRes.data?.id) {
-      Message.error('复制计划失败');
+      Message.error(t('qa.testPlan.copyFail'));
       return;
     }
     const newPlanId = createRes.data.id;
     if (caseList.value.length > 0) {
       await addCasesToPlan(newPlanId, caseList.value.map((c: any) => c.testCaseId));
     }
-    Message.success('复制成功');
+    Message.success(t('qa.testPlan.copySuccess'));
     router.push({ name: 'TestPlanDetail', params: { planId: newPlanId } });
   } catch (e) {
     console.error(e);
-    Message.error('复制计划失败');
+    Message.error(t('qa.testPlan.copyFail'));
   }
 };
 
@@ -1416,7 +1389,7 @@ const handleDeletePlan = async () => {
   try {
     const res: any = await deleteTestPlan(planId.value);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success(t('qa.testPlan.deleteSuccess'));
       router.push({ name: 'TestPlan' });
     }
   } catch (e) {
@@ -1428,7 +1401,7 @@ const handleDeletePlan = async () => {
 const handleUnrelateTestPoint = async (record: any) => {
   try {
     const res: any = await updateCaseTestPoint(planId.value, record.id, null);
-    if (res.code === 200) { Message.success('已取消关联'); await loadPlanDetail(); }
+    if (res.code === 200) { Message.success(t('qa.testPlan.exec.unbindSuccess')); await loadPlanDetail(); }
   } catch (e) { console.error(e); }
 };
 
@@ -1437,12 +1410,12 @@ const handleInlineExecute = async (record: any, result: string) => {
   try {
     const res: any = await executePlanCase(record.id, result);
     if (res.code === 200) {
-      Message.success('执行结果已记录');
+      Message.success(t('qa.testPlan.exec.recorded'));
       await loadPlanDetail();
     }
   } catch (e) {
     console.error(e);
-    Message.error('保存失败');
+    Message.error(t('qa.testPlan.saveFail'));
   }
 };
 
@@ -1463,11 +1436,11 @@ interface PlanCaseOp {
 // 取消关联用 Modal.confirm 替代 popconfirm，条件渲染在 opsFor 内按 testPointId 判断
 const confirmUnrelateTestPoint = (record: any) => {
   Modal.warning({
-    title: '取消关联',
-    content: '确认取消关联该测试点吗？',
-    okText: '确认取消关联',
+    title: t('qa.testPlan.unrelateTitle'),
+    content: t('qa.testPlan.unrelateConfirm'),
+    okText: t('qa.testPlan.unrelateOk'),
     okButtonProps: { status: 'warning' },
-    cancelText: '再想想',
+    cancelText: t('qa.testPlan.unrelateCancel'),
     hideCancel: false,
     onOk: async () => {
       await handleUnrelateTestPoint(record);
@@ -1477,9 +1450,9 @@ const confirmUnrelateTestPoint = (record: any) => {
 const opsFor = (record: any): PlanCaseOp[] => {
   const ops: PlanCaseOp[] = [];
   if (record.testPointId) {
-    ops.push({ key: 'unrelate', label: '取消关联', danger: true, handler: confirmUnrelateTestPoint });
+    ops.push({ key: 'unrelate', label: t('qa.testPlan.exec.unbind'), danger: true, handler: confirmUnrelateTestPoint });
   }
-  ops.push({ key: 'execute', label: '执行', permission: 'qa:testplan:execute', handler: goExecute });
+  ops.push({ key: 'execute', label: t('qa.testPlan.execute'), permission: 'qa:testplan:execute', handler: goExecute });
   return ops;
 };
 // 平铺规则：前2个固定平铺，其余进「更多」
@@ -1491,41 +1464,41 @@ const guardAndRun = (op: PlanCaseOp, record: any) => {
 };
 
 // 主表列定义（用例执行列表）
-const columns = [
-  { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
-  { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true, slotName: 'caseName' },
-  { title: '测试点', dataIndex: 'testPointName', width: 140, ellipsis: true, tooltip: true },
-  { title: '用例等级', dataIndex: 'priority', width: 80, slotName: 'priority' },
-  { title: '标签', dataIndex: 'tags', width: 120, ellipsis: true, tooltip: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 180, ellipsis: true, tooltip: true },
-  { title: '更新时间', dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true },
-  { title: '执行结果', dataIndex: 'executeResult', width: 90, ellipsis: true, tooltip: true, slotName: 'executeResult' },
-  { title: '所属模块', dataIndex: 'moduleName', ellipsis: true, tooltip: true },
-  { title: '缺陷数', width: 80, slotName: 'bugCount' },
-  { title: '创建人', dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true },
-  { title: '执行人', dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
-  { title: '操作', width: 200, fixed: 'right' as const, slotName: 'actions' },
-];
+const columns = computed(() => [
+  { title: t('qa.testCase.code'), dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testCase.name'), dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true, slotName: 'caseName' },
+  { title: t('qa.testPlan.testPoint'), dataIndex: 'testPointName', width: 140, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.caseLevel'), dataIndex: 'priority', width: 80, slotName: 'priority' },
+  { title: t('qa.testPlan.tags'), dataIndex: 'tags', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.createTime'), dataIndex: 'createTime', width: 180, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.updateTime'), dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.execResult'), dataIndex: 'executeResult', width: 90, ellipsis: true, tooltip: true, slotName: 'executeResult' },
+  { title: t('qa.testPlan.module'), dataIndex: 'moduleName', ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.bugCount'), width: 80, slotName: 'bugCount' },
+  { title: t('qa.testPlan.creator'), dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.executor'), dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
+  { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, slotName: 'actions' },
+]);
 
 // 缺陷列表子表列定义
-const bugListColumns = [
-  { title: 'BUG编号', dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true },
-  { title: 'BUG名称', dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'bugTitle' },
-  { title: '缺陷状态', dataIndex: 'status', width: 90, align: 'center', headerAlign: 'center', slotName: 'status' },
-  { title: '关联用例数', dataIndex: 'caseCount', width: 110, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'caseCount' },
-  { title: '处理人', dataIndex: 'assigneeName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'assigneeName' },
-  { title: '创建时间', dataIndex: 'createTime', width: 180, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'createTime' },
-];
+const bugListColumns = computed(() => [
+  { title: t('qa.bug.code'), dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.exec.bugName'), dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'bugTitle' },
+  { title: t('qa.testPlan.bugStatusLabel'), dataIndex: 'status', width: 90, align: 'center', headerAlign: 'center', slotName: 'status' },
+  { title: t('qa.testPlan.bugCaseCount'), dataIndex: 'caseCount', width: 110, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'caseCount' },
+  { title: t('qa.testPlan.assignee'), dataIndex: 'assigneeName', width: 100, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'assigneeName' },
+  { title: t('qa.testPlan.createTime'), dataIndex: 'createTime', width: 180, align: 'center', headerAlign: 'center', ellipsis: true, tooltip: true, slotName: 'createTime' },
+]);
 
 // 执行历史子表列定义
-const historyColumns = [
-  { title: '用例编号', dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
-  { title: '用例名称', dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true },
-  { title: '执行结果', dataIndex: 'executeResult', width: 90, slotName: 'historyResult' },
-  { title: '执行人', dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
-  { title: '执行时间', dataIndex: 'executeTime', width: 180, ellipsis: true, tooltip: true },
-  { title: '备注', dataIndex: 'executeRemark', width: 200, ellipsis: true, tooltip: true },
-];
+const historyColumns = computed(() => [
+  { title: t('qa.testCase.code'), dataIndex: 'caseCode', width: 120, ellipsis: true, tooltip: true },
+  { title: t('qa.testCase.name'), dataIndex: 'caseName', width: 200, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.execResult'), dataIndex: 'executeResult', width: 90, slotName: 'historyResult' },
+  { title: t('qa.testPlan.executor'), dataIndex: 'executeUserName', width: 100, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.execTime'), dataIndex: 'executeTime', width: 180, ellipsis: true, tooltip: true },
+  { title: t('qa.testPlan.remark'), dataIndex: 'executeRemark', width: 200, ellipsis: true, tooltip: true },
+]);
 
 // 打开提BUG弹窗（新增）
 const handleGenerateBug = async (record: any) => {
@@ -1561,11 +1534,11 @@ const handleGenerateBug = async (record: any) => {
         // 自动填充复现步骤：前置条件 + 测试步骤
         const steps: string[] = [];
         if (tc.preCondition) {
-          steps.push('【前置条件】\n' + tc.preCondition);
+          steps.push(`【${t('qa.testCase.preCondition')}】\n${tc.preCondition}`);
         }
         if (tc.testSteps && tc.testSteps.length) {
           tc.testSteps.forEach((s: any, i: number) => {
-            steps.push(`步骤 ${i + 1}：${s.step}\n预期结果：${s.expected}`);
+            steps.push(`${t('qa.testCase.step')} ${i + 1}：${s.step}\n${t('qa.testCase.expected')}：${s.expected}`);
           });
         }
         bugForm.value.reproduceSteps = steps.join('\n\n');
@@ -1590,7 +1563,7 @@ const handleGenerateBug = async (record: any) => {
 // 提交BUG
 const handleConfirmBug = async () => {
   if (!bugForm.value.title || bugForm.value.title.trim() === '') {
-    Message.warning('请输入BUG标题');
+    Message.warning(t('qa.testPlan.bug.titlePlaceholder'));
     return;
   }
   try {
@@ -1603,13 +1576,13 @@ const handleConfirmBug = async () => {
       res = await updateBug(payload);
     } else {
       if (!bugFormPlanCaseId.value) {
-        Message.error('缺少计划用例ID');
+        Message.error(t('qa.testPlan.missingPlanCaseId'));
         return;
       }
       res = await generateBugFromPlanCase(bugFormPlanCaseId.value, payload);
     }
     if (res.code === 200) {
-      Message.success(bugFormIsEdit.value ? 'Bug 更新成功' : 'Bug 创建成功');
+      Message.success(bugFormIsEdit.value ? t('qa.testPlan.bug.updateSuccess') : t('qa.testPlan.bug.createSuccess'));
       // 计算并删除被移除的富文本图片
       const currentFileIds = collectBugFileIds();
       const allSessionFileIds = new Set<string>([...initialBugFileIds.value, ...uploadedBugFileIds.value]);
@@ -1623,11 +1596,11 @@ const handleConfirmBug = async () => {
       bugModalVisible.value = false;
       await loadPlanDetail();
     } else {
-      Message.error(res.msg || '保存失败');
+      Message.error(res.msg || t('qa.testPlan.saveFail'));
     }
   } catch (e: any) {
     console.error(e);
-    Message.error(e?.response?.data?.msg || '保存失败');
+    Message.error(e?.response?.data?.msg || t('qa.testPlan.saveFail'));
   }
 };
 
@@ -1658,7 +1631,7 @@ const handleUserDropdownVisibleChange = (visible: boolean) => {
 };
 
 const severityText = (severity: string) => {
-  const map: Record<string, string> = { FATAL: '致命', SERIOUS: '严重', NORMAL: '一般', TIPS: '提示' };
+  const map: Record<string, string> = { FATAL: t('qa.testPlan.severity.fatal'), SERIOUS: t('qa.testPlan.severity.serious'), NORMAL: t('qa.testPlan.severity.normal'), TIPS: t('qa.testPlan.severity.tips') };
   return map[severity] || severity;
 };
 const severityColor = (severity: string) => {
@@ -1667,8 +1640,8 @@ const severityColor = (severity: string) => {
 };
 const bugStatusText = (status: string) => {
   const map: Record<string, string> = {
-    NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中', FIXED: '已修复',
-    VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回'
+    NEW: t('qa.testPlan.bugStatus.new'), CONFIRMED: t('qa.testPlan.bugStatus.confirmed'), FIXING: t('qa.testPlan.bugStatus.fixing'), FIXED: t('qa.testPlan.bugStatus.fixed'),
+    VERIFIED: t('qa.testPlan.bugStatus.verified'), CLOSED: t('qa.testPlan.bugStatus.closed'), REJECTED: t('qa.testPlan.bugStatus.rejected')
   };
   return map[status] || status;
 };
@@ -1680,24 +1653,24 @@ const bugStatusColor = (status: string) => {
   return map[status] || 'gray';
 };
 const environmentText = (env: string) => {
-  const map: Record<string, string> = { TEST: '测试环境', STAGING: '预发环境', PROD: '生产环境' };
+  const map: Record<string, string> = { TEST: t('qa.testPlan.env.test'), STAGING: t('qa.testPlan.env.staging'), PROD: t('qa.testPlan.env.prod') };
   return map[env] || env || '-';
 };
 const closeReasonText = (reason: string) => {
   const map: Record<string, string> = {
-    FIXED: '已修复', DUPLICATE: '重复', NOT_BUG: '不是BUG',
-    CANNOT_REPRODUCE: '无法复现', WONT_FIX: '暂不处理'
+    FIXED: t('qa.testPlan.closeReason.fixed'), DUPLICATE: t('qa.testPlan.closeReason.duplicate'), NOT_BUG: t('qa.testPlan.closeReason.notBug'),
+    CANNOT_REPRODUCE: t('qa.testPlan.closeReason.cannotReproduce'), WONT_FIX: t('qa.testPlan.closeReason.wontFix')
   };
   return map[reason] || reason || '-';
 };
 const reproduceRateText = (rate: string) => {
-  const map: Record<string, string> = { ALWAYS: '必现', OFTEN: '高概率', SOMETIMES: '偶现', RARE: '难现' };
+  const map: Record<string, string> = { ALWAYS: t('qa.testPlan.reproduce.always'), OFTEN: t('qa.testPlan.reproduce.often'), SOMETIMES: t('qa.testPlan.reproduce.sometimes'), RARE: t('qa.testPlan.reproduce.rare') };
   return map[rate] || rate || '-';
 };
 
 const handleOpenBugListDrawer = (record: any) => {
   bugListDrawerCaseId.value = record.id;
-  bugListDrawerTitle.value = `${record.caseCode} 的关联BUG（${record.bugList?.length || 0}个）`;
+  bugListDrawerTitle.value = t('qa.testPlan.caseBugsTitle', { code: record.caseCode, count: record.bugList?.length || 0 });
   bugListDrawerVisible.value = true;
 };
 
@@ -1743,14 +1716,15 @@ const handlePreviewCase = (record: any) => {
   previewVisible.value = true;
 };
 
-const renderHtml = (content: string | undefined, defaultText: string = '暂无') => {
-  if (!content || content.trim() === '') return defaultText;
+const renderHtml = (content: string | undefined, defaultText?: string) => {
+  const fallback = defaultText ?? t('qa.testPlan.empty');
+  if (!content || content.trim() === '') return fallback;
   if (/<[a-z][\s\S]*?>/i.test(content)) return content;
   return content.replace(/\n/g, '<br>');
 };
 
 const caseTypeText = (type: string) => {
-  const map: Record<string, string> = { FUNCTION: '功能', API: '接口', PERFORMANCE: '性能', COMPATIBILITY: '兼容', SMOKE: '冒烟' };
+  const map: Record<string, string> = { FUNCTION: t('qa.testPlan.caseType.function'), API: t('qa.testPlan.caseType.api'), PERFORMANCE: t('qa.testPlan.caseType.performance'), COMPATIBILITY: t('qa.testPlan.caseType.compatibility'), SMOKE: t('qa.testPlan.caseType.smoke') };
   return map[type] || type;
 };
 
@@ -1765,7 +1739,7 @@ const resultColor = (result: string) => {
 };
 
 const resultText = (result: string) => {
-  const map: Record<string, string> = { PASS: '成功', FAIL: '失败', BLOCK: '阻塞', NA: '不适用', UNEXECUTED: '未执行' };
+  const map: Record<string, string> = { PASS: t('qa.testPlan.result.success'), FAIL: t('qa.testPlan.result.fail'), BLOCK: t('qa.testPlan.result.block'), NA: t('qa.testPlan.result.na'), UNEXECUTED: t('qa.testPlan.result.unexecuted') };
   return map[result] || result;
 };
 
@@ -1787,18 +1761,13 @@ const resultIconColor = (result: string) => {
 };
 
 const statusText = (status: string) => {
-  const map: Record<string, string> = { DRAFT: '草稿', READY: '就绪', RUNNING: '执行中', COMPLETED: '已完成' };
+  const map: Record<string, string> = { DRAFT: t('qa.testPlan.status.draft'), READY: t('qa.testPlan.status.ready'), RUNNING: t('qa.testPlan.status.running'), COMPLETED: t('qa.testPlan.status.completed') };
   return map[status] || status;
 };
 
 onMounted(() => {
   loadPlanDetail();
   loadModuleOptions(); // 左栏模块树
-});
-// keep-alive 激活时刷新（编辑计划用例返回后详情同步）
-onActivated(() => {
-  loadPlanDetail();
-  loadModuleOptions();
 });
 </script>
 

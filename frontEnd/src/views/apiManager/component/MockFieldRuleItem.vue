@@ -16,11 +16,11 @@
 
     <!-- 字段名 -->
     <div class="col-name">
-      <span v-if="isRoot" class="root-label">{{ rootLabel }}</span>
+      <span v-if="isRoot" class="root-label">{{ rootLabel || $t('api.responseSchema.rootLabel') }}</span>
       <a-input
         v-else
         :model-value="rule.fieldName"
-        placeholder="字段名"
+        :placeholder="$t('api.mockField.namePlaceholder')"
         size="mini"
         :disabled="disabled"
         @update:model-value="(v) => updateField('fieldName', v)"
@@ -31,7 +31,7 @@
     <div class="col-type">
       <a-select
         :model-value="rule.fieldType"
-        placeholder="类型"
+        :placeholder="$t('api.mockField.typePlaceholder')"
         size="mini"
         :disabled="disabled"
         class="type-select"
@@ -48,7 +48,7 @@
       <a-select
         v-if="rule.fieldType === 'TEMPLATE'"
         :model-value="rule.templateId"
-        placeholder="选择模板"
+        :placeholder="$t('api.template.selectTemplate')"
         size="mini"
         :disabled="disabled"
         class="template-select"
@@ -93,7 +93,7 @@
       <!-- 数据模板引用：Mock 值由所选模板决定，这里禁用占位 -->
       <template v-else-if="rule.fieldType === 'TEMPLATE'">
         <a-input
-          placeholder="由数据模板定义（可加子字段覆盖同名属性）"
+          :placeholder="$t('api.mockField.templatePlaceholder')"
           size="mini"
           disabled
           class="template-mock-placeholder"
@@ -110,7 +110,7 @@
         <a-cascader
           v-model="selectedCategoryPath"
           :options="cascaderOptions"
-          placeholder="选择 Mock 规则"
+          :placeholder="$t('api.mockField.rulePlaceholder')"
           size="mini"
           :disabled="disabled"
           allow-search
@@ -128,7 +128,7 @@
     <div class="col-desc">
       <a-input
         :model-value="rule.description"
-        placeholder="描述"
+        :placeholder="$t('api.sqlAssertion.descPlaceholder')"
         size="mini"
         :disabled="disabled"
         @update:model-value="(v) => updateField('description', v)"
@@ -147,7 +147,7 @@
     <!-- 操作 -->
     <div class="col-ops">
       <a-space size="mini">
-        <a-tooltip content="添加子字段">
+        <a-tooltip :content="$t('api.mockField.addChild')">
           <a-button
             v-if="canAddChild"
             type="text"
@@ -160,7 +160,7 @@
             </template>
           </a-button>
         </a-tooltip>
-        <a-tooltip v-if="!isRoot" content="添加同级字段">
+        <a-tooltip v-if="!isRoot" :content="$t('api.mockField.addSibling')">
           <a-button
             type="text"
             size="mini"
@@ -172,7 +172,7 @@
             </template>
           </a-button>
         </a-tooltip>
-        <a-tooltip v-if="!isRoot" content="删除">
+        <a-tooltip v-if="!isRoot" :content="$t('qa.common.delete')">
           <a-button
             type="text"
             status="danger"
@@ -192,6 +192,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import {
     IconPlusCircle,
     IconMinusCircle,
@@ -214,75 +215,77 @@
     BOOLEAN: ParameterType.BOOLEAN,
   };
 
+  const { t } = useI18n();
+
   // 复用 API 测试的分类定义，补充数据模板专属的 template / null
-  const mockCategories = [
+  const mockCategories = computed(() => [
     {
       value: 'basic',
-      label: '基础变量',
+      label: t('api.mockType.catBasic'),
       children: [
-        {value: 'fixed', label: '固定值', types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON, ParameterType.ARRAY]},
-        {value: 'choice', label: '枚举选择', types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON, ParameterType.ARRAY]},
-        {value: 'boolean', label: '布尔值', types: [ParameterType.STRING, ParameterType.BOOLEAN]},
-        {value: 'timestamp', label: '时间戳', types: [ParameterType.STRING]},
+        {value: 'fixed', label: t('api.mockType.fixed'), types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON, ParameterType.ARRAY]},
+        {value: 'choice', label: t('api.mockType.choice'), types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON, ParameterType.ARRAY]},
+        {value: 'boolean', label: t('api.mockType.boolean'), types: [ParameterType.STRING, ParameterType.BOOLEAN]},
+        {value: 'timestamp', label: t('api.mockType.timestamp'), types: [ParameterType.STRING]},
       ],
     },
     {
       value: 'string',
-      label: '字符串',
+      label: t('api.mockType.catString'),
       children: [
-        {value: 'text', label: '随机字符串', types: [ParameterType.STRING]},
-        {value: 'character', label: '随机字符', types: [ParameterType.STRING]},
+        {value: 'text', label: t('api.mockType.text'), types: [ParameterType.STRING]},
+        {value: 'character', label: t('api.mockType.character'), types: [ParameterType.STRING]},
         {value: 'uuid', label: 'UUID', types: [ParameterType.STRING]},
       ],
     },
     {
       value: 'personal',
-      label: '个人信息',
+      label: t('api.mockType.catPersonal'),
       children: [
-        {value: 'name', label: '姓名', types: [ParameterType.STRING]},
-        {value: 'cname', label: '中文姓名', types: [ParameterType.STRING]},
-        {value: 'ename', label: '英文姓名', types: [ParameterType.STRING]},
-        {value: 'phone', label: '手机号', types: [ParameterType.STRING]},
-        {value: 'email', label: '邮箱', types: [ParameterType.STRING]},
-        {value: 'idCard', label: '身份证号', types: [ParameterType.STRING]},
-        {value: 'bankcard', label: '银行卡号', types: [ParameterType.STRING]},
+        {value: 'name', label: t('api.mockType.name'), types: [ParameterType.STRING]},
+        {value: 'cname', label: t('api.mockType.cname'), types: [ParameterType.STRING]},
+        {value: 'ename', label: t('api.mockType.ename'), types: [ParameterType.STRING]},
+        {value: 'phone', label: t('api.mockType.phone'), types: [ParameterType.STRING]},
+        {value: 'email', label: t('api.mockType.email'), types: [ParameterType.STRING]},
+        {value: 'idCard', label: t('api.mockType.idCard'), types: [ParameterType.STRING]},
+        {value: 'bankcard', label: t('api.mockType.bankcard'), types: [ParameterType.STRING]},
       ],
     },
     {
       value: 'organization',
-      label: '组织信息',
+      label: t('api.mockType.catOrg'),
       children: [
-        {value: 'company', label: '公司名', types: [ParameterType.STRING]},
-        {value: 'address', label: '地址', types: [ParameterType.STRING]},
+        {value: 'company', label: t('api.mockType.company'), types: [ParameterType.STRING]},
+        {value: 'address', label: t('api.mockType.address'), types: [ParameterType.STRING]},
       ],
     },
     {
       value: 'number',
-      label: '数字',
+      label: t('api.mockType.catNumber'),
       children: [
-        {value: 'int', label: '整数', types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER]},
-        {value: 'long', label: '长整数', types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER]},
-        {value: 'float', label: '浮点数', types: [ParameterType.STRING, ParameterType.NUMBER]},
-        {value: 'double', label: '双精度', types: [ParameterType.STRING, ParameterType.NUMBER]},
+        {value: 'int', label: t('api.mockType.int'), types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER]},
+        {value: 'long', label: t('api.mockType.long'), types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER]},
+        {value: 'float', label: t('api.mockType.float'), types: [ParameterType.STRING, ParameterType.NUMBER]},
+        {value: 'double', label: t('api.mockType.double'), types: [ParameterType.STRING, ParameterType.NUMBER]},
       ],
     },
     {
       value: 'datetime',
-      label: '日期时间',
+      label: t('api.mockType.catDatetime'),
       children: [
-        {value: 'date', label: '日期', types: [ParameterType.STRING]},
-        {value: 'datetime', label: '日期时间', types: [ParameterType.STRING]},
-        {value: 'time', label: '时间', types: [ParameterType.STRING]},
+        {value: 'date', label: t('api.mockType.date'), types: [ParameterType.STRING]},
+        {value: 'datetime', label: t('api.mockType.datetime'), types: [ParameterType.STRING]},
+        {value: 'time', label: t('api.mockType.time'), types: [ParameterType.STRING]},
       ],
     },
     {
       value: 'extended',
-      label: '扩展',
+      label: t('api.mockType.catExtended'),
       children: [
-        {value: 'null', label: '空值', types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON]},
+        {value: 'null', label: t('api.mockType.null'), types: [ParameterType.STRING, ParameterType.INTEGER, ParameterType.NUMBER, ParameterType.BOOLEAN, ParameterType.JSON]},
       ],
     },
-  ];
+  ]);
 
   interface Props {
     rule: MockFieldRule;
@@ -297,7 +300,7 @@
   const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     isRoot: false,
-    rootLabel: '响应体',
+    rootLabel: '',
   });
 
   const emit = defineEmits<{
@@ -331,14 +334,14 @@
   });
 
   const availableTemplateList = computed(() => {
-    return props.templateList.filter((t) => t.id !== props.excludeTemplateId);
+    return props.templateList.filter((tmpl) => tmpl.id !== props.excludeTemplateId);
   });
 
   // 根据当前字段类型过滤出可用的级联选项（只保留有适用子项的分类）
   const cascaderOptions = computed(() => {
     const paramType = FIELD_TYPE_TO_PARAM[props.rule.fieldType || 'STRING'];
     if (paramType === undefined) return [];
-    return mockCategories
+    return mockCategories.value
       .map((category) => ({
         value: category.value,
         label: category.label,
@@ -352,7 +355,7 @@
     get: () => {
       const type = props.rule.ruleType;
       if (!type) return [];
-      for (const category of mockCategories) {
+      for (const category of mockCategories.value) {
         if (category.children.some((item) => item.value === type)) {
           return [category.value, type];
         }

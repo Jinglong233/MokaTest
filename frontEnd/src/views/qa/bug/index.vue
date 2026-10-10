@@ -6,25 +6,25 @@
       <a-row :wrap="true" :gutter="[16, 12]" align="center" class="filter-grid" style="margin: 8px 0 16px;">
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">BUG名称</label>
+            <label class="filter-label">{{ $t('qa.bug.bugName') }}</label>
             <a-input v-model="searchKeyword" :placeholder="$t('qa.bug.name')" allow-clear />
           </div>
         </a-col>
         <a-col flex="280px">
           <div class="filter-field">
-            <label class="filter-label">严重程度</label>
-            <a-select v-model="searchSeverity" placeholder="请选择" allow-clear>
-              <a-option value="FATAL">致命</a-option>
-              <a-option value="SERIOUS">严重</a-option>
-              <a-option value="NORMAL">一般</a-option>
-              <a-option value="TIPS">提示</a-option>
+            <label class="filter-label">{{ $t('qa.bug.severity') }}</label>
+            <a-select v-model="searchSeverity" :placeholder="$t('qa.bug.pleaseSelect')" allow-clear>
+              <a-option value="FATAL">{{ $t('qa.bug.severity.fatal') }}</a-option>
+              <a-option value="SERIOUS">{{ $t('qa.bug.severity.serious') }}</a-option>
+              <a-option value="NORMAL">{{ $t('qa.bug.severity.normal') }}</a-option>
+              <a-option value="TIPS">{{ $t('qa.bug.severity.tips') }}</a-option>
             </a-select>
           </div>
         </a-col>
         <a-col flex="auto">
           <div class="filter-actions">
-            <a-button type="primary" :loading="searchLoading" @click="handleSearchWithLoading">搜索</a-button>
-            <a-button @click="handleReset">重置</a-button>
+            <a-button type="primary" :loading="searchLoading" @click="handleSearchWithLoading">{{ $t('qa.common.search') }}</a-button>
+            <a-button @click="handleReset">{{ $t('qa.common.reset') }}</a-button>
           </div>
         </a-col>
       </a-row>
@@ -46,7 +46,7 @@
               type="outline"
               :disabled="!selectedKeys.length"
             >
-              批量操作
+              {{ $t('qa.bug.batchOperation') }}
               <template #icon><IconMore /></template>
               <template #content>
                 <a-doption
@@ -54,7 +54,7 @@
                   @click="handleBatchDelete"
                 >
                   <template #icon><IconDelete /></template>
-                  <span style="color: #f53f3f">批量删除</span>
+                  <span style="color: #f53f3f">{{ $t('qa.bug.batchDelete') }}</span>
                 </a-doption>
               </template>
             </a-dropdown-button>
@@ -162,7 +162,7 @@
           </a-space>
         </template>
         <template #empty>
-          <a-empty description="暂无BUG数据" />
+          <a-empty :description="$t('qa.bug.empty')" />
         </template>
       </a-table>
     </a-card>
@@ -170,30 +170,30 @@
     <!-- 状态流转弹窗 -->
     <a-modal
       v-model:visible="transitionModalVisible"
-      title="状态流转"
+      :title="$t('qa.bug.transition')"
       width="400px"
       @ok="handleConfirmTransition"
       @cancel="transitionModalVisible = false"
       :mask-closable="false"
     >
       <a-form :model="transitionForm" layout="vertical">
-        <a-form-item label="当前状态">
+        <a-form-item :label="$t('qa.bug.currentStatus')">
           <a-tag :color="bugStatusColor(transitionForm.currentStatus)">{{
             bugStatusText(transitionForm.currentStatus)
           }}</a-tag>
         </a-form-item>
-        <a-form-item label="目标状态" required>
+        <a-form-item :label="$t('qa.bug.targetStatus')" required>
           <a-select
             v-model="transitionForm.targetStatus"
-            placeholder="请选择目标状态"
+            :placeholder="$t('qa.bug.selectTargetStatus')"
           >
-            <a-option value="NEW">新建</a-option>
-            <a-option value="CONFIRMED">已确认</a-option>
-            <a-option value="FIXING">修复中</a-option>
-            <a-option value="FIXED">已修复</a-option>
-            <a-option value="VERIFIED">已验证</a-option>
-            <a-option value="CLOSED">已关闭</a-option>
-            <a-option value="REJECTED">已驳回</a-option>
+            <a-option value="NEW">{{ $t('qa.bug.status.new') }}</a-option>
+            <a-option value="CONFIRMED">{{ $t('qa.bug.status.confirmed') }}</a-option>
+            <a-option value="FIXING">{{ $t('qa.bug.status.fixing') }}</a-option>
+            <a-option value="FIXED">{{ $t('qa.bug.status.fixed') }}</a-option>
+            <a-option value="VERIFIED">{{ $t('qa.bug.status.verified') }}</a-option>
+            <a-option value="CLOSED">{{ $t('qa.bug.status.closed') }}</a-option>
+            <a-option value="REJECTED">{{ $t('qa.bug.status.rejected') }}</a-option>
           </a-select>
         </a-form-item>
       </a-form>
@@ -206,7 +206,7 @@
       :title="modalTitle"
       :width="modalWidth"
       @ok="handleSave"
-      @cancel="modalVisible = false"
+      @cancel="handleModalCancel"
       :mask-closable="false"
     >
       <div class="modal-scroll-body">
@@ -233,32 +233,32 @@
     >
       <a-descriptions
         :data="[
-          { label: '需求编号', value: requirementPreviewData.reqCode },
-          { label: '需求类型', value: requirementPreviewData.reqType },
-          { label: '优先级', value: requirementPreviewData.priority },
-          { label: '状态', value: requirementPreviewData.status },
+          { label: $t('qa.requirement.code'), value: requirementPreviewData.reqCode },
+          { label: $t('qa.bug.reqType'), value: requirementPreviewData.reqType },
+          { label: $t('qa.requirement.priority'), value: requirementPreviewData.priority },
+          { label: $t('qa.requirement.status'), value: requirementPreviewData.status },
           {
-            label: '所属模块',
+            label: $t('qa.bug.belongModule'),
             value: requirementPreviewData.moduleName || '-',
           },
-          { label: '来源', value: requirementPreviewData.source },
-          { label: '负责人', value: requirementPreviewData.ownerName || '-' },
+          { label: $t('qa.bug.source'), value: requirementPreviewData.source },
+          { label: $t('qa.requirement.owner'), value: requirementPreviewData.ownerName || '-' },
           {
-            label: '创建人',
+            label: $t('qa.bug.createUser'),
             value: requirementPreviewData.createUserName || '-',
           },
-          { label: '创建时间', value: requirementPreviewData.createTime },
+          { label: $t('qa.bug.createTime'), value: requirementPreviewData.createTime },
         ]"
         layout="inline-vertical"
         :column="2"
         :label-style="{ fontWeight: 'bold' }"
       />
       <a-divider />
-      <h4 style="margin-bottom: 8px">需求描述</h4>
+      <h4 style="margin-bottom: 8px">{{ $t('qa.requirement.description') }}</h4>
       <div class="preview-desc-box">
         <div
           class="rich-text-preview"
-          v-html="renderHtml(requirementPreviewData.description, '暂无描述')"
+          v-html="renderHtml(requirementPreviewData.description, $t('qa.bug.noDescription'))"
         />
       </div>
     </a-drawer>
@@ -273,27 +273,27 @@
     >
       <a-descriptions
         :data="[
-          { label: '用例编号', value: casePreviewData.caseCode },
-          { label: '用例类型', value: casePreviewData.caseType },
-          { label: '优先级', value: casePreviewData.priority },
-          { label: '状态', value: casePreviewData.status },
-          { label: '创建人', value: casePreviewData.createUserName || '-' },
-          { label: '创建时间', value: casePreviewData.createTime },
+          { label: $t('qa.testCase.code'), value: casePreviewData.caseCode },
+          { label: $t('qa.testCase.type'), value: casePreviewData.caseType },
+          { label: $t('qa.testCase.priority'), value: casePreviewData.priority },
+          { label: $t('qa.testCase.status'), value: casePreviewData.status },
+          { label: $t('qa.bug.createUser'), value: casePreviewData.createUserName || '-' },
+          { label: $t('qa.bug.createTime'), value: casePreviewData.createTime },
         ]"
         layout="inline-vertical"
         :column="2"
         :label-style="{ fontWeight: 'bold' }"
       />
       <a-divider />
-      <h4 style="margin-bottom: 8px">前置条件</h4>
+      <h4 style="margin-bottom: 8px">{{ $t('qa.testCase.preCondition') }}</h4>
       <div class="preview-desc-box">
         <div
           class="rich-text-preview"
-          v-html="renderHtml(casePreviewData.preCondition, '无')"
+          v-html="renderHtml(casePreviewData.preCondition, $t('qa.bug.none'))"
         />
       </div>
       <a-divider />
-      <h4 style="margin-bottom: 8px">测试步骤</h4>
+      <h4 style="margin-bottom: 8px">{{ $t('qa.testCase.steps') }}</h4>
       <div v-if="casePreviewData.testSteps && casePreviewData.testSteps.length">
         <div
           v-for="(step, index) in casePreviewData.testSteps"
@@ -301,7 +301,7 @@
           style="margin-bottom: 12px"
         >
           <div style="font-weight: bold; color: #86909c; margin-bottom: 4px"
-            >步骤 {{ index + 1 }}</div
+            >{{ $t('qa.testCase.step') }} {{ index + 1 }}</div
           >
           <div class="preview-desc-box">
             <div
@@ -309,7 +309,7 @@
               v-html="renderHtml(step.step, '-')"
             />
           </div>
-          <div style="color: #86909c; margin-top: 4px">预期结果：</div>
+          <div style="color: #86909c; margin-top: 4px">{{ $t('qa.bug.expectedResultLabel') }}</div>
           <div class="preview-desc-box">
             <div
               class="rich-text-preview"
@@ -318,7 +318,7 @@
           </div>
         </div>
       </div>
-      <a-empty v-else description="暂无步骤" />
+      <a-empty v-else :description="$t('qa.bug.noSteps')" />
     </a-drawer>
   </div>
   <NoProjectPlaceholder v-else />
@@ -334,7 +334,6 @@
     ref,
     computed,
     onMounted,
-    onActivated,
     onBeforeUnmount,
     watch,
     nextTick,
@@ -394,6 +393,7 @@
     updateBug,
     saveBug,
   } from '@/api/MyApi/qa';
+  import { useDirtyGuard, confirmIfDirty } from '@/hooks/useDirtyGuard';
 
   const { t } = useI18n();
   const projectStore = useProjectStore();
@@ -583,7 +583,7 @@
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      Message.success('已复制');
+      Message.success(t('qa.bug.copySuccess'));
     } catch (e) {
       // 降级方案
       const textarea = document.createElement('textarea');
@@ -594,9 +594,9 @@
       textarea.select();
       try {
         document.execCommand('copy');
-        Message.success('已复制');
+        Message.success(t('qa.bug.copySuccess'));
       } catch (err) {
-        Message.error('复制失败');
+        Message.error(t('qa.bug.copyFail'));
       }
       document.body.removeChild(textarea);
     }
@@ -613,7 +613,7 @@
   const confirmTitleRename = async (record: any) => {
     const newTitle = editingTitleValue.value.trim();
     if (!newTitle) {
-      Message.warning('标题不能为空');
+      Message.warning(t('qa.bug.titleEmpty'));
       return;
     }
     if (newTitle === record.title) {
@@ -624,14 +624,14 @@
       // 先取完整对象再更新，避免后端覆盖其他字段
       const detailRes: any = await getBugDetail(record.id);
       if (detailRes.code !== 200 || !detailRes.data) {
-        Message.error('获取BUG详情失败');
+        Message.error(t('qa.bug.getDetailFail'));
         return;
       }
       const fullData = detailRes.data;
       fullData.title = newTitle;
       const res: any = await updateBug(fullData);
       if (res.code === 200) {
-        Message.success('修改成功');
+        Message.success(t('qa.bug.modifySuccess'));
         editingTitleId.value = null;
         await loadData();
       }
@@ -650,7 +650,7 @@
     try {
       const res: any = await transitionBugStatus(record.id, targetStatus);
       if (res.code === 200) {
-        Message.success('状态已更新');
+        Message.success(t('qa.bug.statusUpdated'));
         await loadData();
       }
     } catch (e) {
@@ -688,10 +688,10 @@
         activeDetailTab.value = '';
         detailDrawerVisible.value = true;
       } else {
-        Message.warning('该缺陷不存在或已删除');
+        Message.warning(t('qa.bug.notFound'));
       }
     } catch (e) {
-      Message.warning('该缺陷不存在或已删除');
+      Message.warning(t('qa.bug.notFound'));
     }
   };
 
@@ -767,7 +767,7 @@
     try {
       const res: any = await getBugDetail(record.id);
       if (res.code !== 200 || !res.data) {
-        Message.error('获取BUG详情失败');
+        Message.error(t('qa.bug.getDetailFail'));
         return;
       }
       const src = res.data;
@@ -775,7 +775,7 @@
         ...src,
         id: undefined,
         bugCode: undefined,
-        title: `${src.title} 副本`,
+        title: t('qa.bug.copyTitle', { title: src.title }),
         status: 'NEW',
         closeReason: undefined,
         createTime: undefined,
@@ -786,10 +786,10 @@
       };
       const saveRes: any = await saveBug(copy);
       if (saveRes.code === 200) {
-        Message.success('复制成功，已生成新BUG副本');
+        Message.success(t('qa.bug.copyBugSuccess'));
         loadData();
       } else {
-        Message.error(saveRes.msg || '复制失败');
+        Message.error(saveRes.msg || t('qa.bug.copyFail'));
       }
     } catch (e) {
       console.error(e);
@@ -968,11 +968,17 @@
     }
   };
 
+  const handleModalCancel = () => {
+    confirmIfDirty(!!bugFormRef.value?.isDirty?.(), () => { modalVisible.value = false; });
+  };
+
+  useDirtyGuard(() => modalVisible.value && (bugFormRef.value?.isDirty?.() ?? false));
+
   const handleDelete = async (id: number) => {
     try {
       const res: any = await deleteBug(id);
       if (res.code === 200) {
-        Message.success('删除成功');
+        Message.success(t('qa.bug.deleteSuccess'));
         await loadData();
       }
     } catch (e) {
@@ -982,17 +988,17 @@
 
   // 主表列定义
   const columns = [
-    { title: 'BUG编号', dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true, slotName: 'bugCode' },
-    { title: 'BUG名称', dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'title' },
-    { title: 'BUG状态', dataIndex: 'status', width: 90, slotName: 'status' },
-    { title: '处理人', dataIndex: 'assigneeName', width: 100, ellipsis: true, tooltip: true, slotName: 'assigneeName' },
-    { title: '标签', dataIndex: 'tags', ellipsis: true, tooltip: true, slotName: 'tags' },
-    { title: '创建人', dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'createUserName' },
-    { title: '创建时间', dataIndex: 'createTime', width: 180, ellipsis: true, tooltip: true, slotName: 'createTime' },
-    { title: '更新人', dataIndex: 'updateUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'updateUserName' },
-    { title: '更新时间', dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true, slotName: 'updateTime' },
-    { title: '严重程度', dataIndex: 'severity', width: 90, slotName: 'severity' },
-    { title: '操作', width: 200, fixed: 'right' as const, slotName: 'actions' },
+    { title: t('qa.bug.code'), dataIndex: 'bugCode', width: 120, ellipsis: true, tooltip: true, slotName: 'bugCode' },
+    { title: t('qa.bug.bugName'), dataIndex: 'title', width: 200, ellipsis: true, tooltip: true, slotName: 'title' },
+    { title: t('qa.bug.bugStatus'), dataIndex: 'status', width: 90, slotName: 'status' },
+    { title: t('qa.bug.handler'), dataIndex: 'assigneeName', width: 100, ellipsis: true, tooltip: true, slotName: 'assigneeName' },
+    { title: t('qa.bug.tags'), dataIndex: 'tags', ellipsis: true, tooltip: true, slotName: 'tags' },
+    { title: t('qa.bug.createUser'), dataIndex: 'createUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'createUserName' },
+    { title: t('qa.bug.createTime'), dataIndex: 'createTime', width: 180, ellipsis: true, tooltip: true, slotName: 'createTime' },
+    { title: t('qa.bug.updateUser'), dataIndex: 'updateUserName', width: 100, ellipsis: true, tooltip: true, slotName: 'updateUserName' },
+    { title: t('qa.bug.updateTime'), dataIndex: 'updateTime', width: 180, ellipsis: true, tooltip: true, slotName: 'updateTime' },
+    { title: t('qa.bug.severity'), dataIndex: 'severity', width: 90, slotName: 'severity' },
+    { title: t('qa.common.operation'), width: 200, fixed: 'right' as const, slotName: 'actions' },
   ];
 
   // ========== 操作列：统一文字按钮 + 更多下拉 ==========
@@ -1007,10 +1013,10 @@
   // 删除操作：二次确认后再调用 handleDelete
   const confirmDeleteBug = (record: any) => {
     Modal.confirm({
-      title: '删除 BUG',
-      content: `确认删除 BUG「${record.title}」吗？其评论与操作日志将一并删除，此操作不可恢复。`,
-      okText: '确认删除',
-      cancelText: '取消',
+      title: t('qa.bug.deleteTitle'),
+      content: t('qa.bug.deleteContent', { title: record.title }),
+      okText: t('qa.bug.deleteConfirm'),
+      cancelText: t('qa.common.cancel'),
       okButtonProps: { status: 'danger' },
       onOk: async () => {
         await handleDelete(record.id);
@@ -1020,22 +1026,22 @@
 
   // 操作列定义：详情 / 编辑 / 复制 / 删除
   const opsFor = (record: any): BugOp[] => [
-    { key: 'preview', label: '详情', permission: '', handler: handlePreview },
+    { key: 'preview', label: t('qa.bug.actionDetail'), permission: '', handler: handlePreview },
     {
       key: 'edit',
-      label: '编辑',
+      label: t('qa.bug.actionEdit'),
       permission: QA_BUG_UPDATE,
       handler: handleEdit,
     },
     {
       key: 'copy',
-      label: '复制',
+      label: t('qa.bug.actionCopy'),
       permission: QA_BUG_CREATE,
       handler: handleCopy,
     },
     {
       key: 'delete',
-      label: '删除',
+      label: t('qa.common.delete'),
       danger: true,
       permission: QA_BUG_DELETE,
       handler: confirmDeleteBug,
@@ -1053,15 +1059,15 @@
   const handleBatchDelete = () => {
     if (selectedKeys.value.length === 0) return;
     Modal.confirm({
-      title: '批量删除 BUG',
-      content: `确定删除选中的 ${selectedKeys.value.length} 个 BUG 吗？其评论与操作日志将一并删除，此操作不可恢复。`,
-      okText: '删除',
-      cancelText: '取消',
+      title: t('qa.bug.batchDeleteTitle'),
+      content: t('qa.bug.batchDeleteContent', { count: selectedKeys.value.length }),
+      okText: t('qa.common.delete'),
+      cancelText: t('qa.common.cancel'),
       okButtonProps: { status: 'danger' },
       onOk: async () => {
         const res: any = await batchDeleteBug(selectedKeys.value);
         if (res.code === 200) {
-          Message.success('批量删除成功');
+          Message.success(t('qa.bug.batchDeleteSuccess'));
           selectedKeys.value = [];
           await loadData();
         }
@@ -1080,7 +1086,7 @@
 
   const handleConfirmTransition = async () => {
     if (!transitionForm.value.targetStatus) {
-      Message.warning('请选择目标状态');
+      Message.warning(t('qa.bug.selectTargetStatus'));
       return;
     }
     try {
@@ -1089,7 +1095,7 @@
         transitionForm.value.targetStatus
       );
       if (res.code === 200) {
-        Message.success('状态已更新');
+        Message.success(t('qa.bug.statusUpdated'));
         transitionModalVisible.value = false;
         await loadData();
       }
@@ -1114,10 +1120,10 @@
 
   const severityText = (severity: string) => {
     const map: Record<string, string> = {
-      FATAL: '致命',
-      SERIOUS: '严重',
-      NORMAL: '一般',
-      TIPS: '提示',
+      FATAL: t('qa.bug.severity.fatal'),
+      SERIOUS: t('qa.bug.severity.serious'),
+      NORMAL: t('qa.bug.severity.normal'),
+      TIPS: t('qa.bug.severity.tips'),
     };
     return map[severity] || severity;
   };
@@ -1144,21 +1150,21 @@
   };
   const bugStatusText = (status: string) => {
     const map: Record<string, string> = {
-      NEW: '新建',
-      CONFIRMED: '已确认',
-      FIXING: '修复中',
-      FIXED: '已修复',
-      VERIFIED: '已验证',
-      CLOSED: '已关闭',
-      REJECTED: '已驳回',
+      NEW: t('qa.bug.status.new'),
+      CONFIRMED: t('qa.bug.status.confirmed'),
+      FIXING: t('qa.bug.status.fixing'),
+      FIXED: t('qa.bug.status.fixed'),
+      VERIFIED: t('qa.bug.status.verified'),
+      CLOSED: t('qa.bug.status.closed'),
+      REJECTED: t('qa.bug.status.rejected'),
     };
     return map[status] || status;
   };
   const renderHtml = (
     content: string | undefined,
-    defaultText: string = '暂无'
+    defaultText?: string
   ) => {
-    if (!content || content.trim() === '') return defaultText;
+    if (!content || content.trim() === '') return defaultText ?? t('qa.bug.noContent');
     // 如果内容已经包含 HTML 标签，直接返回
     if (/<[a-z][\s\S]*?>/i.test(content)) {
       return content;
@@ -1210,45 +1216,45 @@
     if (isNaN(date.getTime())) return timeStr;
     const now = new Date();
     const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-    if (diff < 2592000) return `${Math.floor(diff / 86400)}天前`;
+    if (diff < 60) return t('qa.bug.timeJustNow');
+    if (diff < 3600) return t('qa.bug.timeMinutesAgo', { n: Math.floor(diff / 60) });
+    if (diff < 86400) return t('qa.bug.timeHoursAgo', { n: Math.floor(diff / 3600) });
+    if (diff < 2592000) return t('qa.bug.timeDaysAgo', { n: Math.floor(diff / 86400) });
     return timeStr;
   };
-  const allBugStatuses = [
-    { value: 'NEW', label: '新建' },
-    { value: 'CONFIRMED', label: '已确认' },
-    { value: 'FIXING', label: '修复中' },
-    { value: 'FIXED', label: '已修复' },
-    { value: 'VERIFIED', label: '已验证' },
-    { value: 'CLOSED', label: '已关闭' },
-    { value: 'REJECTED', label: '已驳回' },
-  ];
+  const allBugStatuses = computed(() => [
+    { value: 'NEW', label: t('qa.bug.status.new') },
+    { value: 'CONFIRMED', label: t('qa.bug.status.confirmed') },
+    { value: 'FIXING', label: t('qa.bug.status.fixing') },
+    { value: 'FIXED', label: t('qa.bug.status.fixed') },
+    { value: 'VERIFIED', label: t('qa.bug.status.verified') },
+    { value: 'CLOSED', label: t('qa.bug.status.closed') },
+    { value: 'REJECTED', label: t('qa.bug.status.rejected') },
+  ]);
   const environmentText = (env: string) => {
     const map: Record<string, string> = {
-      TEST: '测试环境',
-      STAGING: '预发环境',
-      PROD: '生产环境',
+      TEST: t('qa.bug.env.test'),
+      STAGING: t('qa.bug.env.staging'),
+      PROD: t('qa.bug.env.prod'),
     };
     return map[env] || env || '-';
   };
   const reproduceRateText = (rate: string) => {
     const map: Record<string, string> = {
-      ALWAYS: '必现',
-      OFTEN: '高概率',
-      SOMETIMES: '偶现',
-      RARE: '难现',
+      ALWAYS: t('qa.bug.rate.always'),
+      OFTEN: t('qa.bug.rate.often'),
+      SOMETIMES: t('qa.bug.rate.sometimes'),
+      RARE: t('qa.bug.rate.rare'),
     };
     return map[rate] || rate || '-';
   };
   const closeReasonText = (closeReason: string) => {
     const map: Record<string, string> = {
-      FIXED: '已修复',
-      DUPLICATE: '重复',
-      NOT_BUG: '不是BUG',
-      CANNOT_REPRODUCE: '无法复现',
-      WONT_FIX: '暂不处理',
+      FIXED: t('qa.bug.status.fixed'),
+      DUPLICATE: t('qa.bug.closeReason.duplicate'),
+      NOT_BUG: t('qa.bug.closeReason.notBug'),
+      CANNOT_REPRODUCE: t('qa.bug.closeReason.cannotReproduce'),
+      WONT_FIX: t('qa.bug.closeReason.wontFix'),
     };
     return map[closeReason] || closeReason || '-';
   };
@@ -1273,13 +1279,6 @@
   };
 
   onMounted(() => {
-    loadData();
-    loadFilterRequirementOptions('');
-    loadFilterCaseOptions('');
-    loadModuleOptions();
-  });
-  // keep-alive 激活时刷新（新建/编辑缺陷返回后列表同步）
-  onActivated(() => {
     loadData();
     loadFilterRequirementOptions('');
     loadFilterCaseOptions('');

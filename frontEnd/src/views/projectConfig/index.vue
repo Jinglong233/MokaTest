@@ -989,4 +989,12 @@ function revertTemplate(r: NotifyRule) {
   word-break: break-all;
   white-space: pre-wrap;
 }
+
+/* AI 配置 */
+.ai-config-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ai-config-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--color-border-2); border-radius: 6px; background: var(--color-bg-1); }
+.ai-config-item.active { border-color: rgb(var(--success-3)); background: rgb(var(--success-1)); }
+.ai-config-info { flex: 1; min-width: 0; }
+.ai-config-name { font-size: 13px; font-weight: 600; margin-right: 8px; }
+.ai-config-sub { font-size: 12px; color: var(--color-text-3); display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

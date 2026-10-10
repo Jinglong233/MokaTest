@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :visible="visible"
-    title="导入 Swagger / OpenAPI"
+    :title="$t('api.swagger.title')"
     title-align="start"
     :mask-closable="false"
     :esc-to-close="false"
@@ -9,15 +9,15 @@
     @cancel="handleClose"
     @update:visible="(v) => emit('update:visible', v)"
     :ok-loading="loading"
-    :ok-text="result ? '确定' : '开始导入'"
+    :ok-text="result ? t('api.common.confirm') : t('api.swagger.startImport')"
     :hide-cancel="result !== null"
   >
-    <a-spin :loading="loading" tip="正在解析并导入...">
+    <a-spin :loading="loading" :tip="$t('api.swagger.importing')">
       <template v-if="!result">
         <a-tabs v-model:active-key="activeTab" type="rounded">
-          <a-tab-pane key="file" title="上传文件">
+          <a-tab-pane key="file" :title="$t('api.swagger.tabFile')">
             <a-form :model="formState" layout="vertical">
-              <a-form-item label="Swagger 文件" required>
+              <a-form-item :label="$t('api.swagger.fileLabel')" required>
                 <a-upload
                   :auto-upload="false"
                   :limit="1"
@@ -27,15 +27,15 @@
                   <template #upload-button>
                     <a-button>
                       <template #icon><icon-upload /></template>
-                      选择文件
+                      {{ $t('api.swagger.chooseFile') }}
                     </a-button>
                   </template>
                 </a-upload>
-                <div v-if="fileName" class="file-name">已选择：{{ fileName }}</div>
+                <div v-if="fileName" class="file-name">{{ $t('api.swagger.fileSelected', {name: fileName}) }}</div>
               </a-form-item>
             </a-form>
           </a-tab-pane>
-          <a-tab-pane key="url" title="URL 导入">
+          <a-tab-pane key="url" :title="$t('api.swagger.tabUrl')">
             <a-form :model="formState" layout="vertical">
               <a-form-item label="Swagger URL" required>
                 <a-input
@@ -49,30 +49,30 @@
         </a-tabs>
 
         <a-form :model="formState" layout="vertical" class="import-options">
-          <a-form-item label="导入到目录">
+          <a-form-item :label="$t('api.swagger.targetFolder')">
             <a-tree-select
               v-model="parentId"
               :data="folderList"
-              placeholder="选择目标目录"
+              :placeholder="$t('api.swagger.targetFolderPlaceholder')"
               :field-names="{ key: 'id', title: 'apiName' }"
               allow-clear
             />
           </a-form-item>
-          <a-form-item label="按 Tag 自动分组">
+          <a-form-item :label="$t('api.swagger.groupByTags')">
             <a-switch v-model="groupByTags" />
-            <span class="switch-tip">关闭后所有接口平铺到所选目录</span>
+            <span class="switch-tip">{{ $t('api.swagger.groupByTagsTip') }}</span>
           </a-form-item>
-          <a-form-item label="覆盖已存在接口">
+          <a-form-item :label="$t('api.swagger.overwrite')">
             <a-switch v-model="overwrite" />
-            <span class="switch-tip">开启后重复的接口会更新请求头、参数、请求体等字段</span>
+            <span class="switch-tip">{{ $t('api.swagger.overwriteTip') }}</span>
           </a-form-item>
         </a-form>
       </template>
 
       <template v-else>
-        <a-alert type="success" title="导入完成">
+        <a-alert type="success" :title="$t('api.swagger.done')">
           <template #content>
-            成功导入 {{ result.interfaceCount }} 个接口，覆盖 {{ result.overwrittenCount }} 个接口，新建/复用 {{ result.folderCount }} 个目录，跳过 {{ result.skippedCount }} 个。
+            {{ $t('api.swagger.doneContent', {interfaceCount: result.interfaceCount, overwrittenCount: result.overwrittenCount, folderCount: result.folderCount, skippedCount: result.skippedCount}) }}
           </template>
         </a-alert>
         <a-table
@@ -84,9 +84,9 @@
           :bordered="true"
         >
           <template #columns>
-            <a-table-column title="路径" data-index="path" />
-            <a-table-column title="方法" data-index="method" :width="80" />
-            <a-table-column title="原因" data-index="reason" />
+            <a-table-column :title="$t('api.swagger.colPath')" data-index="path" />
+            <a-table-column :title="$t('api.swagger.colMethod')" data-index="method" :width="80" />
+            <a-table-column :title="$t('api.swagger.colReason')" data-index="reason" />
           </template>
         </a-table>
       </template>
@@ -103,6 +103,9 @@ import { ApiFolderTreeVO } from '@/types/domain/api/vo/ApiFolderTreeVO';
 import { SwaggerImportResultVO } from '@/types/domain/api/vo/SwaggerImportResultVO';
 import { useProjectStore } from '@/store';
 import useTeamStore from '@/store/modules/team';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   visible: boolean;
@@ -168,11 +171,11 @@ const handleSubmit = async () => {
   }
 
   if (activeTab.value === 'file' && !file.value) {
-    Message.error('请选择 Swagger 文件');
+    Message.error(t('api.swagger.fileRequired'));
     return;
   }
   if (activeTab.value === 'url' && !url.value.trim()) {
-    Message.error('请输入 Swagger URL');
+    Message.error(t('api.swagger.urlRequired'));
     return;
   }
 
@@ -193,13 +196,13 @@ const handleSubmit = async () => {
     const res: any = await importSwagger(formData);
     if (res.code === 200) {
       result.value = res.data as SwaggerImportResultVO;
-      Message.success('导入成功');
+      Message.success(t('api.swagger.importSuccess'));
       emit('success');
     } else {
-      Message.error(res.msg || '导入失败');
+      Message.error(res.msg || t('api.swagger.importFailed'));
     }
   } catch (err: any) {
-    Message.error(err?.response?.data?.msg || err?.message || '导入异常');
+    Message.error(err?.response?.data?.msg || err?.message || t('api.swagger.importError'));
   } finally {
     loading.value = false;
   }

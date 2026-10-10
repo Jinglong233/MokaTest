@@ -6,22 +6,22 @@
     <div class="wb-header">
       <a-button size="small" @click="handleBack">
         <template #icon><icon-left /></template>
-        返回
+        {{ $t('qa.review.back') }}
       </a-button>
       <div class="wb-title">
         <span class="wb-code">{{ detail?.reviewCode || '' }}</span>
-        <span class="wb-name">{{ detail?.title || '评审工作台' }}</span>
+        <span class="wb-name">{{ detail?.title || $t('menu.qa.reviewWorkbench') }}</span>
         <a-tag v-if="detail" :color="statusColor(detail.status)" size="small">{{ statusText(detail.status) }}</a-tag>
       </div>
       <div class="wb-meta" v-if="detail">
-        <span class="wb-meta-item">通过规则：{{ detail.passRule === 'MAJORITY' ? '多数通过' : '全票通过' }}</span>
-        <span class="wb-meta-item" v-if="detail.deadline">截止：{{ detail.deadline }}</span>
+        <span class="wb-meta-item">{{ $t('qa.review.passRuleLabel') }}{{ detail.passRule === 'MAJORITY' ? $t('qa.review.passRuleMajority') : $t('qa.review.passRuleAll') }}</span>
+        <span class="wb-meta-item" v-if="detail.deadline">{{ $t('qa.review.deadlineLabel') }}{{ detail.deadline }}</span>
       </div>
     </div>
 
     <!-- 已完成我的评审横幅 -->
     <a-alert v-if="myAllDone && caseList.length" type="success" class="wb-banner">
-      已完成我的评审
+      {{ $t('qa.review.myAllDone') }}
     </a-alert>
 
     <div class="wb-body" v-loading="loading">
@@ -31,13 +31,13 @@
           <div class="wb-left-filter">
             <a-input-search
               v-model="caseKeyword"
-              placeholder="搜索用例名称"
+              :placeholder="$t('qa.review.searchCaseName')"
               allow-clear
               size="small"
             />
             <a-radio-group v-model="caseFilter" type="button" size="small" style="margin-top: 8px">
-              <a-radio value="ALL">全部</a-radio>
-              <a-radio value="TODO">待我评</a-radio>
+              <a-radio value="ALL">{{ $t('qa.common.all') }}</a-radio>
+              <a-radio value="TODO">{{ $t('qa.review.todoMine') }}</a-radio>
             </a-radio-group>
           </div>
           <div class="wb-left-scroll">
@@ -61,7 +61,7 @@
                 </span>
               </div>
             </template>
-            <a-empty v-else description="暂无用例" style="margin-top: 40px" />
+            <a-empty v-else :description="$t('qa.review.noCases')" style="margin-top: 40px" />
           </div>
           <div class="wb-left-pager">
             <a-pagination
@@ -74,7 +74,7 @@
               :show-page-size="false"
               @change="onPageChange"
             >
-              <template #total>共 {{ totalPages }} 页</template>
+              <template #total>{{ $t('qa.review.totalPages', { count: totalPages }) }}</template>
             </a-pagination>
           </div>
         </a-card>
@@ -89,19 +89,19 @@
               <div class="case-head-row1">
                 <div class="case-head-name">{{ caseDetail?.caseName || currentCase.caseName }}</div>
                 <a-button v-permission="'qa:testcase:update'" type="outline" size="small" @click="openEditDrawer">
-                  <template #icon><icon-edit /></template>编辑
+                  <template #icon><icon-edit /></template>{{ $t('qa.review.op.edit') }}
                 </a-button>
               </div>
               <div class="case-head-meta">
                 <span class="meta-item">
                   <icon-info-circle-fill :size="14" class="meta-icon-info" />
-                  <span class="meta-label">模块</span>
+                  <span class="meta-label">{{ $t('qa.review.moduleLabel') }}</span>
                   {{ caseDetail?.moduleName || '-' }}
                 </span>
                 <a-divider direction="vertical" />
                 <span class="meta-item">
                   <icon-star-fill :size="14" class="meta-icon-priority" />
-                  <span class="meta-label">等级</span>
+                  <span class="meta-label">{{ $t('qa.review.priorityLabel') }}</span>
                   {{ caseDetail?.priority || '-' }}
                 </span>
                 <a-divider direction="vertical" />
@@ -109,7 +109,7 @@
                   <icon-check-circle-fill v-if="currentCase?.finalResult === 'PASS'" :size="14" class="meta-icon-pass" />
                   <icon-close-circle-fill v-else-if="currentCase?.finalResult === 'REJECT'" :size="14" class="meta-icon-reject" />
                   <icon-exclamation-circle-fill v-else :size="14" class="meta-icon-pending" />
-                  <span class="meta-label">评审</span>
+                  <span class="meta-label">{{ $t('qa.review.reviewLabel') }}</span>
                   {{ caseReviewStatus(currentCase).text }}
                 </span>
               </div>
@@ -117,32 +117,32 @@
 
             <a-tabs v-model:active-key="activeTab" type="line" class="wb-tabs">
               <!-- ========== 基本信息 ========== -->
-              <a-tab-pane key="basic" title="基本信息">
+              <a-tab-pane key="basic" :title="$t('qa.review.tabBasic')">
                 <a-descriptions :column="1" size="small">
-                  <a-descriptions-item label="所属模块">{{ caseDetail?.moduleName || '-' }}</a-descriptions-item>
-                  <a-descriptions-item label="用例类型">{{ caseTypeText(caseDetail?.caseType) }}</a-descriptions-item>
-                  <a-descriptions-item label="用例等级">
+                  <a-descriptions-item :label="$t('qa.review.module')">{{ caseDetail?.moduleName || '-' }}</a-descriptions-item>
+                  <a-descriptions-item :label="$t('qa.testCase.type')">{{ caseTypeText(caseDetail?.caseType) }}</a-descriptions-item>
+                  <a-descriptions-item :label="$t('qa.review.caseLevel')">
                     <a-tag v-if="caseDetail?.priority" :color="priorityColor(caseDetail.priority)" size="small">{{ caseDetail.priority }}</a-tag>
                     <span v-else>-</span>
                   </a-descriptions-item>
-                  <a-descriptions-item label="标签">
+                  <a-descriptions-item :label="$t('qa.review.tags')">
                     <template v-if="caseDetail?.tags">
                       <a-tag v-for="tag in String(caseDetail.tags).split(',').filter(Boolean)" :key="tag" size="small">{{ tag }}</a-tag>
                     </template>
                     <span v-else>-</span>
                   </a-descriptions-item>
-                  <a-descriptions-item label="创建人">{{ caseDetail?.createUserName || '-' }}</a-descriptions-item>
-                  <a-descriptions-item label="创建时间">{{ caseDetail?.createTime || '-' }}</a-descriptions-item>
+                  <a-descriptions-item :label="$t('qa.review.creator')">{{ caseDetail?.createUserName || '-' }}</a-descriptions-item>
+                  <a-descriptions-item :label="$t('qa.review.createTime')">{{ caseDetail?.createTime || '-' }}</a-descriptions-item>
                 </a-descriptions>
               </a-tab-pane>
 
               <!-- ========== 详情 ========== -->
-              <a-tab-pane key="info" title="详情">
-                <div class="dd-section-title">前置条件</div>
+              <a-tab-pane key="info" :title="$t('qa.review.tabDetail')">
+                <div class="dd-section-title">{{ $t('qa.testCase.preCondition') }}</div>
                 <div v-if="caseDetail?.preCondition" class="pre-condition-view" v-html="caseDetail.preCondition"></div>
-                <div v-else class="pre-condition-empty">无</div>
+                <div v-else class="pre-condition-empty">{{ $t('qa.review.none') }}</div>
 
-                <div class="dd-section-title">测试步骤</div>
+                <div class="dd-section-title">{{ $t('qa.testCase.steps') }}</div>
                 <a-table
                   v-if="caseSteps.length"
                   :data="caseSteps"
@@ -157,44 +157,44 @@
                         <span class="step-no">{{ rowIndex + 1 }}</span>
                       </template>
                     </a-table-column>
-                    <a-table-column title="步骤">
+                    <a-table-column :title="$t('qa.testCase.step')">
                       <template #cell="{ record }">
                         <div v-html="record.step || '-'"></div>
                       </template>
                     </a-table-column>
-                    <a-table-column title="预期结果">
+                    <a-table-column :title="$t('qa.testCase.expected')">
                       <template #cell="{ record }">
                         <div v-html="record.expected || '-'"></div>
                       </template>
                     </a-table-column>
                   </template>
                 </a-table>
-                <a-empty v-else description="暂无测试步骤" />
+                <a-empty v-else :description="$t('qa.review.noSteps')" />
               </a-tab-pane>
 
               <!-- ========== 关联需求 ========== -->
               <a-tab-pane key="requirement">
-                <template #title>关联需求 <span v-if="requirementList.length" class="tab-count">{{ requirementList.length }}</span></template>
+                <template #title>{{ $t('qa.review.tabRequirement') }} <span v-if="requirementList.length" class="tab-count">{{ requirementList.length }}</span></template>
                 <a-table v-if="requirementList.length" :data="requirementList" :pagination="false" size="small" row-key="id">
                   <template #columns>
-                    <a-table-column title="编号" :width="120">
+                    <a-table-column :title="$t('qa.review.reqCode')" :width="120">
                       <template #cell="{ record }">{{ record.reqCode }}</template>
                     </a-table-column>
-                    <a-table-column title="需求名称">
+                    <a-table-column :title="$t('qa.review.reqName')">
                       <template #cell="{ record }">{{ record.title }}</template>
                     </a-table-column>
-                    <a-table-column title="状态" :width="100">
+                    <a-table-column :title="$t('qa.testCase.status')" :width="100">
                       <template #cell="{ record }">
                         <a-tag size="small" color="arcoblue">{{ record.status || '-' }}</a-tag>
                       </template>
                     </a-table-column>
                   </template>
                 </a-table>
-                <a-empty v-else description="未关联需求" />
+                <a-empty v-else :description="$t('qa.review.noRequirement')" />
               </a-tab-pane>
 
               <!-- ========== 评审历史（投票事件流，逐票留痕） ========== -->
-              <a-tab-pane key="history" title="评审历史">
+              <a-tab-pane key="history" :title="$t('qa.review.tabHistory')">
                 <template v-if="reviewHistory.length">
                   <div v-for="(h, idx) in reviewHistory" :key="idx" class="vote-item">
                     <a-avatar
@@ -217,28 +217,28 @@
                     </a-tag>
                   </div>
                 </template>
-                <a-empty v-else description="暂无评审历史" style="padding: 40px 0" />
+                <a-empty v-else :description="$t('qa.review.noHistory')" style="padding: 40px 0" />
               </a-tab-pane>
             </a-tabs>
           </template>
-          <a-empty v-else description="请选择左侧用例" style="margin-top: 80px" />
+          <a-empty v-else :description="$t('qa.review.selectCaseHint')" style="margin-top: 80px" />
         </div>
 
         <!-- 我的评审面板（固定底部）：当前用例的在册评审人可见，评审中/已完结均可提交（完结单重提自动重开） -->
         <div class="my-review-panel" v-if="currentCase && detail?.status !== 'CANCELLED' && myExistingItem">
           <div class="my-review-title">
-            我的评审
+            {{ $t('qa.review.myReview') }}
             <a-tag v-if="myExistingItem?.conclusion && myExistingItem.conclusion !== 'PENDING'" size="small" :color="conclusionColor(myExistingItem.conclusion)">
-              已评：{{ conclusionText(myExistingItem.conclusion) }}（可修改重提）
+              {{ $t('qa.review.reviewedTag', { conclusion: conclusionText(myExistingItem.conclusion) }) }}
             </a-tag>
           </div>
           <div class="my-review-body">
             <a-radio-group v-model="myForm.conclusion">
               <a-radio value="PASS">
-                <icon-check-circle-fill :size="18" class="radio-icon-pass" />通过
+                <icon-check-circle-fill :size="18" class="radio-icon-pass" />{{ $t('qa.review.resultPass') }}
               </a-radio>
               <a-radio value="REJECT">
-                <icon-close-circle-fill :size="18" class="radio-icon-reject" />不通过
+                <icon-close-circle-fill :size="18" class="radio-icon-reject" />{{ $t('qa.review.resultReject') }}
               </a-radio>
             </a-radio-group>
             <!-- 通过 / 不通过 的意见分开填写，互不串扰 -->
@@ -246,19 +246,19 @@
               v-if="myForm.conclusion === 'PASS'"
               v-model="myForm.passComment"
               :auto-size="{ minRows: 2, maxRows: 4 }"
-              placeholder="评审意见（选填）"
+              :placeholder="$t('qa.review.commentOptional')"
               style="flex: 1"
             />
             <a-textarea
               v-else
               v-model="myForm.rejectComment"
               :auto-size="{ minRows: 2, maxRows: 4 }"
-              placeholder="不通过时意见必填"
+              :placeholder="$t('qa.review.commentRequired')"
               style="flex: 1"
             />
             <a-space direction="vertical">
-              <a-button type="primary" :loading="submitting" @click="handleSubmit(true)">提交并下一条</a-button>
-              <a-button :loading="submitting" @click="handleSubmit(false)">提交</a-button>
+              <a-button type="primary" :loading="submitting" @click="handleSubmit(true)">{{ $t('qa.review.submitNext') }}</a-button>
+              <a-button :loading="submitting" @click="handleSubmit(false)">{{ $t('qa.review.submit') }}</a-button>
             </a-space>
           </div>
         </div>
@@ -268,8 +268,8 @@
     <CaseDetailDrawer
       v-model:visible="editDrawerVisible"
       :case-id="currentCase?.testCaseId || null"
-      drawer-title="更新用例"
-      confirm-text="更新"
+      :drawer-title="$t('qa.review.updateCase')"
+      :confirm-text="$t('qa.review.update')"
       auto-edit
       @refresh="onEditDrawerRefresh"
     />
@@ -283,6 +283,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import {
   IconLeft,
@@ -304,6 +305,7 @@ const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const reviewTodoStore = useReviewTodoStore();
+const { t } = useI18n();
 
 const editDrawerVisible = ref(false);
 const openEditDrawer = () => {
@@ -387,12 +389,12 @@ const myAllDone = computed(() => {
 
 // 用例评审状态：未评审 / 评审中 / 已通过 / 不通过 / 重新提审
 const caseReviewStatus = (c: any) => {
-  if (c.finalResult === 'PASS') return { text: '已通过', color: 'green' };
-  if (c.finalResult === 'REJECT') return { text: '不通过', color: 'red' };
+  if (c.finalResult === 'PASS') return { text: t('qa.review.casePassed'), color: 'green' };
+  if (c.finalResult === 'REJECT') return { text: t('qa.review.resultReject'), color: 'red' };
   const items = c.items || [];
   const hasSubmitted = items.some((i: any) => i.conclusion && i.conclusion !== 'PENDING');
-  if (!hasSubmitted) return { text: '未评审', color: 'gray' };
-  return { text: '评审中', color: 'gold' };
+  if (!hasSubmitted) return { text: t('qa.review.notReviewed'), color: 'gray' };
+  return { text: t('qa.review.status.reviewing'), color: 'gold' };
 };
 
 const reviewerProgress = computed(() => {
@@ -516,14 +518,14 @@ const reloadReviewHistory = async () => {
 const handleSubmit = async (next: boolean) => {
   if (!currentCase.value) return;
   if (!myForm.value.conclusion) {
-    Message.warning('请选择评审结论');
+    Message.warning(t('qa.review.conclusionRequired'));
     return;
   }
   const submitComment = myForm.value.conclusion === 'REJECT'
     ? myForm.value.rejectComment
     : myForm.value.passComment;
   if (myForm.value.conclusion === 'REJECT' && !submitComment?.trim()) {
-    Message.warning('不通过时请填写评审意见');
+    Message.warning(t('qa.review.rejectCommentRequired'));
     return;
   }
   submitting.value = true;
@@ -535,7 +537,7 @@ const handleSubmit = async (next: boolean) => {
       comment: submitComment,
     });
     if (res.code === 200) {
-      Message.success('提交成功');
+      Message.success(t('qa.review.submitSuccess'));
       reviewTodoStore.refresh(true);
       const currentId = currentCase.value.testCaseId;
       await loadDetail(true);
@@ -549,7 +551,7 @@ const handleSubmit = async (next: boolean) => {
         if (target) {
           selectCase(target);
         } else {
-          Message.success('已完成我的全部评审');
+          Message.success(t('qa.review.allDone'));
         }
       }
     }
@@ -565,11 +567,11 @@ const handleBack = () => {
 };
 
 const statusColor = (s: string) => ({ REVIEWING: 'gold', COMPLETED: 'green', CANCELLED: 'gray' } as Record<string, string>)[s] || 'gray';
-const statusText = (s: string) => ({ REVIEWING: '评审中', COMPLETED: '已完成', CANCELLED: '已取消' } as Record<string, string>)[s] || s;
-const caseTypeText = (t: string) => ({ FUNCTIONAL: '功能用例', NON_FUNCTIONAL: '非功能用例', REGRESSION: '回归用例' } as Record<string, string>)[t] || t || '-';
+const statusText = (s: string) => ({ REVIEWING: t('qa.review.status.reviewing'), COMPLETED: t('qa.review.status.completed'), CANCELLED: t('qa.review.status.cancelled') } as Record<string, string>)[s] || s;
+const caseTypeText = (type: string) => ({ FUNCTIONAL: t('qa.review.caseType.functional'), NON_FUNCTIONAL: t('qa.review.caseType.nonFunctional'), REGRESSION: t('qa.review.caseType.regression') } as Record<string, string>)[type] || type || '-';
 const priorityColor = (p: string) => ({ P0: 'red', P1: 'orange', P2: 'blue' } as Record<string, string>)[p] || 'gray';
 const conclusionColor = (c: string) => (c === 'PASS' ? 'green' : c === 'REJECT' ? 'red' : 'gray');
-const conclusionText = (c: string) => (c === 'PASS' ? '通过' : c === 'REJECT' ? '不通过' : '待评审');
+const conclusionText = (c: string) => (c === 'PASS' ? t('qa.review.resultPass') : c === 'REJECT' ? t('qa.review.resultReject') : t('qa.review.resultPending'));
 
 onMounted(() => {
   loadDetail();

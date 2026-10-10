@@ -37,7 +37,7 @@
             </li>-->
 
       <li v-if="hasEnvEntryPermission">
-        <a-tooltip content="环境管理">
+        <a-tooltip :content="$t('components.navbar.envManagement')">
           <a-button
               class="nav-btn"
               type="outline"
@@ -166,7 +166,7 @@
               </a-tooltip>
             </li>-->
       <li>
-        <a-tooltip content="录制插件">
+        <a-tooltip :content="$t('components.navbar.recorderPlugin')">
           <a-button
               class="nav-btn"
               type="outline"
@@ -259,7 +259,7 @@ const avatar = computed(() => {
   return userStore.avatar;
 });
 const displayName = computed(() => {
-  return userStore.nickname || userStore.username || '未知用户';
+  return userStore.nickname || userStore.username || t('components.navbar.unknownUser');
 });
 const theme = computed(() => {
   return appStore.theme;
@@ -334,7 +334,7 @@ onMounted(async () => {
   // 有项目但未选择时才提示
   if (hasProjects.value && !projectStore.projectId) {
     Message.warning({
-      content: '请选择项目',
+      content: t('components.navbar.selectProject'),
       duration: 1000,
     });
     router.push({
@@ -394,7 +394,7 @@ watch(
         // 有项目但未选择时才提示
         if (hasProjects.value && !projectStore.projectId) {
           Message.warning({
-            content: '请选择项目',
+            content: t('components.navbar.selectProject'),
             duration: 1000,
           });
           router.push({

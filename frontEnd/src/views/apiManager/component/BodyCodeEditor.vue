@@ -6,13 +6,13 @@
           <template #icon>
             <icon-plus />
           </template>
-          插入 Mock 数据
+          {{ $t('api.mock.insertTitle') }}
         </a-button>
         <a-button type="text" size="mini" @click="openTemplateSelector">
           <template #icon>
             <icon-plus />
           </template>
-          插入模板数据
+          {{ $t('api.template.insertTitle') }}
         </a-button>
       </a-space>
       <a-space v-if="canFormat">
@@ -20,20 +20,20 @@
           <template #icon>
             <icon-brush />
           </template>
-          美化
+          {{ $t('api.editor.beautify') }}
         </a-button>
         <a-button v-if="props.lang === 'json'" type="text" size="mini" @click="compactJson">
           <template #icon>
             <icon-shrink />
           </template>
-          简化
+          {{ $t('api.editor.compact') }}
         </a-button>
       </a-space>
     </div>
     <div ref="editorContainerRef" class="editor-container">
       <div v-if="loading" class="editor-loading">
         <a-spin />
-        <span class="editor-loading-text">编辑器加载中…</span>
+        <span class="editor-loading-text">{{ $t('api.editor.loading') }}</span>
       </div>
     </div>
     <MockDataSelector v-model:visible="mockSelectorVisible" @select="onMockDataSelect" />
@@ -49,7 +49,8 @@ import beautify from 'js-beautify'
 import MockDataSelector from './MockDataSelector.vue'
 import TemplateDataSelector from './TemplateDataSelector.vue'
 import {loadMonaco} from '@/utils/monacoLoader'
-import {jsApiCompletions, JsCompletionItem} from './jsApiCompletions'
+import {getJsApiCompletions, JsCompletionItem} from './jsApiCompletions'
+import {useI18n} from 'vue-i18n'
 
 interface Props {
   modelValue?: string
@@ -57,6 +58,8 @@ interface Props {
   disabled?: boolean
   showMockActions?: boolean
 }
+
+const {t} = useI18n()
 
 const props = defineProps<Props>()
 const showMockActions = computed(() => props.showMockActions !== false)
@@ -124,7 +127,7 @@ const registerJsCompletions = (m: any) => {
 
       const lower = prefix.toLowerCase()
       const lastLower = lastSeg.toLowerCase()
-      const suggestions = jsApiCompletions
+      const suggestions = getJsApiCompletions()
         .filter(item => {
           const label = item.label.toLowerCase()
           // 完整点路径前缀匹配：context.u → context.utils / context.utils.md5
@@ -238,9 +241,9 @@ const beautifyCode = () => {
       })
     }
     setEditorValue(formatted)
-    Message.success({ content: '美化成功', duration: 1500 })
+    Message.success({ content: t('api.editor.beautifySuccess'), duration: 1500 })
   } catch (e) {
-    Message.error({ content: '格式错误，无法美化', duration: 2000 })
+    Message.error({ content: t('api.editor.beautifyFailed'), duration: 2000 })
   }
 }
 
@@ -253,9 +256,9 @@ const compactJson = () => {
   try {
     const parsed = JSON.parse(raw)
     setEditorValue(JSON.stringify(parsed))
-    Message.success({ content: 'JSON 简化成功', duration: 1500 })
+    Message.success({ content: t('api.editor.compactSuccess'), duration: 1500 })
   } catch (e) {
-    Message.error({ content: 'JSON 格式错误，无法简化', duration: 2000 })
+    Message.error({ content: t('api.editor.compactFailed'), duration: 2000 })
   }
 }
 
@@ -264,7 +267,7 @@ const initEditor = async (): Promise<void> => {
     monaco = await loadMonaco()
   } catch (e: any) {
     loading.value = false
-    Message.error({ content: e?.message || '编辑器加载失败', duration: 3000 })
+    Message.error({ content: e?.message || t('api.editor.loadFailed'), duration: 3000 })
     return
   }
   // 组件可能在异步加载期间被卸载

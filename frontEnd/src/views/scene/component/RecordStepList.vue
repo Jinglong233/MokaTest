@@ -1,11 +1,11 @@
 <template>
   <a-card size="small" class="record-step-list-card">
     <template #title>
-      <span>步骤列表（{{ innerSteps.length }}）</span>
+      <span>{{ $t('scene.record.stepListTitle', { count: innerSteps.length }) }}</span>
     </template>
     <template #extra>
       <a-button type="text" size="mini" @click="toggleLastFive">
-        {{ isLastFiveAllExpanded ? '折叠' : '展开' }}后5个
+        {{ isLastFiveAllExpanded ? $t('scene.record.collapseLast5') : $t('scene.record.expandLast5') }}
       </a-button>
     </template>
 
@@ -72,7 +72,7 @@
           <div class="record-step-detail">
             <div v-if="item.meta" class="record-step-detail-item"
             >
-              <span class="record-step-detail-label">摘要：</span>
+              <span class="record-step-detail-label">{{ $t('scene.record.summaryLabel') }}</span>
               <span class="record-step-detail-value">{{ item.meta }}</span>
             </div>
             <div
@@ -87,13 +87,14 @@
         </a-collapse-item>
       </a-collapse>
 
-      <a-empty v-else description="暂无步骤" />
+      <a-empty v-else :description="$t('scene.step.empty')" />
     </a-scrollbar>
   </a-card>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   IconUp,
   IconDown,
@@ -115,6 +116,7 @@ const emit = defineEmits<{
 }>();
 
 const expandedKeys = ref<(number | string)[]>([]);
+const { t } = useI18n();
 const warningList = computed(() => props.warnings || []);
 
 const innerSteps = computed({
@@ -143,10 +145,10 @@ const displayedSteps = computed<DisplayStep[]>(() => {
     }
 
     if (detail.inputValue != null) {
-      metaParts.push(`值：${item.isPassword ? '******' : detail.inputValue}`);
+      metaParts.push(t('scene.record.metaValue', { value: item.isPassword ? '******' : detail.inputValue }));
     }
     if (detail.optionValue != null) {
-      metaParts.push(`选项：${detail.optionValue}`);
+      metaParts.push(t('scene.record.metaOption', { value: detail.optionValue }));
     }
 
     if (detail.url && detail.stepType === 'OPEN_PAGE') {
@@ -234,25 +236,25 @@ function detailEntries(item: RecordStepDraft): Record<string, string> {
   if (element) {
     const target = element.customLocator || element.locator;
     if (target?.locatorType && target?.locatorValue) {
-      entries['定位方式'] = target.locatorType;
-      entries['定位值'] = target.locatorValue;
+      entries[t('scene.record.field.locatorType')] = target.locatorType;
+      entries[t('scene.record.field.locatorValue')] = target.locatorValue;
     }
   }
 
   // iframe
   if (detail.switchIframeType) {
-    entries['iframe 类型'] = detail.switchIframeType;
-    if (detail.iframeName) entries['iframe 名称'] = detail.iframeName;
+    entries[t('scene.record.field.iframeType')] = detail.switchIframeType;
+    if (detail.iframeName) entries[t('scene.record.field.iframeName')] = detail.iframeName;
     if (detail.iframeId) entries['iframe ID'] = detail.iframeId;
-    if (detail.iframeIndex != null) entries['iframe 索引'] = String(detail.iframeIndex);
+    if (detail.iframeIndex != null) entries[t('scene.record.field.iframeIndex')] = String(detail.iframeIndex);
   }
 
   // 输入/选择值
   if (detail.inputValue != null) {
-    entries['输入值'] = item.isPassword ? '******' : String(detail.inputValue);
+    entries[t('scene.record.field.inputValue')] = item.isPassword ? '******' : String(detail.inputValue);
   }
   if (detail.optionValue != null) {
-    entries['选项值'] = String(detail.optionValue);
+    entries[t('scene.record.field.optionValue')] = String(detail.optionValue);
   }
 
   // URL
@@ -261,10 +263,10 @@ function detailEntries(item: RecordStepDraft): Record<string, string> {
   }
 
   // 等待/断言等通用字段
-  if (detail.timeout != null) entries['超时时间'] = `${detail.timeout}ms`;
-  if (detail.expectValue != null) entries['期望值'] = String(detail.expectValue);
-  if (detail.variableName) entries['变量名'] = detail.variableName;
-  if (detail.attributeName) entries['属性名'] = detail.attributeName;
+  if (detail.timeout != null) entries[t('scene.record.field.timeout')] = `${detail.timeout}ms`;
+  if (detail.expectValue != null) entries[t('scene.record.field.expectValue')] = String(detail.expectValue);
+  if (detail.variableName) entries[t('scene.record.field.variableName')] = detail.variableName;
+  if (detail.attributeName) entries[t('scene.record.field.attributeName')] = detail.attributeName;
 
   return entries;
 }

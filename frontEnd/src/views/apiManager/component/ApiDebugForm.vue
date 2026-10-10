@@ -8,7 +8,7 @@
             v-if="nameEditing"
             ref="nameInputRef"
             v-model="localFormData.apiName"
-            placeholder="接口名称"
+            :placeholder="$t('api.form.namePlaceholder')"
             :max-length="50"
             show-word-limit
             :disabled="disabled"
@@ -22,20 +22,20 @@
             v-else
             class="api-name-display"
             :class="{ 'is-disabled': disabled }"
-            :title="disabled ? localFormData.apiName : '双击编辑名称'"
+            :title="disabled ? localFormData.apiName : $t('api.form.dblClickEdit')"
             @dblclick="enterNameEdit"
         >
-          {{ localFormData.apiName || '未命名接口' }}
+          {{ localFormData.apiName || $t('api.tabs.unnamed') }}
         </div>
       </div>
       <div class="toolbar-actions" v-if="mode !== 'scene'">
-        <a-button v-permission="'auto:api:update'" type="primary" size="small" @click="saveData">保存</a-button>
+        <a-button v-permission="'auto:api:update'" type="primary" size="small" @click="saveData">{{ $t('qa.common.save') }}</a-button>
         <template v-if="mode === 'case'">
-          <a-button v-permission="'auto:api:execute'" type="primary" :status="isDdlStatement ? 'danger' : 'success'" size="small" @click="sendData">发送{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
+          <a-button v-permission="'auto:api:execute'" type="primary" :status="isDdlStatement ? 'danger' : 'success'" size="small" @click="sendData">{{ $t('api.form.send') }}{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
         </template>
         <template v-else-if="mode !== 'scene'">
-          <a-button v-if="hasApiUpdatePermission && hasApiExecutePermission" type="primary" :status="isDdlStatement ? 'danger' : 'normal'" size="small" @click="saveAndDebugApi">{{ isSqlMode ? '保存并执行' : '保存并调试' }}{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
-          <a-button v-if="!isSqlMode" v-permission="'auto:api:create'" type="outline" size="small" @click="saveAsCase">保存为用例</a-button>
+          <a-button v-if="hasApiUpdatePermission && hasApiExecutePermission" type="primary" :status="isDdlStatement ? 'danger' : 'normal'" size="small" @click="saveAndDebugApi">{{ isSqlMode ? $t('api.form.saveAndExecute') : $t('api.form.saveAndDebug') }}{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
+          <a-button v-if="!isSqlMode" v-permission="'auto:api:create'" type="outline" size="small" @click="saveAsCase">{{ $t('api.form.saveAsCase') }}</a-button>
         </template>
       </div>
       <!-- 场景模式：服务地址下拉 + 单步调试入口合并为一行（紧凑布局，不保存，直接按当前表单配置发送） -->
@@ -46,7 +46,7 @@
               v-model="localFormData.envInfo.serve.id"
               @change="onServeChange"
               allow-clear
-              placeholder="选择服务地址"
+              :placeholder="$t('api.form.selectServe')"
               :disabled="disabled"
               class="serve-select"
           >
@@ -54,7 +54,7 @@
                 v-for="serve in currentEnv.serve"
                 :key="serve.id"
                 :value="serve.id"
-                :label="serve.address ? serve.name + '（' + serve.address + '）' : serve.name"
+                :label="serve.address ? $t('api.form.serveOption', {name: serve.name, address: serve.address}) : serve.name"
             >
               <div class="serve-option">
                 <span class="serve-option-name">{{ serve.name }}</span>
@@ -65,11 +65,11 @@
           <a-select
               v-else-if="currentEnv.id"
               disabled
-              placeholder="该环境未配置服务地址"
+              :placeholder="$t('api.form.noServeInEnv')"
               class="serve-select"
           />
         </template>
-        <a-button v-permission="'auto:api:execute'" type="primary" :status="isDdlStatement ? 'danger' : 'success'" size="small" @click="sendData">发送{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
+        <a-button v-permission="'auto:api:execute'" type="primary" :status="isDdlStatement ? 'danger' : 'success'" size="small" @click="sendData">{{ $t('api.form.send') }}{{ isDdlStatement ? ' (DDL)' : '' }}</a-button>
       </div>
     </div>
 
@@ -84,7 +84,7 @@
             @clear="clearCurrentEnv"
             allow-clear
             :disabled="disabled"
-            placeholder="选择环境"
+            :placeholder="$t('api.form.selectEnv')"
             style="width: 200px; flex-shrink: 0;"
         >
           <a-option v-for="env in envList" :value="env.id" :key="env.id">{{
@@ -92,7 +92,7 @@
             }}
           </a-option>
         </a-select>
-        <a-tooltip content="环境配置">
+        <a-tooltip :content="$t('api.form.envConfig')">
           <a-button v-if="mode !== 'case' && hasEnvConfigPermission" type="text" shape="circle" size="small" @click="openEnvConfig">
             <icon-settings/>
           </a-button>
@@ -105,7 +105,7 @@
           v-model="localFormData.envInfo.serve.id"
           @change="onServeChange"
           allow-clear
-          :placeholder="mode === 'scene' ? '选择服务地址' : '选择服务'"
+          :placeholder="mode === 'scene' ? $t('api.form.selectServe') : $t('api.form.selectServeShort')"
           :disabled="disabled"
           class="serve-select"
       >
@@ -113,7 +113,7 @@
             v-for="serve in currentEnv.serve"
             :key="serve.id"
             :value="serve.id"
-            :label="serve.address ? serve.name + '（' + serve.address + '）' : serve.name"
+            :label="serve.address ? $t('api.form.serveOption', {name: serve.name, address: serve.address}) : serve.name"
         >
           <div class="serve-option">
             <span class="serve-option-name">{{ serve.name }}</span>
@@ -126,7 +126,7 @@
       <a-select
           v-else-if="currentEnv.id"
           disabled
-          placeholder="该环境未配置服务地址"
+          :placeholder="$t('api.form.noServeInEnv')"
           class="serve-select"
       />
       </template>
@@ -137,7 +137,7 @@
             v-model="sqlConfig.dbConnectionName"
             @change="onSqlConfigChange"
             allow-clear
-            placeholder="选择数据库连接"
+            :placeholder="$t('api.form.selectDb')"
             :disabled="disabled"
             class="serve-select"
         >
@@ -158,7 +158,7 @@
         <a-select
             v-else-if="currentEnv.id"
             disabled
-            placeholder="该环境未配置数据库连接"
+            :placeholder="$t('api.form.noDbInEnv')"
             class="serve-select"
         />
         <!-- 选中连接后显示实际连接信息（只读反馈，同 base-url-chip） -->
@@ -207,7 +207,7 @@
             @click="openCurlModal"
             class="curl-import-btn"
         >
-          导入 cURL
+          {{ $t('api.form.importCurl') }}
         </a-button>
       </div>
     </div>
@@ -228,16 +228,16 @@
       </a-tab-pane>
       <!-- 鉴权配置 -->
       <a-tab-pane key="auth" v-if="!isSqlMode">
-        <template #title>鉴权</template>
+        <template #title>{{ $t('api.form.tabAuth') }}</template>
         <div class="auth-panel">
           <a-form layout="horizontal" auto-label-width>
-            <a-form-item label="鉴权类型">
+            <a-form-item :label="$t('api.form.authType')">
               <a-radio-group
                   v-model="localFormData.authConfig.authType"
                   :disabled="disabled"
                   @change="onDataChange"
               >
-                <a-radio :value="AuthType.NONE">无鉴权</a-radio>
+                <a-radio :value="AuthType.NONE">{{ $t('api.form.authNone') }}</a-radio>
                 <a-radio :value="AuthType.BEARER">Bearer Token</a-radio>
                 <a-radio :value="AuthType.BASIC">Basic Auth</a-radio>
                 <a-radio :value="AuthType.API_KEY">API Key</a-radio>
@@ -247,55 +247,55 @@
               <a-form-item label="Token">
                 <a-input
                     v-model="localFormData.authConfig.token"
-                    placeholder="支持 ${var} 变量引用"
+                    :placeholder="$t('api.form.varPlaceholder')"
                     :disabled="disabled"
                     @input="onDataChange"
                     allow-clear
                 />
               </a-form-item>
-              <div class="auth-preview">请求头：Authorization: Bearer &lt;token&gt;</div>
+              <div class="auth-preview">{{ $t('api.form.authPreviewBearer') }}</div>
             </template>
             <template v-else-if="localFormData.authConfig.authType === AuthType.BASIC">
-              <a-form-item label="用户名">
+              <a-form-item :label="$t('api.form.username')">
                 <a-input
                     v-model="localFormData.authConfig.username"
-                    placeholder="支持 ${var} 变量引用"
+                    :placeholder="$t('api.form.varPlaceholder')"
                     :disabled="disabled"
                     @input="onDataChange"
                     allow-clear
                 />
               </a-form-item>
-              <a-form-item label="密码">
+              <a-form-item :label="$t('api.form.password')">
                 <a-input-password
                     v-model="localFormData.authConfig.password"
-                    placeholder="支持 ${var} 变量引用"
+                    :placeholder="$t('api.form.varPlaceholder')"
                     :disabled="disabled"
                     @input="onDataChange"
                     allow-clear
                 />
               </a-form-item>
-              <div class="auth-preview">请求头：Authorization: Basic base64(username:password)</div>
+              <div class="auth-preview">{{ $t('api.form.authPreviewBasic') }}</div>
             </template>
             <template v-else-if="localFormData.authConfig.authType === AuthType.API_KEY">
-              <a-form-item label="参数名">
+              <a-form-item :label="$t('api.param.colName')">
                 <a-input
                     v-model="localFormData.authConfig.keyName"
-                    placeholder="如 X-Api-Key / api_key"
+                    :placeholder="$t('api.form.apiKeyPlaceholder')"
                     :disabled="disabled"
                     @input="onDataChange"
                     allow-clear
                 />
               </a-form-item>
-              <a-form-item label="参数值">
+              <a-form-item :label="$t('api.param.colValue')">
                 <a-input
                     v-model="localFormData.authConfig.keyValue"
-                    placeholder="支持 ${var} 变量引用"
+                    :placeholder="$t('api.form.varPlaceholder')"
                     :disabled="disabled"
                     @input="onDataChange"
                     allow-clear
                 />
               </a-form-item>
-              <a-form-item label="附加位置">
+              <a-form-item :label="$t('api.form.keyIn')">
                 <a-radio-group
                     v-model="localFormData.authConfig.keyIn"
                     :disabled="disabled"
@@ -307,7 +307,7 @@
               </a-form-item>
             </template>
           </a-form>
-          <div class="auth-tip">优先级说明：若 Header / Query 表中已手动配置同名参数，以手动配置为准；鉴权值支持 ${var} 变量，可配合前置脚本或提取规则动态刷新 token</div>
+          <div class="auth-tip">{{ $t('api.form.authTip') }}</div>
         </div>
       </a-tab-pane>
       <!-- HTTP Body 模式 -->
@@ -329,7 +329,7 @@
             </a-radio>
           </a-radio-group>
           <template v-if="localFormData.body?.mode === BodyMode.NONE">
-            <a-empty class="body-empty" description="无请求体"/>
+            <a-empty class="body-empty" :description="$t('api.form.noBody')"/>
           </template>
           <template v-if="localFormData.body?.mode === BodyMode.FORM_DATA">
             <ParameterTable ref="formDataRef" context="formData" :disabled="disabled" :allow-file-type="true" @change="onDataChange" @count="(n: number) => (formDataCount = n)"/>
@@ -347,8 +347,8 @@
                 style="margin-bottom: 12px"
                 :disabled="disabled"
             >
-              <a-radio value="RAW">手写 JSON</a-radio>
-              <a-radio value="SCHEMA">绑定结构定义</a-radio>
+              <a-radio value="RAW">{{ $t('api.form.rawJson') }}</a-radio>
+              <a-radio value="SCHEMA">{{ $t('api.form.bindSchema') }}</a-radio>
             </a-radio-group>
             <ResponseSchemaPanel
                 v-if="bodyJsonSource === 'SCHEMA'"
@@ -384,9 +384,9 @@
             size="small"
             show-icon
             style="margin-bottom: 8px;"
-            title="多语句不可执行"
+            :title="$t('api.form.multiStmtTitle')"
         >
-          检测到 {{ multiStatementInfo }} 条 SQL 语句，SQL 接口一次只能执行一条，请拆分后逐个调试
+          {{ $t('api.form.multiStmtContent', {count: multiStatementInfo}) }}
         </a-alert>
         <a-alert
             v-else-if="isDdlStatement"
@@ -394,9 +394,9 @@
             size="small"
             show-icon
             style="margin-bottom: 8px;"
-            title="DDL 警告"
+            :title="$t('api.form.ddlTitle')"
         >
-          此操作将直接修改数据库结构（建表/改表/删表/清空），请确认 SQL 无误后再执行
+          {{ $t('api.form.ddlContent') }}
         </a-alert>
         <BodyCodeEditor
             v-model="sqlConfig.sql"
@@ -407,74 +407,74 @@
       </a-tab-pane>
       <!-- SQL 数据库连接配置 -->
       <a-tab-pane key="database" v-if="isSqlMode">
-        <template #title>数据库</template>
+        <template #title>{{ $t('api.result.database') }}</template>
         <div class="sql-db-panel">
           <!-- 当前生效连接：步骤级覆盖优先，其次环境连接（连接选择已上移至环境同行） -->
           <div class="sql-db-effective">
-            <span class="sql-db-effective-label">当前生效：</span>
+            <span class="sql-db-effective-label">{{ $t('api.form.currentEffective') }}</span>
             <template v-if="dbOverrideActive">
-              <a-tag color="orange" size="small">步骤级覆盖</a-tag>
+              <a-tag color="orange" size="small">{{ $t('api.form.stepOverride') }}</a-tag>
               <span>{{ sqlConfig.dbConfig.dataBaseType || 'MYSQL' }} {{ sqlConfig.dbConfig.ip }}:{{ sqlConfig.dbConfig.port }}/{{ sqlConfig.dbConfig.dbName || '-' }}</span>
             </template>
             <template v-else-if="selectedDbInfo">
-              <a-tag color="blue" size="small">环境连接</a-tag>
-              <span>{{ selectedDbInfo.name }}（{{ selectedDbInfo.ip }}:{{ selectedDbInfo.port }}/{{ selectedDbInfo.dbName }}）</span>
+              <a-tag color="blue" size="small">{{ $t('api.form.envConnection') }}</a-tag>
+              <span>{{ $t('api.form.dbInfo', {name: selectedDbInfo.name, info: selectedDbInfo.ip + ':' + selectedDbInfo.port + '/' + selectedDbInfo.dbName}) }}</span>
             </template>
-            <span v-else class="sql-db-effective-empty">未配置数据库连接，请在上方选择环境和连接</span>
+            <span v-else class="sql-db-effective-empty">{{ $t('api.form.noDbConfigured') }}</span>
           </div>
           <!-- 连接名不在当前环境的连接列表中（含未选环境）：执行时会报「未找到数据库连接配置」，黄色警告引导重选 -->
           <div v-if="dbConnectionNotInEnv" class="sql-db-warning">
             <icon-exclamation-circle-fill/>
-            <span>连接「{{ sqlConfig.dbConnectionName }}」不属于当前环境，执行时将报「未找到数据库连接配置」，请重新选择或改用下方步骤级覆盖</span>
+            <span>{{ $t('api.form.dbNotInEnv', {name: sqlConfig.dbConnectionName}) }}</span>
           </div>
           <div class="sql-db-divider">
-            <span>步骤级覆盖（选填，优先级高于环境配置）</span>
+            <span>{{ $t('api.form.stepOverrideTip') }}</span>
           </div>
           <a-form layout="horizontal" :model="sqlConfig.dbConfig" class="sql-db-form">
-            <a-form-item label="数据库类型">
-              <a-select v-model="sqlConfig.dbConfig.dataBaseType" placeholder="数据库类型" :disabled="disabled" @change="onSqlConfigChange" allow-clear>
+            <a-form-item :label="$t('api.form.dbType')">
+              <a-select v-model="sqlConfig.dbConfig.dataBaseType" :placeholder="$t('api.form.dbType')" :disabled="disabled" @change="onSqlConfigChange" allow-clear>
                 <a-option v-for="t in SUPPORTED_DATA_BASE_TYPES" :key="t" :value="t">{{ t }}</a-option>
               </a-select>
             </a-form-item>
-            <a-form-item label="IP 地址">
+            <a-form-item :label="$t('api.form.ipAddress')">
               <a-input v-model="sqlConfig.dbConfig.ip" placeholder="127.0.0.1" :disabled="disabled" @input="onSqlConfigChange" />
             </a-form-item>
-            <a-form-item label="端口">
+            <a-form-item :label="$t('api.form.port')">
               <a-input v-model="sqlConfig.dbConfig.port" placeholder="3306" :disabled="disabled" @input="onSqlConfigChange" />
             </a-form-item>
-            <a-form-item label="数据库名">
-              <a-input v-model="sqlConfig.dbConfig.dbName" placeholder="库名" :disabled="disabled" @input="onSqlConfigChange" />
+            <a-form-item :label="$t('api.form.dbName')">
+              <a-input v-model="sqlConfig.dbConfig.dbName" :placeholder="$t('api.form.dbNamePlaceholder')" :disabled="disabled" @input="onSqlConfigChange" />
             </a-form-item>
-            <a-form-item label="用户名">
+            <a-form-item :label="$t('api.form.username')">
               <a-input v-model="sqlConfig.dbConfig.userName" placeholder="root" :disabled="disabled" @input="onSqlConfigChange" />
             </a-form-item>
-            <a-form-item label="密码">
-              <a-input-password v-model="sqlConfig.dbConfig.password" placeholder="密码" :disabled="disabled" @input="onSqlConfigChange" />
+            <a-form-item :label="$t('api.form.password')">
+              <a-input-password v-model="sqlConfig.dbConfig.password" :placeholder="$t('api.form.passwordPlaceholder')" :disabled="disabled" @input="onSqlConfigChange" />
             </a-form-item>
             <a-form-item>
-              <a-button type="outline" size="small" :loading="testDbLoading" :disabled="disabled || !canTestConnection" @click="testDbConnection">测试连接</a-button>
+              <a-button type="outline" size="small" :loading="testDbLoading" :disabled="disabled || !canTestConnection" @click="testDbConnection">{{ $t('api.form.testConnection') }}</a-button>
             </a-form-item>
           </a-form>
         </div>
       </a-tab-pane>
       <a-tab-pane v-if="!isSqlMode" key="extraction">
-        <template #title>提取规则<span v-if="extractionCount > 0" class="tab-count">{{ extractionCount }}</span></template>
+        <template #title>{{ $t('api.form.tabExtraction') }}<span v-if="extractionCount > 0" class="tab-count">{{ extractionCount }}</span></template>
         <ExtractionTable ref="extractionTableRef" :disabled="disabled" @change="onDataChange" @count="(n: number) => (extractionCount = n)"/>
       </a-tab-pane>
       <a-tab-pane v-if="isSqlMode" key="extraction">
-        <template #title>提取规则<span v-if="sqlExtractionCount > 0" class="tab-count">{{ sqlExtractionCount }}</span></template>
+        <template #title>{{ $t('api.form.tabExtraction') }}<span v-if="sqlExtractionCount > 0" class="tab-count">{{ sqlExtractionCount }}</span></template>
         <SqlExtractionTable ref="sqlExtractionTableRef" :disabled="disabled" @change="onSqlExtractionChange" @count="(n: number) => (sqlExtractionCount = n)"/>
       </a-tab-pane>
       <a-tab-pane v-if="!isSqlMode" key="assert">
-        <template #title>断言<span v-if="assertionCount > 0" class="tab-count">{{ assertionCount }}</span></template>
+        <template #title>{{ $t('api.form.tabAssert') }}<span v-if="assertionCount > 0" class="tab-count">{{ assertionCount }}</span></template>
         <AssertionTable ref="assertionTableRef" :disabled="disabled" @change="onDataChange" @count="(n: number) => (assertionCount = n)"/>
       </a-tab-pane>
       <a-tab-pane v-if="isSqlMode" key="assert">
-        <template #title>断言<span v-if="sqlAssertionCount > 0" class="tab-count">{{ sqlAssertionCount }}</span></template>
+        <template #title>{{ $t('api.form.tabAssert') }}<span v-if="sqlAssertionCount > 0" class="tab-count">{{ sqlAssertionCount }}</span></template>
         <SqlAssertionTable ref="sqlAssertionTableRef" :disabled="disabled" @change="onSqlAssertionChange" @count="(n: number) => (sqlAssertionCount = n)"/>
       </a-tab-pane>
       <a-tab-pane key="preScript" v-if="!isSqlMode">
-        <template #title>前置脚本<span v-if="preScriptCount > 0" class="tab-count">{{ preScriptCount }}</span></template>
+        <template #title>{{ $t('api.form.tabPreScript') }}<span v-if="preScriptCount > 0" class="tab-count">{{ preScriptCount }}</span></template>
         <ScriptListPanel
             v-model="localFormData.preScript"
             script-type="pre"
@@ -483,7 +483,7 @@
         />
       </a-tab-pane>
       <a-tab-pane key="postScript" v-if="!isSqlMode">
-        <template #title>后置脚本<span v-if="postScriptCount > 0" class="tab-count">{{ postScriptCount }}</span></template>
+        <template #title>{{ $t('api.form.tabPostScript') }}<span v-if="postScriptCount > 0" class="tab-count">{{ postScriptCount }}</span></template>
         <ScriptListPanel
             v-model="localFormData.postScript"
             script-type="post"
@@ -499,7 +499,7 @@
             @change="onDataChange"
         />
       </a-tab-pane>
-      <a-tab-pane key="responseSchema" v-if="!isSqlMode" title="响应定义">
+      <a-tab-pane key="responseSchema" v-if="!isSqlMode" :title="$t('api.form.tabResponseSchema')">
         <ResponseSchemaPanel
             v-model="localFormData.responseSchema"
             :disabled="disabled"
@@ -507,7 +507,7 @@
         />
       </a-tab-pane>
       <a-tab-pane key="responseExamples" v-if="!isSqlMode">
-        <template #title>响应示例<span v-if="responseExampleCount > 0" class="tab-count">{{ responseExampleCount }}</span></template>
+        <template #title>{{ $t('api.form.tabResponseExamples') }}<span v-if="responseExampleCount > 0" class="tab-count">{{ responseExampleCount }}</span></template>
         <ApiResponseExamplesPanel
           :examples="localFormData.responseExamples"
           :disabled="disabled"
@@ -521,7 +521,7 @@
     <!-- 保存为用例弹窗 -->
     <a-modal
         v-model:visible="caseNameModalVisible"
-        title="保存为用例"
+        :title="$t('api.form.saveAsCase')"
         @ok="handleConfirmSaveAsCase"
         @cancel="caseNameModalVisible = false"
         :ok-button-props="{ disabled: !caseNameValid }"
@@ -529,17 +529,17 @@
       <a-form :model="caseNameForm" layout="vertical">
         <a-form-item
             field="caseName"
-            label="用例名称"
+            :label="$t('api.case.colName')"
             :rules="[
-              { required: true, message: '用例名称不能为空' },
-              { maxLength: 50, message: '用例名称长度不能超过50个字符' },
-              { match: /^[\u4e00-\u9fa5a-zA-Z0-9_\-.\s()\uff08\uff09]+$/, message: '用例名称只能包含中文、英文、数字、下划线、空格及 - . ( )' }
+              { required: true, message: t('api.form.caseNameRequired') },
+              { maxLength: 50, message: t('api.form.caseNameTooLong') },
+              { match: /^[\u4e00-\u9fa5a-zA-Z0-9_\-.\s()\uff08\uff09]+$/, message: t('api.form.caseNameInvalid') }
             ]"
             :validate-trigger="['change', 'input']"
         >
           <a-input
               v-model="caseNameForm.caseName"
-              placeholder="请输入用例名称"
+              :placeholder="$t('api.form.caseNamePlaceholder')"
               :max-length="50"
               show-word-limit
               allow-clear
@@ -552,7 +552,7 @@
     <!-- cURL 导入弹窗 -->
     <a-modal
         v-model:visible="curlModalVisible"
-        title="导入 cURL"
+        :title="$t('api.form.importCurl')"
         @before-ok="handleCurlImport"
         @cancel="curlModalVisible = false"
         :ok-button-props="{ disabled: !curlText.trim() }"
@@ -560,12 +560,12 @@
     >
       <a-textarea
           v-model="curlText"
-          placeholder='请粘贴 cURL 命令，例如：&#10;curl -X GET "https://httpbin.org/get?name=John&age=30" -H "Authorization: Bearer xxx"'
+          :placeholder="$t('api.form.curlPlaceholder')"
           :auto-size="{ minRows: 8, maxRows: 16 }"
           allow-clear
       />
       <a-alert type="info" style="margin-top: 12px;" :show-icon="false">
-        支持 bash / Windows cmd 两种格式：请求方法、URL、Headers、Cookies、Body（JSON / x-www-form-urlencoded）。URL 中的 Query 参数会自动提取到下方 Query 标签页。
+        {{ $t('api.form.curlTip') }}
       </a-alert>
     </a-modal>
   </div>
@@ -607,6 +607,7 @@ import {RequestExecuteInfo} from '@/types/domain/api/requestModel/RequestExecute
 import {RequestParameter} from '@/types/domain/api/requestModel/RequestParameter';
 import {ResponseSchema} from '@/types/domain/api/requestModel/ResponseSchema';
 import {ParameterType} from '@/types/domain/api/apiEnum/ParameterType';
+import {useI18n} from 'vue-i18n';
 
 const props = defineProps<{
   modelValue?: ApiRequest;
@@ -630,6 +631,8 @@ const emit = defineEmits<{
   (e: 'saveAsCase', value: AddApiInterfaceDTO): void;
   (e: 'send', value: AddApiInterfaceDTO): void;
 }>();
+
+const {t} = useI18n();
 
 const localFormData = ref<AddApiInterfaceDTO>(
     new AddApiInterfaceDTO(ApiNodeType.INTERFACE)
@@ -779,13 +782,13 @@ const validateSqlSingleStatement = (): boolean => {
   if (!isSqlMode.value) return true;
   const sql = (sqlConfig.sql || '').trim();
   if (!sql) {
-    Message.warning({ content: '请输入要执行的 SQL 语句', duration: 3000 });
+    Message.warning({ content: t('api.form.sqlRequired'), duration: 3000 });
     return false;
   }
   const count = multiStatementInfo.value;
   if (count) {
     Message.warning({
-      content: `检测到 ${count} 条 SQL 语句，SQL 接口一次只能执行一条，请拆分后逐个调试`,
+      content: t('api.form.multiStmtContent', {count}),
       duration: 4000,
     });
     return false;
@@ -865,7 +868,7 @@ const canTestConnection = computed(() => {
 const testDbConnection = async () => {
   const db = sqlConfig.dbConfig;
   if (!db.ip || !db.port || !db.userName) {
-    Message.warning('请先填写 IP、端口和用户名');
+    Message.warning(t('api.form.dbFieldsRequired'));
     return;
   }
   testDbLoading.value = true;
@@ -881,12 +884,12 @@ const testDbConnection = async () => {
       charset: db.charset || 'utf8mb4',
     });
     if (data.success) {
-      Message.success(`连接成功 — ${data.dbVersion || ''}，${data.latencyMs}ms`);
+      Message.success(t('api.form.connectSuccess', {version: data.dbVersion || '', latency: data.latencyMs}));
     } else {
-      Message.error(data.message || '连接失败');
+      Message.error(data.message || t('api.form.connectFailed'));
     }
   } catch (e: any) {
-    Message.error(e?.response?.data?.msg || e?.message || '连接失败');
+    Message.error(e?.response?.data?.msg || e?.message || t('api.form.connectFailed'));
   } finally {
     testDbLoading.value = false;
   }
@@ -999,9 +1002,14 @@ const initData = (data: ApiRequest) => {
       }
     }
 
-    // 确保 envInfo 和 serve 不为 undefined，避免 template 中 v-model 访问报错（仅 HTTP 模式）
+    // 确保 envInfo 和 serve 不为 null/undefined，避免 template 中 v-model 访问报错（仅 HTTP 模式）
     if (processedData.apiType !== ApiType.SQL) {
-      if (processedData.envInfo && !processedData.envInfo.serve) {
+      // 确保 envInfo 不为 null：场景模式有环境时，模板 v-model="localFormData.envInfo.serve.id"
+      // 在 envInfo 为 null 时会抛 TypeError，导致整个 ApiDebugForm 渲染崩溃（编辑抽屉空白）
+      if (!processedData.envInfo) {
+        processedData.envInfo = new RequestExecuteInfo();
+      }
+      if (!processedData.envInfo.serve) {
         processedData.envInfo.serve = { id: undefined, name: undefined, address: undefined };
       }
       // 确保 mockResponse 不为 undefined
@@ -1197,7 +1205,7 @@ const handleNameBlur = () => {
   if (!nameEditing.value) return;
   const name = (localFormData.value.apiName || '').trim();
   if (!name) {
-    Message.warning('接口名称不能为空');
+    Message.warning(t('api.form.nameRequired'));
     localFormData.value.apiName = nameBeforeEdit.value;
     nameEditing.value = false;
     return;
@@ -1272,7 +1280,7 @@ const handlePathBlur = () => {
     // \u5207\u6362\u5230 Query \u6807\u7b7e\u9875\uff0c\u8ba9\u7528\u6237\u770b\u5230\u89e3\u6790\u7ed3\u679c
     innerActiveTab.value = 'query';
     Message.info({
-      content: `\u5df2\u81ea\u52a8\u4ece\u8def\u5f84\u4e2d\u63d0\u53d6 ${newParams.length} \u4e2a Query \u53c2\u6570\uff0c\u8bf7\u67e5\u770b\u4e0b\u65b9\u300cQuery\u300d\u6807\u7b7e\u9875`,
+      content: t('api.form.queryExtracted', {count: newParams.length}),
       duration: 2500,
     });
   }
@@ -1283,16 +1291,16 @@ const handlePathBlur = () => {
 const validateApiName = (): boolean => {
   const apiName = localFormData.value.apiName?.trim();
   if (!apiName) {
-    Message.error({ content: '接口名称不能为空', duration: 2000 });
+    Message.error({ content: t('api.form.nameRequired'), duration: 2000 });
     return false;
   }
   if (apiName.length > 50) {
-    Message.error({ content: '接口名称长度不能超过50个字符', duration: 2000 });
+    Message.error({ content: t('api.form.nameTooLong'), duration: 2000 });
     return false;
   }
   const regex = /^[\u4e00-\u9fa5a-zA-Z0-9_\-.\s()\uff08\uff09]+$/;
   if (!regex.test(apiName)) {
-    Message.error({ content: '接口名称只能包含中文、英文、数字、下划线、空格及 - . ( )', duration: 3000 });
+    Message.error({ content: t('api.form.nameInvalid'), duration: 3000 });
     return false;
   }
   return true;
@@ -1301,11 +1309,11 @@ const validateApiName = (): boolean => {
 const validateRequestPath = (): boolean => {
   const requestPath = localFormData.value.requestPath?.trim();
   if (!requestPath) {
-    Message.error({ content: '请求路径不能为空', duration: 2000 });
+    Message.error({ content: t('api.form.pathRequired'), duration: 2000 });
     return false;
   }
   if (requestPath.length > 500) {
-    Message.error({ content: '请求路径长度不能超过500个字符', duration: 2000 });
+    Message.error({ content: t('api.form.pathTooLong'), duration: 2000 });
     return false;
   }
   return true;
@@ -1323,7 +1331,7 @@ const validateParameters = (): boolean => {
     if (item.ref.value?.validateAll) {
       const result = item.ref.value.validateAll();
       if (!result.valid) {
-        Message.error({ content: `${item.label}：${result.message}`, duration: 3000 });
+        Message.error({ content: t('api.form.paramValidateFailed', {label: item.label, msg: result.message}), duration: 3000 });
         return false;
       }
     }
@@ -1503,7 +1511,7 @@ const onEnvChange = (envId: any) => {
 const envConfigVisible = ref(false);
 const openEnvConfig = () => {
   if (!hasEnvConfigPermission.value) {
-    Message.warning('无权访问环境配置');
+    Message.warning(t('api.form.noEnvPermission'));
     return;
   }
   envConfigVisible.value = true;
@@ -1682,7 +1690,7 @@ const parseCurl = (cmd: string) => {
     '--compressed',
   ]);
 
-  const isCurlOption = (t: string) => CURL_OPTIONS.has(t);
+  const isCurlOption = (opt: string) => CURL_OPTIONS.has(opt);
 
   const stripQuotes = (str: string): string => {
     if (
@@ -1801,7 +1809,7 @@ const parseCurl = (cmd: string) => {
 const handleCurlImport = (done: (closed: boolean) => void) => {
   const cmd = curlText.value.trim();
   if (!cmd) {
-    Message.warning({ content: '请输入 cURL 命令', duration: 2000 });
+    Message.warning({ content: t('api.form.curlRequired'), duration: 2000 });
     done(false);
     return;
   }
@@ -1809,7 +1817,7 @@ const handleCurlImport = (done: (closed: boolean) => void) => {
   try {
     const parsed = parseCurl(cmd);
     if (!parsed.url) {
-      Message.error({ content: '无法解析 URL，请检查 cURL 命令', duration: 3000 });
+      Message.error({ content: t('api.form.curlParseFailed'), duration: 3000 });
       done(false);
       return;
     }
@@ -1875,7 +1883,7 @@ const handleCurlImport = (done: (closed: boolean) => void) => {
         body.xWwwFormUrlencoded = formParams;
         nextTick(() => xWwwFormUrlencodedRef.value?.setData(formParams));
       } else if (contentType.includes('multipart/form-data')) {
-        Message.info({ content: 'multipart/form-data 暂不支持自动解析，请手动配置', duration: 3000 });
+        Message.info({ content: t('api.form.curlMultipartTip'), duration: 3000 });
       } else {
         // 未识别 Content-Type 时按 JSON/文本兜底
         body.mode = BodyMode.JSON;
@@ -1886,12 +1894,12 @@ const handleCurlImport = (done: (closed: boolean) => void) => {
     }
 
     curlText.value = '';
-    Message.success({ content: 'cURL 导入成功', duration: 2000 });
+    Message.success({ content: t('api.form.curlSuccess'), duration: 2000 });
     onDataChange();
     done(true);
   } catch (e) {
     console.error(e);
-    Message.error({ content: 'cURL 解析失败，请检查命令格式', duration: 3000 });
+    Message.error({ content: t('api.form.curlFailed'), duration: 3000 });
     done(false);
   }
 };
@@ -1909,7 +1917,7 @@ const onCaseNameInput = (value: string) => {
 
 const saveAsCase = () => {
   if (!localFormData.value.id) {
-    Message.error({ content: '接口未保存，请先保存接口后再保存为用例', duration: 3000 });
+    Message.error({ content: t('api.form.apiNotSaved'), duration: 3000 });
     return;
   }
   if (!validateApiName()) return;
@@ -1923,7 +1931,7 @@ const saveAsCase = () => {
   pendingCaseData = savedData;
 
   // 默认用例名称为接口名 + _用例
-  caseNameForm.caseName = savedData.apiName + '_用例';
+  caseNameForm.caseName = savedData.apiName + t('api.form.caseSuffix');
   onCaseNameInput(caseNameForm.caseName);
   caseNameModalVisible.value = true;
 };
@@ -1931,16 +1939,16 @@ const saveAsCase = () => {
 const handleConfirmSaveAsCase = () => {
   const name = caseNameForm.caseName?.trim();
   if (!name) {
-    Message.error({ content: '用例名称不能为空', duration: 2000 });
+    Message.error({ content: t('api.form.caseNameRequired'), duration: 2000 });
     return;
   }
   if (name.length > 50) {
-    Message.error({ content: '用例名称长度不能超过50个字符', duration: 2000 });
+    Message.error({ content: t('api.form.caseNameTooLong'), duration: 2000 });
     return;
   }
   const regex = /^[\u4e00-\u9fa5a-zA-Z0-9_\-.\s()\uff08\uff09]+$/;
   if (!regex.test(name)) {
-    Message.error({ content: '用例名称只能包含中文、英文、数字、下划线、空格及 - . ( )', duration: 3000 });
+    Message.error({ content: t('api.form.caseNameInvalid'), duration: 3000 });
     return;
   }
 

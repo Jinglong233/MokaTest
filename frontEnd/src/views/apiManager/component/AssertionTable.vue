@@ -46,7 +46,7 @@
       <template #assertType="{ record, rowIndex }">
         <a-select
             v-model="record.apiAssertType"
-            placeholder="选择断言目标"
+            :placeholder="$t('api.assertion.typePlaceholder')"
             size="small"
             style="width: 120px"
             :disabled="disabled"
@@ -77,7 +77,7 @@
       <template #relationship="{ record, rowIndex }">
         <a-select
             v-model="record.assertRelationship"
-            placeholder="选择关系"
+            :placeholder="$t('api.assertion.relationshipPlaceholder')"
             size="small"
             style="width: 120px"
             :disabled="disabled"
@@ -96,7 +96,7 @@
       <template #assertValue="{ record, rowIndex }">
         <ExprSuggestInput
             v-model="record.assertValue"
-            placeholder="预期值（输入 @ 可插入函数）"
+            :placeholder="$t('api.assertion.valuePlaceholder')"
             :disabled="disabled"
             @update:model-value="onDataChange"
             @commit="() => { validateRow(record); onDataChange(); }"
@@ -105,13 +105,13 @@
       <!-- 操作列 -->
       <template #operation="{ rowIndex }">
         <a-button type="text" status="danger" size="small" :disabled="disabled" @click="deleteRow(rowIndex)">
-          删除
+          {{ $t('qa.common.delete') }}
         </a-button>
       </template>
     </a-table>
     </div>
     <a-button type="dashed" long :disabled="disabled" @click="addRow" class="add-btn">
-      + 添加断言规则
+      {{ $t('api.assertion.add') }}
     </a-button>
   </div>
 </template>
@@ -135,19 +135,22 @@ import ExprSuggestInput from './ExprSuggestInput.vue'
 import {AssertParameter} from '@/types/domain/api/requestModel/AssertParameter'
 import {ApiAssertType} from '@/types/domain/api/apiEnum/ApiAssertType'
 import {AssertRelationship} from '@/types/enum/condation/AssertRelationship'
+import {useI18n} from 'vue-i18n'
 
 /**
  * 表格列定义
  * slotName 对应 template 中的具名插槽
  */
-const columns = [
-  {title: '启用', slotName: 'status', width: '8%'},
-  {title: '断言目标', slotName: 'assertType', width: '14%'},
-  {title: '字段', slotName: 'field', width: '22%'},
-  {title: '断言关系', slotName: 'relationship', width: '14%'},
-  {title: '预期值', slotName: 'assertValue', width: '22%'},
-  {title: '操作', slotName: 'operation', width: '10%'}
-]
+const {t} = useI18n()
+
+const columns = computed(() => [
+  {title: t('api.sqlAssertion.colEnabled'), slotName: 'status', width: '8%'},
+  {title: t('api.assertion.colType'), slotName: 'assertType', width: '14%'},
+  {title: t('api.sqlAssertion.colField'), slotName: 'field', width: '22%'},
+  {title: t('api.assertion.colRelationship'), slotName: 'relationship', width: '14%'},
+  {title: t('api.assertion.colValue'), slotName: 'assertValue', width: '22%'},
+  {title: t('qa.common.operation'), slotName: 'operation', width: '10%'}
+])
 
 const props = defineProps<{
   disabled?: boolean;
@@ -174,12 +177,12 @@ watch(meaningfulCount, (n) => emit('count', n), {immediate: true})
  */
 const assertTypeLabel = (type: ApiAssertType): string => {
   const labels: Record<string, string> = {
-    [ApiAssertType.BODY]: '响应体',
-    [ApiAssertType.HEADER]: '响应头',
-    [ApiAssertType.STATUS_CODE]: '状态码',
-    [ApiAssertType.RESPONSE_TIME]: '响应时间',
-    [ApiAssertType.CUSTOM]: '自定义',
-    [ApiAssertType.SCHEMA]: '结构校验'
+    [ApiAssertType.BODY]: t('api.assertion.typeBody'),
+    [ApiAssertType.HEADER]: t('api.assertion.typeHeader'),
+    [ApiAssertType.STATUS_CODE]: t('api.assertion.typeStatusCode'),
+    [ApiAssertType.RESPONSE_TIME]: t('api.assertion.typeResponseTime'),
+    [ApiAssertType.CUSTOM]: t('api.assertion.typeCustom'),
+    [ApiAssertType.SCHEMA]: t('api.assertion.typeSchema')
   }
   return labels[type] || type
 }
@@ -189,15 +192,15 @@ const assertTypeLabel = (type: ApiAssertType): string => {
  */
 const relationshipLabel = (rel: AssertRelationship): string => {
   const labels: Record<string, string> = {
-    [AssertRelationship.EQUALS]: '等于',
-    [AssertRelationship.NOT_EQUALS]: '不等于',
-    [AssertRelationship.CONTAINS]: '包含',
-    [AssertRelationship.NOT_CONTAINS]: '不包含',
-    [AssertRelationship.GT]: '大于',
-    [AssertRelationship.LT]: '小于',
-    [AssertRelationship.GE]: '大于等于',
-    [AssertRelationship.LE]: '小于等于',
-    [AssertRelationship.REGULAR]: '正则匹配'
+    [AssertRelationship.EQUALS]: t('api.condition.equals'),
+    [AssertRelationship.NOT_EQUALS]: t('api.condition.notEquals'),
+    [AssertRelationship.CONTAINS]: t('api.condition.contains'),
+    [AssertRelationship.NOT_CONTAINS]: t('api.condition.notContains'),
+    [AssertRelationship.GT]: t('api.condition.gt'),
+    [AssertRelationship.LT]: t('api.condition.lt'),
+    [AssertRelationship.GE]: t('api.condition.ge'),
+    [AssertRelationship.LE]: t('api.condition.le'),
+    [AssertRelationship.REGULAR]: t('api.condition.regex')
   }
   return labels[rel] || rel
 }
@@ -208,17 +211,17 @@ const relationshipLabel = (rel: AssertRelationship): string => {
 const fieldPlaceholder = (type?: ApiAssertType): string => {
   switch (type) {
     case ApiAssertType.BODY:
-      return 'JSONPath，如 $.data.code'
+      return t('api.assertion.phJsonPath')
     case ApiAssertType.HEADER:
-      return '响应头名称，如 Content-Type'
+      return t('api.assertion.phHeaderName')
     case ApiAssertType.STATUS_CODE:
-      return '无需填写'
+      return t('api.extraction.noNeed')
     case ApiAssertType.RESPONSE_TIME:
-      return '无需填写（单位：ms）'
+      return t('api.assertion.phNoNeedMs')
     case ApiAssertType.CUSTOM:
-      return '自定义表达式'
+      return t('api.assertion.phCustom')
     default:
-      return '字段'
+      return t('api.assertion.phField')
   }
 }
 
@@ -303,27 +306,27 @@ const validateRow = (record: AssertParameter): string => {
   if (!isFieldDisabled(record.apiAssertType)) {
     const field = record.field?.trim()
     if (!field) {
-      return '字段不能为空'
+      return t('api.assertion.fieldRequired')
     }
   }
 
   // 预期值必填
   const value = record.assertValue?.trim()
   if (!value) {
-    return '预期值不能为空'
+    return t('api.assertion.valueRequired')
   }
 
   // 状态码预期值必须是数字
   if (record.apiAssertType === ApiAssertType.STATUS_CODE) {
     if (isNaN(Number(value))) {
-      return '状态码预期值必须是数字'
+      return t('api.assertion.statusCodeMustBeNumber')
     }
   }
 
   // 响应时间预期值必须是数字
   if (record.apiAssertType === ApiAssertType.RESPONSE_TIME) {
     if (isNaN(Number(value))) {
-      return '响应时间预期值必须是数字'
+      return t('api.assertion.responseTimeMustBeNumber')
     }
   }
 
@@ -425,7 +428,7 @@ const validateAll = (): { valid: boolean; message: string } => {
 
     const error = validateRow(record)
     if (error) {
-      return {valid: false, message: `第 ${i + 1} 条断言规则：${error}`}
+      return {valid: false, message: t('api.assertion.rowError', {row: i + 1, msg: error})}
     }
   }
   return {valid: true, message: ''}

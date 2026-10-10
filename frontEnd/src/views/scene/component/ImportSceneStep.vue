@@ -3,19 +3,19 @@
   <a-drawer
     v-if="visible"
     :visible="visible"
-    title="导入已有步骤"
+    :title="$t('scene.action.importExistStep')"
     :width="520"
     :hide-cancel="true"
     @cancel="handleCancel"
     @ok="handleOk"
   >
     <a-input-search
-      placeholder="输入场景名称筛选"
+      :placeholder="$t('scene.tree.searchPlaceholder')"
       style="margin-bottom: 8px"
       v-model="searchKey"
     />
     <a-alert type="info" style="margin-bottom: 8px">
-      勾选具体步骤进行导入；勾选子步骤时会自动连带导入其直属父步骤，以保持层级关系。
+      {{ $t('scene.importStep.tip') }}
     </a-alert>
     <a-scrollbar style="height: calc(100vh - 260px); overflow: auto">
       <a-tree
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import { importExistSceneStep, getStepBySceneId } from '@/api/MyApi/step';
   import { ImportExistSceneStepDTO } from '@/types/dto/other/ImportExistSceneStepDTO';
   import { Message } from '@arco-design/web-vue';
@@ -108,6 +109,8 @@
   }>();
 
   const emit = defineEmits(['update:visible', 'reloadStepList']);
+
+  const { t } = useI18n();
 
   // 已选择导入的步骤key（带 step- 前缀）
   const checkedImportStepKeys = ref<string[]>([]);
@@ -182,7 +185,7 @@
     for (const step of steps) {
       const node: TreeNode = {
         key: `step-${step.id}`,
-        title: step.stepName || '未命名步骤',
+        title: step.stepName || t('scene.node.unnamedStep'),
         type: 'STEP',
         stepType: step.stepType,
         originId: step.id,
@@ -231,7 +234,7 @@
       const steps: TestStep[] = res.data || [];
       sceneStepMap.value.set(sceneId, buildStepTree(steps));
     } catch (e) {
-      Message.error('加载场景步骤失败');
+      Message.error(t('scene.importStep.loadFail'));
     } finally {
       loadingSceneIds.value.delete(sceneId);
     }
@@ -262,7 +265,7 @@
   // 确认添加
   const handleOk = async () => {
     if (importStepIds.value.length === 0) {
-      Message.warning('请选择要导入的步骤');
+      Message.warning(t('scene.importStep.selectFirst'));
       return;
     }
     const importExistSceneStepDTO = new ImportExistSceneStepDTO();
@@ -271,9 +274,9 @@
     importExistSceneStepDTO.sourceSceneIds = [];
     const result = await importExistSceneStep(importExistSceneStepDTO);
     if (result.data == true) {
-      Message.success('导入成功');
+      Message.success(t('scene.import.success'));
     } else {
-      Message.error('导入失败');
+      Message.error(t('scene.import.failed'));
     }
     // 关闭弹窗
     handleCancel();

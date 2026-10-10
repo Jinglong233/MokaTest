@@ -2,10 +2,10 @@
   <div class="api-case-list">
     <!-- 操作栏 -->
     <div class="case-list-header">
-      <div class="case-count">共 {{ caseList.length }} 个用例</div>
+      <div class="case-count">{{ $t('api.case.totalCount', {count: caseList.length}) }}</div>
       <a-button type="primary" size="small" @click="refreshCases">
         <template #icon><icon-refresh /></template>
-        刷新
+        {{ $t('api.common.refresh') }}
       </a-button>
     </div>
 
@@ -20,12 +20,12 @@
         :bordered="false"
       >
         <template #columns>
-          <a-table-column title="用例名称" data-index="apiName" :width="240">
+          <a-table-column :title="$t('api.case.colName')" data-index="apiName" :width="240">
             <template #cell="{ record }">
-              <span class="case-name-cell">{{ record.apiName || '未命名用例' }}</span>
+              <span class="case-name-cell">{{ record.apiName || $t('api.case.unnamed') }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="请求方法" data-index="requestMethod" :width="100" align="center">
+          <a-table-column :title="$t('api.case.colMethod')" data-index="requestMethod" :width="100" align="center">
             <template #cell="{ record }">
               <a-tag
                 size="small"
@@ -35,22 +35,22 @@
               </a-tag>
             </template>
           </a-table-column>
-          <a-table-column title="创建时间" data-index="createTime" :width="160">
+          <a-table-column :title="$t('api.case.colCreateTime')" data-index="createTime" :width="160">
             <template #cell="{ record }">
               {{ formatTime(record.createTime) }}
             </template>
           </a-table-column>
-          <a-table-column title="更新时间" data-index="updateTime" :width="160">
+          <a-table-column :title="$t('api.case.colUpdateTime')" data-index="updateTime" :width="160">
             <template #cell="{ record }">
               {{ formatTime(record.updateTime) }}
             </template>
           </a-table-column>
-          <a-table-column title="操作" :width=120 align="center">
+          <a-table-column :title="$t('qa.common.operation')" :width=120 align="center">
             <template #cell="{ record }">
               <a-space>
                 <a-button v-permission="'auto:api:update'" type="text" size="mini" @click="editCase(record)">
                   <template #icon><icon-edit /></template>
-                  编辑
+                  {{ $t('api.common.edit') }}
                 </a-button>
                 <a-button
                   v-permission="'auto:api:delete'"
@@ -66,7 +66,7 @@
           </a-table-column>
         </template>
         <template #empty>
-          <a-empty description="暂无接口用例" />
+          <a-empty :description="$t('api.case.empty')" />
         </template>
       </a-table>
     </div>
@@ -80,10 +80,13 @@ import { getCases, deleteApi } from '@/api/MyApi/apiInterface'
 import usePermission from '@/hooks/permission'
 import { Message, Modal } from '@arco-design/web-vue'
 import { ApiRequest } from '@/types/domain/api/ApiRequest'
+import { useI18n } from 'vue-i18n'
 
 interface Props {
   sourceId?: number
 }
+
+const { t } = useI18n()
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
@@ -120,19 +123,19 @@ const deleteCase = async (id?: number) => {
   if (!id) return
   const res = await deleteApi(id)
   if (res.code === 200) {
-    Message.success({ content: '删除成功', duration: 2000 })
+    Message.success({ content: t('api.common.deleteSuccess'), duration: 2000 })
     loadCases()
   } else {
-    Message.error({ content: res.msg || '删除失败', duration: 2000 })
+    Message.error({ content: res.msg || t('api.common.deleteFailed'), duration: 2000 })
   }
 }
 
 const confirmDeleteCase = (item: ApiRequest) => {
   Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除用例「${item.apiName || '未命名用例'}」吗？删除后无法恢复。`,
-    okText: '删除',
-    cancelText: '取消',
+    title: t('api.case.confirmDeleteTitle'),
+    content: t('api.case.confirmDeleteContent', {name: item.apiName || t('api.case.unnamed')}),
+    okText: t('qa.common.delete'),
+    cancelText: t('qa.common.cancel'),
     okButtonProps: { status: 'danger' },
     onOk: () => {
       deleteCase(item.id)

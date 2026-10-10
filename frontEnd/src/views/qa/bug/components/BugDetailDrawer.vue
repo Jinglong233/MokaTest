@@ -21,16 +21,16 @@
 
     <a-tabs v-else v-model:active-key="tabKey" type="line" class="bdd-tabs" @change="handleTabChange">
       <!-- ========== 基本信息 ========== -->
-      <a-tab-pane key="info" title="基本信息">
+      <a-tab-pane key="info" :title="$t('qa.bug.tabInfo')">
         <div class="bdd-info-list">
           <!-- 处理人 -->
           <div class="bdd-field-row">
-            <span class="bdd-field-label">处理人</span>
+            <span class="bdd-field-label">{{ $t('qa.bug.handler') }}</span>
             <a-select
               v-permission="'qa:bug:update'"
               v-model="bugData.assigneeId"
               allow-clear allow-search :filter-option="false"
-              placeholder="搜索用户"
+              :placeholder="$t('qa.bug.searchUser')"
               style="width: 220px;"
               @search="handleSearchUser"
               @dropdown-visible-change="handleUserDropdownVisibleChange"
@@ -42,11 +42,11 @@
 
           <!-- 状态 -->
           <div class="bdd-field-row">
-            <span class="bdd-field-label">状态</span>
+            <span class="bdd-field-label">{{ $t('qa.bug.status') }}</span>
             <a-select
               v-permission="'qa:bug:transition'"
               v-model="bugData.status"
-              placeholder="请选择状态"
+              :placeholder="$t('qa.bug.statusSelectPlaceholder')"
               style="width: 220px;"
               @change="(val) => saveOnChange('status', val)"
             >
@@ -56,28 +56,28 @@
 
           <!-- 严重程度 -->
           <div class="bdd-field-row">
-            <span class="bdd-field-label">严重程度</span>
+            <span class="bdd-field-label">{{ $t('qa.bug.severity') }}</span>
             <a-select
               v-permission="'qa:bug:update'"
               v-model="bugData.severity"
-              placeholder="请选择"
+              :placeholder="$t('qa.bug.pleaseSelect')"
               style="width: 220px;"
               @change="(val) => saveOnChange('severity', val)"
             >
-                <a-option value="FATAL">致命</a-option>
-                <a-option value="SERIOUS">严重</a-option>
-                <a-option value="NORMAL">一般</a-option>
-                <a-option value="TIPS">提示</a-option>
+                <a-option value="FATAL">{{ $t('qa.bug.severity.fatal') }}</a-option>
+                <a-option value="SERIOUS">{{ $t('qa.bug.severity.serious') }}</a-option>
+                <a-option value="NORMAL">{{ $t('qa.bug.severity.normal') }}</a-option>
+                <a-option value="TIPS">{{ $t('qa.bug.severity.tips') }}</a-option>
             </a-select>
           </div>
 
           <!-- 标签 -->
           <div class="bdd-field-row">
-            <span class="bdd-field-label">标签</span>
+            <span class="bdd-field-label">{{ $t('qa.bug.tags') }}</span>
             <a-input-tag
               v-permission="'qa:bug:update'"
               v-model="bugTags"
-              placeholder="输入标签后按回车"
+              :placeholder="$t('qa.bug.tagsPlaceholder')"
               allow-clear
               style="width: 300px;"
               @blur="saveTagsOnChange"
@@ -87,29 +87,29 @@
       </a-tab-pane>
 
       <!-- ========== 详情 ========== -->
-      <a-tab-pane key="detail" title="详情">
+      <a-tab-pane key="detail" :title="$t('qa.bug.actionDetail')">
         <div class="bdd-detail-toolbar">
           <template v-if="!detailEditing">
             <a-button v-permission="'qa:bug:update'" type="outline" size="small" @click="startDetailEdit">
-              <template #icon><IconEdit /></template>编辑
+              <template #icon><IconEdit /></template>{{ $t('qa.bug.actionEdit') }}
             </a-button>
           </template>
           <template v-else>
-            <span class="bdd-editing-tip">编辑中</span>
+            <span class="bdd-editing-tip">{{ $t('qa.bug.editing') }}</span>
             <a-space>
-              <a-button size="small" @click="cancelDetailEdit">取消</a-button>
-              <a-button type="primary" size="small" :loading="detailSaving" @click="saveDetailEdit">保存</a-button>
+              <a-button size="small" @click="cancelDetailEdit">{{ $t('qa.common.cancel') }}</a-button>
+              <a-button type="primary" size="small" :loading="detailSaving" @click="saveDetailEdit">{{ $t('qa.common.save') }}</a-button>
             </a-space>
           </template>
         </div>
         <div class="bdd-detail">
           <div class="bdd-section">
-            <div class="bdd-section-title">BUG 描述</div>
+            <div class="bdd-section-title">{{ $t('qa.bug.description') }}</div>
             <RichEditor v-if="!detailEditing" :model-value="bugData.description" readonly :auto-height="true" />
             <RichEditor v-else v-model="detailForm.description" :auto-height="true" />
           </div>
           <div class="bdd-section">
-            <div class="bdd-section-title">复现步骤</div>
+            <div class="bdd-section-title">{{ $t('qa.bug.reproduce') }}</div>
             <RichEditor v-if="!detailEditing" :model-value="bugData.reproduceSteps" readonly :auto-height="true" />
             <RichEditor v-else v-model="detailForm.reproduceSteps" :auto-height="true" />
           </div>
@@ -118,12 +118,12 @@
 
       <!-- ========== 用例 ========== -->
       <a-tab-pane key="case">
-        <template #title>用例<span v-if="linkedCaseList.length" class="tab-count">{{ linkedCaseList.length }}</span></template>
+        <template #title>{{ $t('qa.testCase.tab.case') }}<span v-if="linkedCaseList.length" class="tab-count">{{ linkedCaseList.length }}</span></template>
         <div class="bdd-case">
           <div class="bdd-case-toolbar">
-            <span class="bdd-case-tip">BUG 关联的测试用例</span>
+            <span class="bdd-case-tip">{{ $t('qa.bug.linkedCasesTip') }}</span>
             <a-button v-permission="'qa:bug:update'" type="outline" size="small" @click="openCaseSelectDrawer">
-              <template #icon><IconLink /></template>关联用例
+              <template #icon><IconLink /></template>{{ $t('qa.bug.linkCase') }}
             </a-button>
           </div>
           <a-table
@@ -135,25 +135,25 @@
             row-key="id"
           >
             <template #columns>
-              <a-table-column title="用例编号" data-index="caseCode" :width="120" />
-              <a-table-column title="用例名称" data-index="caseName" :ellipsis="true" :tooltip="true" />
-              <a-table-column title="优先级" data-index="priority" :width="80" />
-              <a-table-column title="操作" :width="70" align="center">
+              <a-table-column :title="$t('qa.testCase.code')" data-index="caseCode" :width="120" />
+              <a-table-column :title="$t('qa.testCase.name')" data-index="caseName" :ellipsis="true" :tooltip="true" />
+              <a-table-column :title="$t('qa.testCase.priority')" data-index="priority" :width="80" />
+              <a-table-column :title="$t('qa.common.operation')" :width="70" align="center">
                 <template #cell="{ record }">
-                  <a-popconfirm content="确认解除关联？" @ok="handleUnbindCase(record.id)">
-                    <a-button v-permission="'qa:bug:update'" type="text" size="small" status="danger">解绑</a-button>
+                  <a-popconfirm :content="$t('qa.bug.unbindConfirm')" @ok="handleUnbindCase(record.id)">
+                    <a-button v-permission="'qa:bug:update'" type="text" size="small" status="danger">{{ $t('qa.bug.unbind') }}</a-button>
                   </a-popconfirm>
                 </template>
               </a-table-column>
             </template>
           </a-table>
-          <a-empty v-else description="暂未关联用例" />
+          <a-empty v-else :description="$t('qa.bug.noLinkedCases')" />
         </div>
       </a-tab-pane>
 
       <!-- ========== 评论 ========== -->
       <a-tab-pane key="comments">
-        <template #title>评论<span v-if="commentTree.length" class="tab-count">{{ commentTree.length }}</span></template>
+        <template #title>{{ $t('qa.bug.comments') }}<span v-if="commentTree.length" class="tab-count">{{ commentTree.length }}</span></template>
         <div class="bdd-comments">
           <!-- 评论列表 -->
           <div v-if="commentTree.length" class="bdd-comment-list">
@@ -164,20 +164,20 @@
                   <span class="bdd-comment-user">{{ commentName(cmt) }}</span>
                   <span class="bdd-comment-time">{{ cmt.createTime }}</span>
                   <div v-permission="'qa:bug:comment:create'" class="bdd-comment-actions">
-                    <a-link @click="startReply(cmt, null)">回复</a-link>
+                    <a-link @click="startReply(cmt, null)">{{ $t('qa.bug.reply') }}</a-link>
                     <template v-if="cmt.createUserId === currentUserId">
-                      <a-link @click="startEditComment(cmt)">编辑</a-link>
-                      <a-popconfirm content="确认删除这条评论？其下的回复会一并删除" @ok="handleDeleteComment(cmt)">
-                        <a-link status="danger">删除</a-link>
+                      <a-link @click="startEditComment(cmt)">{{ $t('qa.bug.actionEdit') }}</a-link>
+                      <a-popconfirm :content="$t('qa.bug.deleteCommentConfirm')" @ok="handleDeleteComment(cmt)">
+                        <a-link status="danger">{{ $t('qa.common.delete') }}</a-link>
                       </a-popconfirm>
                     </template>
                   </div>
                 </div>
                 <div v-if="editingCommentId === cmt.id" class="bdd-comment-edit-input">
-                  <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" placeholder="编辑评论..." @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                  <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.bug.editCommentPlaceholder')" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                   <div class="bdd-edit-actions">
-                    <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(cmt)">保存</a-button>
-                    <a-link @click="editingCommentId = null">取消</a-link>
+                    <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(cmt)">{{ $t('qa.common.save') }}</a-button>
+                    <a-link @click="editingCommentId = null">{{ $t('qa.common.cancel') }}</a-link>
                   </div>
                 </div>
                 <RichEditor v-else :model-value="cmt.content" readonly />
@@ -189,22 +189,22 @@
                       <a-avatar class="bdd-comment-avatar" :size="24" :image-url="reply.createUserAvatar || undefined" :style="reply.createUserAvatar ? {} : { backgroundColor: avatarColor(commentName(reply)) }">{{ reply.createUserAvatar ? '' : avatarText(commentName(reply)) }}</a-avatar>
                       <div class="bdd-comment-main">
                         <div class="bdd-comment-head">
-                          <span class="bdd-comment-user">{{ commentName(reply) }} 回复 {{ commentName(cmt) }}</span>
+                          <span class="bdd-comment-user">{{ $t('qa.bug.replyTo', { from: commentName(reply), to: commentName(cmt) }) }}</span>
                           <div v-permission="'qa:bug:comment:create'" class="bdd-comment-actions">
-                            <a-link @click="startReply(cmt, reply)">回复</a-link>
+                            <a-link @click="startReply(cmt, reply)">{{ $t('qa.bug.reply') }}</a-link>
                             <template v-if="reply.createUserId === currentUserId">
-                              <a-link @click="startEditComment(reply)">编辑</a-link>
-                              <a-popconfirm content="确认删除这条回复？" @ok="handleDeleteComment(reply)">
-                                <a-link status="danger">删除</a-link>
+                              <a-link @click="startEditComment(reply)">{{ $t('qa.bug.actionEdit') }}</a-link>
+                              <a-popconfirm :content="$t('qa.bug.deleteReplyConfirm')" @ok="handleDeleteComment(reply)">
+                                <a-link status="danger">{{ $t('qa.common.delete') }}</a-link>
                               </a-popconfirm>
                             </template>
                           </div>
                         </div>
                         <div v-if="editingCommentId === reply.id" class="bdd-comment-edit-input">
-                          <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" placeholder="编辑评论..." @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                          <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.bug.editCommentPlaceholder')" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                           <div class="bdd-edit-actions">
-                            <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(reply)">保存</a-button>
-                            <a-link @click="editingCommentId = null">取消</a-link>
+                            <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(reply)">{{ $t('qa.common.save') }}</a-button>
+                            <a-link @click="editingCommentId = null">{{ $t('qa.common.cancel') }}</a-link>
                           </div>
                         </div>
                         <RichEditor v-else :model-value="reply.content" readonly />
@@ -213,29 +213,29 @@
                     </div>
                   </div>
                   <div class="bdd-reply-toggle" @click="toggleReplies(cmt.id)">
-                    <template v-if="expandedReplyIds.has(cmt.id)">收起回复 <IconUp /></template>
-                    <template v-else>共 {{ cmt.replies.length }} 条回复，点击展开 <IconDown /></template>
+                    <template v-if="expandedReplyIds.has(cmt.id)">{{ $t('qa.bug.collapseReplies') }} <IconUp /></template>
+                    <template v-else>{{ $t('qa.bug.expandReplies', { count: cmt.replies.length }) }} <IconDown /></template>
                   </div>
                 </template>
 
                 <!-- 行内回复输入框 -->
                 <div v-if="replyParentId === cmt.id" class="bdd-reply-input">
-                  <RichEditor v-model="replyContent" auto-height mention :mention-list="mentionOptions" :placeholder="`回复 ${replyTargetName}...`" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                  <RichEditor v-model="replyContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.bug.replyPlaceholder', { name: replyTargetName })" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                   <div class="bdd-reply-actions">
-                    <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveReply(cmt)">回复</a-button>
-                    <a-link @click="cancelReply">取消</a-link>
+                    <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveReply(cmt)">{{ $t('qa.bug.reply') }}</a-button>
+                    <a-link @click="cancelReply">{{ $t('qa.common.cancel') }}</a-link>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <a-empty v-else description="暂无评论" />
+          <a-empty v-else :description="$t('qa.bug.noComments')" />
 
         </div>
       </a-tab-pane>
 
       <!-- ========== 变更历史 ========== -->
-      <a-tab-pane key="history" title="变更历史">
+      <a-tab-pane key="history" :title="$t('qa.bug.history')">
         <div class="bdd-history">
           <a-timeline v-if="historyList.length > 0">
             <a-timeline-item v-for="item in historyList" :key="item.id">
@@ -243,14 +243,14 @@
                 <span class="bdd-history-time">{{ item.operateTime }}</span>
               </div>
               <div class="bdd-history-content">
-                <span class="bdd-history-field">{{ fieldNameText(item.fieldName) }}</span>：
+                <span class="bdd-history-field">{{ fieldNameText(item.fieldName) }}</span>:
                 <span class="bdd-history-old">{{ displayValue(item.fieldName, item.oldValue) }}</span>
                 →
                 <span class="bdd-history-new">{{ displayValue(item.fieldName, item.newValue) }}</span>
               </div>
             </a-timeline-item>
           </a-timeline>
-          <a-empty v-else description="暂无变更记录" />
+          <a-empty v-else :description="$t('qa.bug.noHistory')" />
         </div>
       </a-tab-pane>
     </a-tabs>
@@ -263,11 +263,11 @@
       :mask-closable="true"
       @cancel="caseSelectVisible = false"
     >
-      <template #title>关联用例</template>
+      <template #title>{{ $t('qa.bug.linkCase') }}</template>
       <div class="case-select-body">
         <!-- 左侧模块树 -->
         <div class="case-select-side">
-          <a-input-search v-model="moduleKeyword" placeholder="搜索模块" style="margin-bottom: 8px;" size="small" />
+          <a-input-search v-model="moduleKeyword" :placeholder="$t('qa.bug.searchModule')" style="margin-bottom: 8px;" size="small" />
           <a-scrollbar style="flex: 1; overflow: auto;">
             <a-tree
               :data="filteredModuleTree"
@@ -285,8 +285,8 @@
         <!-- 右侧用例列表 -->
         <div class="case-select-main">
           <div class="case-select-toolbar">
-            <a-input-search v-model="caseKeyword" placeholder="搜索用例编号/名称" allow-clear style="width: 240px" @search="searchCases" />
-            <span class="selected-count">已选 {{ tempSelectedCaseIds.length }} 条</span>
+            <a-input-search v-model="caseKeyword" :placeholder="$t('qa.bug.searchCasePlaceholder')" allow-clear style="width: 240px" @search="searchCases" />
+            <span class="selected-count">{{ $t('qa.bug.selectedCount', { count: tempSelectedCaseIds.length }) }}</span>
           </div>
           <a-table
             :data="caseOptions"
@@ -301,29 +301,29 @@
             @page-change="onCasePageChange"
           >
             <template #columns>
-              <a-table-column title="用例编号" data-index="caseCode" :width="120" />
-              <a-table-column title="用例名称" data-index="caseName" :ellipsis="true" :tooltip="true" />
-              <a-table-column title="优先级" data-index="priority" :width="80" />
+              <a-table-column :title="$t('qa.testCase.code')" data-index="caseCode" :width="120" />
+              <a-table-column :title="$t('qa.testCase.name')" data-index="caseName" :ellipsis="true" :tooltip="true" />
+              <a-table-column :title="$t('qa.testCase.priority')" data-index="priority" :width="80" />
             </template>
           </a-table>
         </div>
       </div>
       <template #footer>
         <a-space>
-          <a-button @click="caseSelectVisible = false">取消</a-button>
-          <a-button type="primary" :loading="caseBinding" @click="handleBindCases">确认关联</a-button>
+          <a-button @click="caseSelectVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+          <a-button type="primary" :loading="caseBinding" @click="handleBindCases">{{ $t('qa.bug.confirmLink') }}</a-button>
         </a-space>
       </template>
     </a-drawer>
 
     <template #footer>
       <div v-permission="'qa:bug:comment:create'" class="bdd-comment-input-bar">
-        <a-input v-if="!commentEditorActive" v-model="newComment" placeholder="输入评论..." allow-clear @focus="commentEditorActive = true" />
+        <a-input v-if="!commentEditorActive" v-model="newComment" :placeholder="$t('qa.bug.commentPlaceholder')" allow-clear @focus="commentEditorActive = true" />
         <template v-else>
-          <RichEditor v-model="newComment" auto-height mention :mention-list="mentionOptions" placeholder="输入评论，@ 可提及项目成员，Ctrl+Enter 发表" @keydown="handleCommentKeydown" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+          <RichEditor v-model="newComment" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.bug.commentRichPlaceholder')" @keydown="handleCommentKeydown" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
           <div class="bdd-comment-input-actions">
-            <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveComment">发表</a-button>
-            <a-button size="small" @click="commentEditorActive = false; newComment = ''">取消</a-button>
+            <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveComment">{{ $t('qa.bug.publish') }}</a-button>
+            <a-button size="small" @click="commentEditorActive = false; newComment = ''">{{ $t('qa.common.cancel') }}</a-button>
           </div>
         </template>
       </div>
@@ -333,6 +333,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
 import { IconLink, IconEdit, IconDown, IconUp } from '@arco-design/web-vue/es/icon';
 import RichEditor from '@/components/rich-editor/index.vue';
@@ -367,6 +368,7 @@ const emit = defineEmits<{
 
 const projectStore = useProjectStore();
 const userStore = useUserStore();
+const { t } = useI18n();
 const loading = ref(false);
 const tabKey = ref('info');
 const bugData = ref<any>({});
@@ -375,15 +377,15 @@ const bugData = ref<any>({});
 const userOptions = ref<any[]>([]);
 const userPage = ref({ current: 1, pageSize: 20, hasMore: true, keyword: '', loading: false });
 
-const allBugStatuses = [
-  { value: 'NEW', label: '新建' },
-  { value: 'CONFIRMED', label: '已确认' },
-  { value: 'FIXING', label: '修复中' },
-  { value: 'FIXED', label: '已修复' },
-  { value: 'VERIFIED', label: '已验证' },
-  { value: 'CLOSED', label: '已关闭' },
-  { value: 'REJECTED', label: '已驳回' },
-];
+const allBugStatuses = computed(() => [
+  { value: 'NEW', label: t('qa.bug.status.new') },
+  { value: 'CONFIRMED', label: t('qa.bug.status.confirmed') },
+  { value: 'FIXING', label: t('qa.bug.status.fixing') },
+  { value: 'FIXED', label: t('qa.bug.status.fixed') },
+  { value: 'VERIFIED', label: t('qa.bug.status.verified') },
+  { value: 'CLOSED', label: t('qa.bug.status.closed') },
+  { value: 'REJECTED', label: t('qa.bug.status.rejected') },
+]);
 
 // 标签 computed（bugData.tags 是逗号字符串，前端用数组）
 const bugTags = computed({
@@ -396,11 +398,11 @@ const saveOnChange = async (field: string, val: any) => {
   try {
     if (field === 'status') {
       const res: any = await transitionBugStatus(bugData.value.id, val);
-      if (res.code === 200) { Message.success('状态已更新'); emit('refresh'); }
+      if (res.code === 200) { Message.success(t('qa.bug.statusUpdated')); emit('refresh'); }
     } else {
       const payload = { ...bugData.value, [field]: val || null };
       const res: any = await updateBug(payload);
-      if (res.code === 200) { Message.success('更新成功'); emit('refresh'); }
+      if (res.code === 200) { Message.success(t('qa.bug.updateSuccess')); emit('refresh'); }
     }
   } catch (e) {
     console.error(e);
@@ -412,7 +414,7 @@ const saveTagsOnChange = async () => {
   try {
     const payload = { ...bugData.value, tags: tagsStr };
     const res: any = await updateBug(payload);
-    if (res.code === 200) { Message.success('标签已更新'); emit('refresh'); }
+    if (res.code === 200) { Message.success(t('qa.bug.tagsUpdated')); emit('refresh'); }
   } catch (e) {
     console.error(e);
   }
@@ -442,7 +444,7 @@ const saveDetailEdit = async () => {
     const payload = { ...bugData.value, description: detailForm.value.description, reproduceSteps: detailForm.value.reproduceSteps };
     const res: any = await updateBug(payload);
     if (res.code === 200) {
-      Message.success('保存成功');
+      Message.success(t('qa.bug.saveSuccess'));
       bugData.value.description = detailForm.value.description;
       bugData.value.reproduceSteps = detailForm.value.reproduceSteps;
       detailEditing.value = false;
@@ -493,7 +495,7 @@ const replyContent = ref('');
 const replyTarget = ref<any>(null);
 const replyTargetName = computed(() =>
   replyTarget.value
-    ? replyTarget.value.createUserName || ('用户' + replyTarget.value.createUserId)
+    ? replyTarget.value.createUserName || t('qa.bug.userFallback', { id: replyTarget.value.createUserId })
     : ''
 );
 const expandedReplyIds = ref<Set<number>>(new Set());
@@ -504,7 +506,7 @@ const currentUserId = computed(() => userStore.userInfo?.id);
 const mentionOptions = ref<{ label: string; value: string }[]>([]);
 const mentionNameIdMap = ref<Record<string, number>>({});
 
-const commentName = (cmt: any) => cmt.createUserName || ('用户' + cmt.createUserId);
+const commentName = (cmt: any) => cmt.createUserName || t('qa.bug.userFallback', { id: cmt.createUserId });
 
 // Ctrl+Enter 发表（Enter 留给换行和提及下拉的选项确认）
 const handleCommentKeydown = (e: KeyboardEvent) => {
@@ -568,7 +570,7 @@ const cancelReply = () => {
 
 const handleSaveReply = async (cmt: any) => {
   if (isEmptyRichContent(replyContent.value)) {
-    Message.warning('回复内容不能为空');
+    Message.warning(t('qa.bug.replyEmpty'));
     return;
   }
   commentSaving.value = true;
@@ -582,7 +584,7 @@ const handleSaveReply = async (cmt: any) => {
       mentionUserIds: mentionIds.length ? JSON.stringify(mentionIds) : undefined,
     });
     if (res.code === 200) {
-      Message.success('回复成功');
+      Message.success(t('qa.bug.replySuccess'));
       cancelReply();
       await loadComments(bugData.value.id);
       if (!expandedReplyIds.value.has(cmt.id)) {
@@ -607,7 +609,7 @@ const saveEditComment = async (cmt: any) => {
       content: editingContent.value.trim(),
     });
     if (res.code === 200) {
-      Message.success('修改成功');
+      Message.success(t('qa.bug.modifySuccess'));
       editingCommentId.value = null;
       await loadComments(bugData.value.id);
     }
@@ -619,7 +621,7 @@ const handleDeleteComment = async (cmt: any) => {
   try {
     const res: any = await deleteBugComment(cmt.id);
     if (res.code === 200) {
-      Message.success('删除成功');
+      Message.success(t('qa.bug.deleteSuccess'));
       await loadComments(bugData.value.id);
     }
   } catch (e) { console.error(e); }
@@ -755,7 +757,7 @@ const loadLinkedCases = async () => {
 
 const handleSaveComment = async () => {
   if (isEmptyRichContent(newComment.value)) {
-    Message.warning('请输入评论内容');
+    Message.warning(t('qa.bug.commentEmpty'));
     return;
   }
   commentSaving.value = true;
@@ -769,7 +771,7 @@ const handleSaveComment = async () => {
       mentionUserIds: mentionIds.length ? JSON.stringify(mentionIds) : undefined,
     });
     if (res.code === 200) {
-      Message.success('评论发表成功');
+      Message.success(t('qa.bug.commentSuccess'));
       newComment.value = '';
       commentEditorActive.value = false;
       await loadComments(bugData.value.id);
@@ -813,14 +815,14 @@ const onCasePageChange = (page: number) => {
 
 const handleBindCases = async () => {
   if (tempSelectedCaseIds.value.length === 0) {
-    Message.warning('请选择要关联的用例');
+    Message.warning(t('qa.bug.selectCasesRequired'));
     return;
   }
   caseBinding.value = true;
   try {
     const res: any = await bindBugCases(bugData.value.id, tempSelectedCaseIds.value);
     if (res.code === 200) {
-      Message.success('关联成功');
+      Message.success(t('qa.bug.linkSuccess'));
       caseSelectVisible.value = false;
       await loadLinkedCases();
       emit('refresh');
@@ -836,7 +838,7 @@ const handleUnbindCase = async (testCaseId: number) => {
   try {
     const res: any = await unbindBugCase(bugData.value.id, testCaseId);
     if (res.code === 200) {
-      Message.success('已解除关联');
+      Message.success(t('qa.bug.unbindSuccess'));
       await loadLinkedCases();
       emit('refresh');
     }
@@ -858,7 +860,7 @@ const formatTime = (time: string | undefined) => {
 };
 
 const severityText = (severity: string) => {
-  const map: Record<string, string> = { FATAL: '致命', SERIOUS: '严重', NORMAL: '一般', TIPS: '提示' };
+  const map: Record<string, string> = { FATAL: t('qa.bug.severity.fatal'), SERIOUS: t('qa.bug.severity.serious'), NORMAL: t('qa.bug.severity.normal'), TIPS: t('qa.bug.severity.tips') };
   return map[severity] || severity;
 };
 
@@ -871,17 +873,17 @@ const bugStatusColor = (status: string) => {
 
 const bugStatusText = (status: string) => {
   const map: Record<string, string> = {
-    NEW: '新建', CONFIRMED: '已确认', FIXING: '修复中', FIXED: '已修复', VERIFIED: '已验证', CLOSED: '已关闭', REJECTED: '已驳回',
+    NEW: t('qa.bug.status.new'), CONFIRMED: t('qa.bug.status.confirmed'), FIXING: t('qa.bug.status.fixing'), FIXED: t('qa.bug.status.fixed'), VERIFIED: t('qa.bug.status.verified'), CLOSED: t('qa.bug.status.closed'), REJECTED: t('qa.bug.status.rejected'),
   };
   return map[status] || status;
 };
 
 const fieldNameText = (fieldName: string) => {
   const map: Record<string, string> = {
-    title: '标题', severity: '严重程度', priority: '优先级', status: '状态',
-    assigneeId: '处理人', moduleId: '所属模块', environment: '环境',
-    deadline: '截止日期', fixedVersion: '修复版本', closeReason: '关闭原因',
-    testCaseId: '关联用例', requirementId: '关联需求',
+    title: t('qa.bug.name'), severity: t('qa.bug.severity'), priority: t('qa.bug.priority'), status: t('qa.bug.status'),
+    assigneeId: t('qa.bug.handler'), moduleId: t('qa.bug.belongModule'), environment: t('qa.bug.environment'),
+    deadline: t('qa.bug.deadline'), fixedVersion: t('qa.bug.fixedVersion'), closeReason: t('qa.bug.closeReason'),
+    testCaseId: t('qa.bug.linkCase'), requirementId: t('qa.bug.linkReq'),
   };
   return map[fieldName] || fieldName;
 };
@@ -912,10 +914,10 @@ const relativeTime = (timeStr: string) => {
   if (isNaN(date.getTime())) return timeStr;
   const now = new Date();
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  if (diff < 2592000) return `${Math.floor(diff / 86400)}天前`;
+  if (diff < 60) return t('qa.bug.timeJustNow');
+  if (diff < 3600) return t('qa.bug.timeMinutesAgo', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t('qa.bug.timeHoursAgo', { n: Math.floor(diff / 3600) });
+  if (diff < 2592000) return t('qa.bug.timeDaysAgo', { n: Math.floor(diff / 86400) });
   return timeStr;
 };
 

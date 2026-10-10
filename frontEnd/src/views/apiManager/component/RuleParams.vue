@@ -6,7 +6,7 @@
         v-if="rule.fieldType === 'BOOLEAN'"
         class="short-input"
         :model-value="rule.fixedValue"
-        placeholder="固定值"
+        :placeholder="$t('api.mock.fixedValuePlaceholder')"
         size="mini"
         :disabled="disabled"
         @change="(v) => updateField('fixedValue', v as string)"
@@ -18,7 +18,7 @@
         v-else
         class="short-input"
         :model-value="rule.fixedValue"
-        placeholder="Mock 数据"
+        :placeholder="$t('api.mock.mockDataPlaceholder')"
         size="mini"
         :disabled="disabled"
         @update:model-value="(v) => updateField('fixedValue', v)"

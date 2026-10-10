@@ -1,7 +1,7 @@
 <template>
   <a-modal :visible="vis" @cancel="handleCancel" width="auto">
     <a-tabs style="width: 1050px" :justify="true">
-      <a-tab-pane key="1" title="截图预览">
+      <a-tab-pane key="1" :title="$t('scene.debugImage.tabScreenshot')">
         <a-image-preview-group infinite v-if="props.imageList && props.imageList.length > 0">
           <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             <template v-for="(image,index) in props.imageList" :key="image.id">
@@ -21,7 +21,7 @@
           </div>
         </a-image-preview-group>
       </a-tab-pane>
-      <a-tab-pane key="2" title="视频预览（待做....）">
+      <a-tab-pane key="2" :title="$t('scene.debugImage.tabVideo')">
       </a-tab-pane>
     </a-tabs>
 

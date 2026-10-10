@@ -9,8 +9,8 @@
             type="button"
             size="small"
         >
-          <a-radio value="source">源码</a-radio>
-          <a-radio value="preview">预览</a-radio>
+          <a-radio value="source">{{ $t('api.responseViewer.source') }}</a-radio>
+          <a-radio value="preview">{{ $t('api.responseViewer.preview') }}</a-radio>
         </a-radio-group>
         <a-button
             v-if="showFormat"
@@ -22,7 +22,7 @@
           <template #icon>
             <icon-brush/>
           </template>
-          格式化
+          {{ $t('api.editor.format') }}
         </a-button>
       </div>
       <div class="toolbar-right">
@@ -35,7 +35,7 @@
           <template #icon>
             <icon-download />
           </template>
-          下载
+          {{ $t('api.responseViewer.download') }}
         </a-button>
         <span v-if="contentSize" class="content-size">{{ contentSize }}</span>
       </div>
@@ -61,7 +61,7 @@
               :alt="props.contentType"
               class="preview-image"
           />
-          <a-empty v-else description="暂无图片数据"/>
+          <a-empty v-else :description="$t('api.responseViewer.noImage')"/>
         </div>
       </template>
 

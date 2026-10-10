@@ -36,7 +36,7 @@
           <span
             class="dd-name"
             :class="{ editable: canUpdateCase }"
-            :title="canUpdateCase ? '双击编辑' : ''"
+            :title="canUpdateCase ? $t('qa.testCase.dblClickEdit') : ''"
             @dblclick="startHeaderEdit('caseName')"
             >{{ detail.caseName || '-' }}</span
           >
@@ -60,7 +60,7 @@
           :color="priorityColor(detail.priority)"
           size="small"
           :class="{ editable: canUpdateCase }"
-          :title="canUpdateCase ? '双击编辑' : ''"
+          :title="canUpdateCase ? $t('qa.testCase.dblClickEdit') : ''"
           @dblclick="startHeaderEdit('priority')"
           >{{ detail.priority }}</a-tag
         >
@@ -102,7 +102,7 @@
             @change="handleTabChange"
           >
             <!-- ========== 详情 ========== -->
-            <a-tab-pane key="info" title="详情">
+            <a-tab-pane key="info" :title="$t('qa.testCase.tab.info')">
               <!-- 查看态 -->
               <template v-if="!editing">
                 <div class="info-toolbar">
@@ -112,20 +112,20 @@
                     size="small"
                     @click="startEdit"
                   >
-                    <template #icon><icon-edit /></template>编辑
+                    <template #icon><icon-edit /></template>{{ $t('qa.testCase.actionEdit') }}
                   </a-button>
                 </div>
                 <template v-if="fieldVis('preCondition')">
-                  <div class="dd-section-title">前置条件</div>
+                  <div class="dd-section-title">{{ $t('qa.testCase.preCondition') }}</div>
                   <RichEditor
                     v-if="hasPreCondition"
                     :model-value="detail.preCondition"
                     readonly
                     class="pre-condition-view"
                   />
-                  <div v-else class="pre-condition-empty">无</div>
+                  <div v-else class="pre-condition-empty">{{ $t('qa.testCase.emptyText') }}</div>
                 </template>
-                <div class="dd-section-title">测试步骤</div>
+                <div class="dd-section-title">{{ $t('qa.testCase.steps') }}</div>
                 <a-table
                   v-if="detailSteps.length"
                   :data="detailSteps"
@@ -140,7 +140,7 @@
                         <span class="step-no">{{ rowIndex + 1 }}</span>
                       </template>
                     </a-table-column>
-                    <a-table-column title="步骤">
+                    <a-table-column :title="$t('qa.testCase.step')">
                       <template #cell="{ record }">
                         <div
                           class="rich-text-preview"
@@ -148,7 +148,7 @@
                         ></div>
                       </template>
                     </a-table-column>
-                    <a-table-column title="预期结果">
+                    <a-table-column :title="$t('qa.testCase.expected')">
                       <template #cell="{ record }">
                         <div
                           class="rich-text-preview"
@@ -158,7 +158,7 @@
                     </a-table-column>
                   </template>
                 </a-table>
-                <a-empty v-else description="暂无测试步骤" />
+                <a-empty v-else :description="$t('qa.testCase.noSteps')" />
 
                 <!-- 底部元信息：编号/创建人等非编辑项，淡灰色展示 -->
                 <a-divider />
@@ -177,15 +177,15 @@
               <!-- 编辑态：内嵌精简用例表单（无关联需求/分类属性/状态协作，那些字段在列表行内改） -->
               <template v-else>
                 <div class="info-toolbar">
-                  <span class="editing-tip">编辑中</span>
+                  <span class="editing-tip">{{ $t('qa.testCase.editing') }}</span>
                   <a-space>
-                    <a-button size="small" @click="cancelEdit">取消</a-button>
+                    <a-button size="small" @click="cancelEdit">{{ $t('qa.common.cancel') }}</a-button>
                     <a-button
                       type="primary"
                       size="small"
                       :loading="editSaving"
                       @click="saveEdit"
-                      >{{ props.confirmText || '保存' }}</a-button
+                      >{{ props.confirmText || $t('qa.common.save') }}</a-button
                     >
                   </a-space>
                 </div>
@@ -201,7 +201,7 @@
             <!-- ========== 关联需求 ========== -->
             <a-tab-pane key="req">
               <template #title
-                >关联需求
+                >{{ $t('qa.testCase.tab.req') }}
                 <span v-if="requirementList.length" class="tab-count">{{
                   requirementList.length
                 }}</span></template
@@ -209,14 +209,10 @@
               <div v-if="canUpdateCase" class="tab-toolbar req-bind-bar">
                 <a-button type="outline" size="small" @click="openReqModal">
                   <template #icon><icon-plus /></template>
-                  选择关联需求
+                  {{ $t('qa.testCase.selectRequirements') }}
                 </a-button>
                 <span class="req-bind-tip"
-                  >已关联
-                  {{
-                    caseReqIds.length
-                  }}
-                  个需求，弹窗内勾选/取消后确定保存</span
+                  >{{ $t('qa.testCase.reqBindTip', { count: caseReqIds.length }) }}</span
                 >
               </div>
               <a-table
@@ -227,17 +223,17 @@
                 row-key="id"
               >
                 <template #columns>
-                  <a-table-column title="编号" :width="120">
+                  <a-table-column :title="$t('qa.testCase.colCode')" :width="120">
                     <template #cell="{ record }">{{ record.reqCode }}</template>
                   </a-table-column>
-                  <a-table-column title="需求名称">
+                  <a-table-column :title="$t('qa.testCase.reqName')">
                     <template #cell="{ record }">
                       <a-link @click="goRequirement(record)">{{
                         record.title
                       }}</a-link>
                     </template>
                   </a-table-column>
-                  <a-table-column title="状态" :width="100">
+                  <a-table-column :title="$t('qa.testCase.status')" :width="100">
                     <template #cell="{ record }">
                       <a-tag size="small" color="arcoblue">{{
                         reqStatusText(record.status)
@@ -246,22 +242,22 @@
                   </a-table-column>
                 </template>
               </a-table>
-              <a-empty v-else description="未关联需求" />
+              <a-empty v-else :description="$t('qa.testCase.noRequirement')" />
             </a-tab-pane>
 
             <!-- ========== 关联用例（自动化实现） ========== -->
             <a-tab-pane key="rel">
               <template #title
-                >关联用例
+                >{{ $t('qa.testCase.tab.rel') }}
                 <span v-if="bindList.length" class="tab-count">{{
                   bindList.length
                 }}</span></template
               >
               <div class="tab-toolbar rel-bind-bar">
                 <a-radio-group v-model="relType" type="button" size="small">
-                  <a-radio value="ALL">全部</a-radio>
-                  <a-radio value="API_CASE">接口用例</a-radio>
-                  <a-radio value="UI_SCENE">UI 场景</a-radio>
+                  <a-radio value="ALL">{{ $t('qa.common.all') }}</a-radio>
+                  <a-radio value="API_CASE">{{ $t('qa.testCase.apiCase') }}</a-radio>
+                  <a-radio value="UI_SCENE">{{ $t('qa.testCase.uiScene') }}</a-radio>
                 </a-radio-group>
                 <a-button
                   v-permission="'qa:testcase:update'"
@@ -270,7 +266,7 @@
                   @click="openAutoModal"
                 >
                   <template #icon><icon-plus /></template>
-                  关联自动化
+                  {{ $t('qa.testCase.bindAuto') }}
                 </a-button>
               </div>
               <a-table
@@ -281,7 +277,7 @@
                 row-key="id"
               >
                 <template #columns>
-                  <a-table-column title="类型" :width="90">
+                  <a-table-column :title="$t('qa.testCase.colType')" :width="90">
                     <template #cell="{ record }">
                       <a-tag
                         size="small"
@@ -291,26 +287,26 @@
                       >
                         {{
                           record.autoType === 'API_CASE'
-                            ? '接口用例'
-                            : 'UI 场景'
+                            ? $t('qa.testCase.apiCase')
+                            : $t('qa.testCase.uiScene')
                         }}
                       </a-tag>
                     </template>
                   </a-table-column>
-                  <a-table-column title="名称" data-index="autoName" />
-                  <a-table-column title="绑定备注" data-index="bindRemark">
+                  <a-table-column :title="$t('qa.testCase.colName')" data-index="autoName" />
+                  <a-table-column :title="$t('qa.testCase.bindRemark')" data-index="bindRemark">
                     <template #cell="{ record }">{{
                       record.bindRemark || '-'
                     }}</template>
                   </a-table-column>
                   <a-table-column
-                    title="绑定时间"
+                    :title="$t('qa.testCase.bindTime')"
                     data-index="createTime"
                     :width="150"
                   />
                 </template>
                 <template #empty>
-                  <a-empty description="未关联自动化用例" />
+                  <a-empty :description="$t('qa.testCase.noAuto')" />
                 </template>
               </a-table>
             </a-tab-pane>
@@ -318,19 +314,19 @@
             <!-- ========== 关联缺陷 ========== -->
             <a-tab-pane key="bug">
               <template #title
-                >关联缺陷
+                >{{ $t('qa.testCase.tab.bug') }}
                 <span v-if="bugList.length + planBugList.length" class="tab-count">{{
                   bugList.length + planBugList.length
                 }}</span></template
               >
               <a-radio-group v-model="bugTabMode" type="button" size="small" style="margin-bottom: 10px">
-                <a-radio value="direct">直接关联</a-radio>
-                <a-radio value="plan">测试计划</a-radio>
+                <a-radio value="direct">{{ $t('qa.testCase.bugDirect') }}</a-radio>
+                <a-radio value="plan">{{ $t('qa.testPlan.title') }}</a-radio>
               </a-radio-group>
               <!-- 直接关联：本 tab 内关联/新增；测试计划：执行中关联（只读），两区共用一张表 -->
               <div v-if="bugTabMode === 'direct'" class="tab-toolbar rel-bind-bar">
                 <span class="req-bind-tip"
-                  >该用例执行/评审过程中发现的缺陷</span
+                  >{{ $t('qa.testCase.bugDirectTip') }}</span
                 >
                 <a-space>
                   <a-button
@@ -340,7 +336,7 @@
                     @click="openBugBindModal"
                   >
                     <template #icon><icon-link /></template>
-                    关联已有缺陷
+                    {{ $t('qa.testCase.bindExistingBug') }}
                   </a-button>
                   <a-button
                     v-permission="'qa:bug:create'"
@@ -349,7 +345,7 @@
                     @click="openNewBugModal"
                   >
                     <template #icon><icon-plus /></template>
-                    新增缺陷
+                    {{ $t('qa.testCase.newBug') }}
                   </a-button>
                 </a-space>
               </div>
@@ -361,15 +357,15 @@
                 row-key="id"
               >
                 <template #columns>
-                  <a-table-column title="编号" :width="110">
+                  <a-table-column :title="$t('qa.testCase.colCode')" :width="110">
                     <template #cell="{ record }">{{ record.bugCode }}</template>
                   </a-table-column>
-                  <a-table-column title="标题">
+                  <a-table-column :title="$t('qa.bug.name')">
                     <template #cell="{ record }">
                       <a-link @click="goBug(record)">{{ record.title }}</a-link>
                     </template>
                   </a-table-column>
-                  <a-table-column title="严重程度" :width="90">
+                  <a-table-column :title="$t('qa.bug.severity')" :width="90">
                     <template #cell="{ record }">
                       <a-tag
                         size="small"
@@ -378,7 +374,7 @@
                       >
                     </template>
                   </a-table-column>
-                  <a-table-column title="状态" :width="90">
+                  <a-table-column :title="$t('qa.testCase.status')" :width="90">
                     <template #cell="{ record }">
                       <a-tag
                         size="small"
@@ -389,25 +385,25 @@
                   </a-table-column>
                   <a-table-column
                     v-if="bugTabMode === 'direct' && hasPerm('qa:bug:update')"
-                    title="操作"
+                    :title="$t('qa.common.operation')"
                     :width="70"
                     align="center"
                   >
                     <template #cell="{ record }">
                       <a-popconfirm
-                        content="确认将该缺陷与此用例解绑？"
+                        :content="$t('qa.testCase.unbindBugConfirm')"
                         type="warning"
                         @ok="handleUnbindBug(record)"
                       >
                         <a-button type="text" size="small" status="danger"
-                          >解绑</a-button
+                          >{{ $t('qa.testCase.unbind') }}</a-button
                         >
                       </a-popconfirm>
                     </template>
                   </a-table-column>
                 </template>
                 <template #empty>
-                  <a-empty :description="bugTabMode === 'direct' ? '该用例暂未发现缺陷' : '测试计划中暂未关联缺陷'" />
+                  <a-empty :description="bugTabMode === 'direct' ? $t('qa.testCase.noBugDirect') : $t('qa.testCase.noBugPlan')" />
                 </template>
               </a-table>
             </a-tab-pane>
@@ -415,7 +411,7 @@
             <!-- ========== 操作日志 ========== -->
             <a-tab-pane key="logs">
               <template #title
-                >操作日志
+                >{{ $t('qa.testCase.tab.logs') }}
                 <span v-if="groupedOperationLogs.length" class="tab-count">{{
                   groupedOperationLogs.length
                 }}</span></template
@@ -426,10 +422,10 @@
                 class="reject-alert"
                 show-icon
               >
-                该用例最近一次评审被打回，修改后请重新提交评审
+                {{ $t('qa.testCase.reviewRejectedTip') }}
                 <template v-if="operationLogList[0]?.comment">
                   <div class="reject-comment"
-                    >打回意见：{{ operationLogList[0].comment }}</div
+                    >{{ $t('qa.testCase.rejectComment', { comment: operationLogList[0].comment }) }}</div
                   >
                 </template>
               </a-alert>
@@ -443,7 +439,7 @@
                 >
                   <div class="oplog-head">
                     <span class="oplog-operator">{{
-                      group.operatorName || '用户' + group.operatorId
+                      group.operatorName || $t('qa.testCase.userPrefix') + group.operatorId
                     }}</span>
                     <a-tag
                       :color="operationColor(group.operation)"
@@ -479,8 +475,8 @@
                     <a-link @click="toggleLogGroup(group.id)">
                       {{
                         expandedLogGroups.has(group.id)
-                          ? '收起'
-                          : `改了 ${group.changes.length} 处，展开查看`
+                          ? $t('qa.testCase.collapse')
+                          : $t('qa.testCase.expandChanges', { count: group.changes.length })
                       }}
                     </a-link>
                     <template v-if="expandedLogGroups.has(group.id)">
@@ -508,13 +504,13 @@
                   }}</div>
                 </a-timeline-item>
               </a-timeline>
-              <a-empty v-else description="暂无操作日志" />
+              <a-empty v-else :description="$t('qa.testCase.noLogs')" />
             </a-tab-pane>
 
             <!-- ========== 评审记录（投票事件流，逐票留痕） ========== -->
             <a-tab-pane key="review">
               <template #title
-                >评审记录
+                >{{ $t('qa.testCase.tab.reviewHistory') }}
                 <span v-if="reviewHistory.length" class="tab-count">{{
                   reviewHistory.length
                 }}</span></template
@@ -555,13 +551,13 @@
                   </a-tag>
                 </div>
               </template>
-              <a-empty v-else description="暂无评审记录" />
+              <a-empty v-else :description="$t('qa.testCase.noReview')" />
             </a-tab-pane>
 
             <!-- ========== 评论（二级回复 + @提及） ========== -->
             <a-tab-pane key="comments" class="comment-pane">
               <template #title
-                >评论
+                >{{ $t('qa.testCase.tab.comments') }}
                 <span v-if="commentList.length" class="tab-count">{{
                   commentList.length
                 }}</span></template
@@ -597,14 +593,14 @@
                           v-if="hasPerm('qa:testcase:update')"
                           class="comment-actions"
                         >
-                          <a-link @click="startReply(cmt, null)">回复</a-link>
+                          <a-link @click="startReply(cmt, null)">{{ $t('qa.testCase.reply') }}</a-link>
                           <template v-if="cmt.createUserId === currentUserId">
-                            <a-link @click="startEditComment(cmt)">编辑</a-link>
+                            <a-link @click="startEditComment(cmt)">{{ $t('qa.testCase.actionEdit') }}</a-link>
                             <a-popconfirm
-                              content="确认删除这条评论？其下的回复会一并删除"
+                              :content="$t('qa.testCase.deleteCommentConfirm')"
                               @ok="handleDeleteComment(cmt)"
                             >
-                              <a-link status="danger">删除</a-link>
+                              <a-link status="danger">{{ $t('qa.common.delete') }}</a-link>
                             </a-popconfirm>
                           </template>
                         </div>
@@ -613,10 +609,10 @@
                         v-if="editingCommentId === cmt.id"
                         class="comment-edit-input"
                       >
-                        <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" placeholder="编辑评论..." @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                        <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.testCase.editCommentPlaceholder')" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                         <div class="edit-actions">
-                          <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(cmt)">保存</a-button>
-                          <a-link @click="editingCommentId = null">取消</a-link>
+                          <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(cmt)">{{ $t('qa.common.save') }}</a-button>
+                          <a-link @click="editingCommentId = null">{{ $t('qa.common.cancel') }}</a-link>
                         </div>
                       </div>
                       <RichEditor v-else :model-value="cmt.content" readonly />
@@ -657,25 +653,25 @@
                               <div class="comment-head">
                                 <span class="comment-who">{{
                                   commentName(reply)
-                                }} 回复 {{ commentName(cmt) }}</span>
+                                }} {{ $t('qa.testCase.reply') }} {{ commentName(cmt) }}</span>
                                 <div
                                   v-if="hasPerm('qa:testcase:update')"
                                   class="comment-actions"
                                 >
                                   <a-link @click="startReply(cmt, reply)"
-                                    >回复</a-link
+                                    >{{ $t('qa.testCase.reply') }}</a-link
                                   >
                                   <template
                                     v-if="reply.createUserId === currentUserId"
                                   >
                                     <a-link @click="startEditComment(reply)"
-                                      >编辑</a-link
+                                      >{{ $t('qa.testCase.actionEdit') }}</a-link
                                     >
                                     <a-popconfirm
-                                      content="确认删除这条回复？"
+                                      :content="$t('qa.testCase.deleteReplyConfirm')"
                                       @ok="handleDeleteComment(reply)"
                                     >
-                                      <a-link status="danger">删除</a-link>
+                                      <a-link status="danger">{{ $t('qa.common.delete') }}</a-link>
                                     </a-popconfirm>
                                   </template>
                                 </div>
@@ -684,10 +680,10 @@
                                 v-if="editingCommentId === reply.id"
                                 class="comment-edit-input"
                               >
-                                <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" placeholder="编辑评论..." @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                                <RichEditor v-model="editingContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.testCase.editCommentPlaceholder')" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                                 <div class="edit-actions">
-                                  <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(reply)">保存</a-button>
-                                  <a-link @click="editingCommentId = null">取消</a-link>
+                                  <a-button type="primary" size="small" :loading="commentSaving" @click="saveEditComment(reply)">{{ $t('qa.common.save') }}</a-button>
+                                  <a-link @click="editingCommentId = null">{{ $t('qa.common.cancel') }}</a-link>
                                 </div>
                               </div>
                               <RichEditor v-else :model-value="reply.content" readonly />
@@ -703,10 +699,10 @@
                           @click="toggleReplies(cmt.id)"
                         >
                           <template v-if="expandedReplyIds.has(cmt.id)">
-                            收起回复 <icon-up />
+                            {{ $t('qa.testCase.collapseReplies') }} <icon-up />
                           </template>
                           <template v-else>
-                            共 {{ cmt.replies.length }} 条回复，点击展开
+                            {{ $t('qa.testCase.expandReplies', { count: cmt.replies.length }) }}
                             <icon-down />
                           </template>
                         </div>
@@ -714,16 +710,16 @@
 
                       <!-- 行内回复输入框 -->
                       <div v-if="replyParentId === cmt.id" class="reply-input">
-                        <RichEditor v-model="replyContent" auto-height mention :mention-list="mentionOptions" :placeholder="`回复 ${replyTargetName}...`" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+                        <RichEditor v-model="replyContent" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.testCase.replyTo', { name: replyTargetName })" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
                         <div class="reply-actions">
-                          <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveReply(cmt)">回复</a-button>
-                          <a-link @click="cancelReply">取消</a-link>
+                          <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveReply(cmt)">{{ $t('qa.testCase.reply') }}</a-button>
+                          <a-link @click="cancelReply">{{ $t('qa.common.cancel') }}</a-link>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <a-empty v-else description="暂无评论" class="comment-empty" />
+                <a-empty v-else :description="$t('qa.testCase.noComments')" class="comment-empty" />
               </div>
 
             </a-tab-pane>
@@ -734,21 +730,21 @@
 
     <template #footer>
       <div v-if="tabKey === 'comments'" v-permission="'qa:testcase:update'" class="comment-input-bar">
-        <a-input v-if="!commentEditorActive" v-model="newComment" placeholder="输入评论..." allow-clear @focus="commentEditorActive = true" />
+        <a-input v-if="!commentEditorActive" v-model="newComment" :placeholder="$t('qa.testCase.commentPlaceholder')" allow-clear @focus="commentEditorActive = true" />
         <template v-else>
-          <RichEditor v-model="newComment" auto-height mention :mention-list="mentionOptions" placeholder="输入评论，@ 可提及项目成员，Ctrl+Enter 发表" @keydown="handleCommentKeydown" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
+          <RichEditor v-model="newComment" auto-height mention :mention-list="mentionOptions" :placeholder="$t('qa.testCase.commentPlaceholderFull')" @keydown="handleCommentKeydown" @mention-trigger="handleMentionSearch('')" @mention="onMentionSelect" />
           <div class="comment-input-actions">
-            <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveComment">发表</a-button>
-            <a-button size="small" @click="commentEditorActive = false; newComment = ''">取消</a-button>
+            <a-button type="primary" size="small" :loading="commentSaving" @click="handleSaveComment">{{ $t('qa.testCase.publish') }}</a-button>
+            <a-button size="small" @click="commentEditorActive = false; newComment = ''">{{ $t('qa.common.cancel') }}</a-button>
           </div>
         </template>
       </div>
       <div v-else-if="props.autoEdit" class="dd-footer">
-        <a-button @click="cancelEdit">取消</a-button>
-        <a-button type="primary" :loading="editSaving" @click="saveEdit">{{ props.confirmText || '保存' }}</a-button>
+        <a-button @click="cancelEdit">{{ $t('qa.common.cancel') }}</a-button>
+        <a-button type="primary" :loading="editSaving" @click="saveEdit">{{ props.confirmText || $t('qa.common.save') }}</a-button>
       </div>
       <div v-else class="dd-footer">
-        <a-button @click="close">关闭</a-button>
+        <a-button @click="close">{{ $t('qa.testCase.close') }}</a-button>
       </div>
     </template>
   </a-drawer>
@@ -756,7 +752,7 @@
   <!-- 关联需求选择弹窗：搜索 + 分页列表 + 复选 -->
   <a-modal
     v-model:visible="reqModalVisible"
-    title="选择关联需求"
+    :title="$t('qa.testCase.selectRequirements')"
     width="680px"
     :ok-loading="reqModalSaving"
     :body-style="{ minHeight: '450px' }"
@@ -765,7 +761,7 @@
     <div class="req-modal-body">
       <a-input-search
         v-model="reqModalKeyword"
-        placeholder="搜索需求名称/编号"
+        :placeholder="$t('qa.testCase.searchReqPlaceholder')"
         allow-clear
         style="width: 280px; margin-bottom: 12px"
         @search="handleReqModalSearch"
@@ -784,15 +780,15 @@
         @selection-change="onReqModalSelectionChange"
       >
         <template #columns>
-          <a-table-column title="编号" :width="110">
+          <a-table-column :title="$t('qa.testCase.colCode')" :width="110">
             <template #cell="{ record }">{{ record.reqCode }}</template>
           </a-table-column>
           <a-table-column
-            title="需求名称"
+            :title="$t('qa.testCase.reqName')"
             data-index="title"
             :ellipsis="true"
           />
-          <a-table-column title="状态" :width="90">
+          <a-table-column :title="$t('qa.testCase.status')" :width="90">
             <template #cell="{ record }">
               <a-tag size="small" color="arcoblue">{{
                 reqStatusText(record.status)
@@ -801,7 +797,7 @@
           </a-table-column>
         </template>
         <template #empty>
-          <a-empty description="没有匹配的需求" />
+          <a-empty :description="$t('qa.testCase.noMatchedReq')" />
         </template>
       </a-table>
     </div>
@@ -810,7 +806,7 @@
   <!-- 关联自动化选择弹窗：类型切换 + 搜索 + 复选，确定后按差量绑定/解绑 -->
   <a-modal
     v-model:visible="autoModalVisible"
-    title="关联自动化"
+    :title="$t('qa.testCase.bindAuto')"
     width="640px"
     :ok-loading="autoModalSaving"
     :body-style="{ minHeight: '450px' }"
@@ -823,12 +819,12 @@
         size="small"
         @change="handleAutoTypeChange"
       >
-        <a-radio value="API_CASE">接口用例</a-radio>
-        <a-radio value="UI_SCENE">UI 场景</a-radio>
+        <a-radio value="API_CASE">{{ $t('qa.testCase.apiCase') }}</a-radio>
+        <a-radio value="UI_SCENE">{{ $t('qa.testCase.uiScene') }}</a-radio>
       </a-radio-group>
       <a-input-search
         v-model="autoModalKeyword"
-        placeholder="搜索名称"
+        :placeholder="$t('qa.testCase.searchName')"
         allow-clear
         style="width: 240px"
       />
@@ -845,14 +841,14 @@
       @selection-change="onAutoSelectionChange"
     >
       <template #columns>
-        <a-table-column title="名称" data-index="name" :ellipsis="true" />
+        <a-table-column :title="$t('qa.testCase.colName')" data-index="name" :ellipsis="true" />
       </template>
       <template #empty>
         <a-empty
           :description="
             autoModalType === 'API_CASE'
-              ? '当前项目暂无接口用例'
-              : '当前项目暂无 UI 场景'
+              ? $t('qa.testCase.noApiCase')
+              : $t('qa.testCase.noUiScene')
           "
         />
       </template>
@@ -862,7 +858,7 @@
   <!-- 关联已有缺陷弹窗：搜索 + 分页 + 复选，确定后差量绑定/解绑 -->
   <a-modal
     v-model:visible="bugBindModalVisible"
-    title="关联已有缺陷"
+    :title="$t('qa.testCase.bindExistingBug')"
     width="680px"
     :ok-loading="bugBindSaving"
     :body-style="{ minHeight: '450px' }"
@@ -870,7 +866,7 @@
   >
     <a-input-search
       v-model="bugBindKeyword"
-      placeholder="搜索缺陷标题/编号"
+      :placeholder="$t('qa.testCase.searchBugPlaceholder')"
       allow-clear
       style="width: 280px; margin-bottom: 12px"
       @search="handleBugBindSearch"
@@ -889,31 +885,31 @@
       @selection-change="onBugBindSelectionChange"
     >
       <template #columns>
-        <a-table-column title="编号" :width="110">
+        <a-table-column :title="$t('qa.testCase.colCode')" :width="110">
           <template #cell="{ record }">{{ record.bugCode }}</template>
         </a-table-column>
-        <a-table-column title="标题" data-index="title" :ellipsis="true" />
-        <a-table-column title="关联状态" :width="110">
+        <a-table-column :title="$t('qa.bug.name')" data-index="title" :ellipsis="true" />
+        <a-table-column :title="$t('qa.testCase.bindStatus')" :width="110">
           <template #cell="{ record }">
             <a-tag
               v-if="record.testCaseId && record.testCaseId !== props.caseId"
               size="small"
               color="orange"
-              >已关联其他用例</a-tag
+              >{{ $t('qa.testCase.bugLinkedOther') }}</a-tag
             >
             <a-tag v-else-if="record.testCaseId" size="small" color="green"
-              >已关联本用例</a-tag
+              >{{ $t('qa.testCase.bugLinkedThis') }}</a-tag
             >
-            <span v-else style="color: #86909c">未关联</span>
+            <span v-else style="color: #86909c">{{ $t('qa.testCase.bugNotLinked') }}</span>
           </template>
         </a-table-column>
       </template>
       <template #empty>
-        <a-empty description="没有匹配的缺陷" />
+        <a-empty :description="$t('qa.testCase.noMatchedBug')" />
       </template>
     </a-table>
     <div class="bug-bind-tip"
-      >勾选「已关联其他用例」的缺陷，保存后原关联会被替换为本用例</div
+      >{{ $t('qa.testCase.bugBindTip') }}</div
     >
   </a-modal>
 
@@ -928,7 +924,7 @@
   >
     <template #title>
       <div class="drawer-title-wrap">
-        <span>新增缺陷</span>
+        <span>{{ $t('qa.testCase.newBug') }}</span>
         <a-button type="text" size="small" class="dd-fullscreen-btn" @click="newBugFullScreen = !newBugFullScreen">
           <template #icon>
             <icon-fullscreen v-if="!newBugFullScreen" />
@@ -948,9 +944,9 @@
     </div>
     <template #footer>
       <a-space>
-        <a-button @click="newBugVisible = false">取消</a-button>
-        <a-button :loading="newBugSavingContinue" @click="handleNewBugSaveContinue">保存继续创建</a-button>
-        <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">保存</a-button>
+        <a-button @click="newBugVisible = false">{{ $t('qa.common.cancel') }}</a-button>
+        <a-button :loading="newBugSavingContinue" @click="handleNewBugSaveContinue">{{ $t('qa.testCase.saveAndContinue') }}</a-button>
+        <a-button type="primary" :loading="newBugSaving" @click="handleNewBugSave">{{ $t('qa.common.save') }}</a-button>
       </a-space>
     </template>
   </a-drawer>
@@ -959,6 +955,7 @@
 <script setup lang="ts">
   import { computed, ref, watch, nextTick } from 'vue';
   import { useRouter } from 'vue-router';
+  import { useI18n } from 'vue-i18n';
   import { Message } from '@arco-design/web-vue';
   import { useProjectStore, useUserStore } from '@/store';
   import { usePermissionStore } from '@/store';
@@ -968,7 +965,7 @@
   import TestCaseForm from './TestCaseForm.vue';
   import RichEditor from '@/components/rich-editor/index.vue';
   import BugForm from '@/views/qa/bug/components/BugForm.vue';
-  import { Modal } from '@arco-design/web-vue';
+  import { confirmIfDirty } from '@/hooks/useDirtyGuard';
   import {
     getTestCaseDetail,
     getRequirementDetail,
@@ -1003,6 +1000,7 @@
   const emit = defineEmits(['update:visible', 'refresh']);
 
   const router = useRouter();
+  const { t } = useI18n();
   const projectStore = useProjectStore();
   const userStore = useUserStore();
   const permissionStore = usePermissionStore();
@@ -1045,12 +1043,12 @@
 
   const infoItems = computed(() => [
     ...(fieldVis('moduleId')
-      ? [{ label: '所属模块', value: detail.value.moduleName || '-' }]
+      ? [{ label: t('qa.testCase.module'), value: detail.value.moduleName || '-' }]
       : []),
-    { label: '创建人', value: detail.value.createUserName || '-' },
-    { label: '更新人', value: detail.value.updateUserName || '-' },
-    { label: '创建时间', value: detail.value.createTime || '-' },
-    { label: '更新时间', value: detail.value.updateTime || '-' },
+    { label: t('qa.testCase.createUser'), value: detail.value.createUserName || '-' },
+    { label: t('qa.testCase.updateUser'), value: detail.value.updateUserName || '-' },
+    { label: t('qa.testCase.createTime'), value: detail.value.createTime || '-' },
+    { label: t('qa.testCase.updateTime'), value: detail.value.updateTime || '-' },
   ]);
 
   // ===== 头部双击编辑（名称/等级/评审状态；编号不可改） =====
@@ -1096,11 +1094,11 @@
       });
       if (res.code === 200) {
         detail.value[field] = value;
-        Message.success('已保存');
+        Message.success(t('qa.testCase.saved'));
         operationLogLoaded.value = false;
         emit('refresh');
       } else {
-        Message.error(res.msg || '保存失败');
+        Message.error(res.msg || t('qa.testCase.saveFailed'));
       }
     } catch (e) {
       console.error(e);
@@ -1120,19 +1118,7 @@
   };
 
   const cancelEdit = () => {
-    if (editFormRef.value?.isDirty?.()) {
-      Modal.confirm({
-        title: '放弃修改？',
-        content: '当前有未保存的修改，取消后修改内容将丢失。',
-        okText: '放弃修改',
-        cancelText: '继续编辑',
-        onOk: () => {
-          editing.value = false;
-        },
-      });
-    } else {
-      editing.value = false;
-    }
+    confirmIfDirty(!!editFormRef.value?.isDirty?.(), () => { editing.value = false; }, t('qa.testCase.unsavedCancelConfirm'));
   };
 
   const saveEdit = async () => {
@@ -1273,7 +1259,7 @@
 
   const saveEditComment = async (cmt: any) => {
     if (isEmptyRichContent(editingContent.value)) {
-      Message.warning('评论内容不能为空');
+      Message.warning(t('qa.testCase.commentEmpty'));
       return;
     }
     const content = editingContent.value.trim();
@@ -1285,11 +1271,11 @@
     try {
       const res: any = await updateTestCaseComment({ id: cmt.id, content });
       if (res.code === 200) {
-        Message.success('已更新');
+        Message.success(t('qa.testCase.updated'));
         editingCommentId.value = null;
         loadComments(props.caseId as number);
       } else {
-        Message.error(res.msg || '更新失败');
+        Message.error(res.msg || t('qa.testCase.updateFailed'));
       }
     } catch (e) {
       console.error(e);
@@ -1310,7 +1296,7 @@
     '#86909c',
   ];
   const commentName = (cmt: any) =>
-    cmt.createUserName || '用户' + cmt.createUserId;
+    cmt.createUserName || t('qa.testCase.userPrefix') + cmt.createUserId;
   const avatarText = (name: string) =>
     (name || '?').trim().charAt(0).toUpperCase();
   const avatarColor = (name: string) => {
@@ -1351,7 +1337,7 @@
   const replyTargetName = computed(() =>
     replyTarget.value
       ? replyTarget.value.createUserName ||
-        '用户' + replyTarget.value.createUserId
+        t('qa.testCase.userPrefix') + replyTarget.value.createUserId
       : ''
   );
 
@@ -1375,7 +1361,7 @@
 
   const handleSaveReply = async (top: any) => {
     if (isEmptyRichContent(replyContent.value)) {
-      Message.warning('回复内容不能为空');
+      Message.warning(t('qa.testCase.replyEmpty'));
       return;
     }
     const ok = await doSaveComment(replyContent.value.trim(), top.id);
@@ -1623,14 +1609,14 @@
         requirementIds: joined,
       });
       if (res.code === 200) {
-        Message.success('关联需求已更新');
+        Message.success(t('qa.testCase.reqUpdated'));
         detail.value.requirementIds = joined;
         detail.value.requirementId = ids[0] ?? null;
         requirementList.value = [];
         if (ids.length) loadRequirement();
         emit('refresh');
       } else {
-        Message.error(res.msg || '操作失败');
+        Message.error(res.msg || t('qa.testCase.operationFailed'));
       }
     } catch (e) {
       console.error(e);
@@ -1708,14 +1694,14 @@
       ];
       if (tasks.length) {
         await Promise.all(tasks);
-        Message.success('关联自动化已更新');
+        Message.success(t('qa.testCase.autoUpdated'));
         relLoaded.value = false;
         await loadBindList(props.caseId);
         emit('refresh');
       }
     } catch (e) {
       console.error(e);
-      Message.error('保存失败，请重试');
+      Message.error(t('qa.testCase.saveRetryFailed'));
     } finally {
       autoModalSaving.value = false;
     }
@@ -1798,14 +1784,14 @@
       ];
       if (tasks.length) {
         await Promise.all(tasks);
-        Message.success('关联缺陷已更新');
+        Message.success(t('qa.testCase.bugUpdated'));
         bugLoaded.value = false;
         await loadBugs(props.caseId);
         emit('refresh');
       }
     } catch (e) {
       console.error(e);
-      Message.error('保存失败，请重试');
+      Message.error(t('qa.testCase.saveRetryFailed'));
     } finally {
       bugBindSaving.value = false;
     }
@@ -1816,12 +1802,12 @@
     try {
       const res: any = await unbindBugCase(record.id, props.caseId as number);
       if (res.code === 200) {
-        Message.success('已解绑');
+        Message.success(t('qa.testCase.unbound'));
         bugLoaded.value = false;
         if (props.caseId) await loadBugs(props.caseId);
         emit('refresh');
       } else {
-        Message.error(res.msg || '解绑失败');
+        Message.error(res.msg || t('qa.testCase.unbindFailed'));
       }
     } catch (e) {
       console.error(e);
@@ -1975,7 +1961,7 @@
 
   const handleSaveComment = async () => {
     if (isEmptyRichContent(newComment.value)) {
-      Message.warning('评论内容不能为空');
+      Message.warning(t('qa.testCase.commentEmpty'));
       return;
     }
     const ok = await doSaveComment(newComment.value.trim(), 0);
@@ -1999,11 +1985,11 @@
           : undefined,
       });
       if (res.code === 200) {
-        Message.success(parentId ? '回复成功' : '评论成功');
+        Message.success(parentId ? t('qa.testCase.replySuccess') : t('qa.testCase.commentSuccess'));
         loadComments(props.caseId as number);
         return true;
       }
-      Message.error(res.msg || '评论失败');
+      Message.error(res.msg || t('qa.testCase.commentFailed'));
       return false;
     } catch (e) {
       console.error(e);
@@ -2017,7 +2003,7 @@
     try {
       const res: any = await deleteTestCaseComment(cmt.id);
       if (res.code === 200) {
-        Message.success('已删除');
+        Message.success(t('qa.testCase.deleted'));
         loadComments(props.caseId as number);
       }
     } catch (e) {
@@ -2040,7 +2026,11 @@
   const voteConclusionColor = (c: string) =>
     c === 'PASS' ? 'green' : c === 'REJECT' ? 'red' : 'gray';
   const voteConclusionText = (c: string) =>
-    c === 'PASS' ? '通过' : c === 'REJECT' ? '不通过' : '待评审';
+    c === 'PASS'
+      ? t('qa.testCase.vote.pass')
+      : c === 'REJECT'
+        ? t('qa.testCase.vote.reject')
+        : t('qa.testCase.vote.pending');
 
   // ===== 跳转 =====
   const goRequirement = (record: any) => {
@@ -2051,7 +2041,7 @@
   };
 
   // ===== 文案/颜色映射 =====
-  const renderHtml = (content: string | undefined, defaultText = '暂无') => {
+  const renderHtml = (content: string | undefined, defaultText = t('qa.testCase.none')) => {
     if (!content || content.trim() === '') return defaultText;
     if (/<[a-z][\s\S]*?>/i.test(content)) return sanitizeHtml(content);
     return content.replace(/\n/g, '<br>');
@@ -2064,27 +2054,32 @@
     ] || 'gray');
   const statusText = (s: string) =>
     ({
-      DRAFT: '草稿',
-      REVIEWING: '评审中',
-      REVIEWED: '已评审',
-      DEPRECATED: '已废弃',
+      DRAFT: t('qa.testCase.status.draft'),
+      REVIEWING: t('qa.testCase.status.reviewing'),
+      REVIEWED: t('qa.testCase.status.reviewed'),
+      DEPRECATED: t('qa.testCase.status.deprecated'),
     }[s] || s);
   const reqStatusText = (s: string) =>
     ({
-      DRAFT: '草稿',
-      REVIEWING: '评审中',
-      CONFIRMED: '已确认',
-      DEVELOPING: '开发中',
-      TESTING: '测试中',
-      RELEASED: '已上线',
-      CLOSED: '已关闭',
+      DRAFT: t('qa.testCase.status.draft'),
+      REVIEWING: t('qa.testCase.status.reviewing'),
+      CONFIRMED: t('qa.testCase.reqStatus.confirmed'),
+      DEVELOPING: t('qa.testCase.reqStatus.developing'),
+      TESTING: t('qa.testCase.reqStatus.testing'),
+      RELEASED: t('qa.testCase.reqStatus.released'),
+      CLOSED: t('qa.testCase.reqStatus.closed'),
     }[s] || s);
   const bugSeverityColor = (s: string) =>
     ({ FATAL: 'red', SERIOUS: 'orangered', NORMAL: 'orange', TIPS: 'gray' }[
       s
     ] || 'gray');
   const bugSeverityText = (s: string) =>
-    ({ FATAL: '致命', SERIOUS: '严重', NORMAL: '一般', TIPS: '提示' }[s] || s);
+    ({
+      FATAL: t('qa.testCase.bugSeverity.fatal'),
+      SERIOUS: t('qa.testCase.bugSeverity.serious'),
+      NORMAL: t('qa.testCase.bugSeverity.normal'),
+      TIPS: t('qa.testCase.bugSeverity.tips'),
+    }[s] || s);
   const bugStatusColor = (s: string) =>
     ({
       NEW: 'red',
@@ -2097,23 +2092,23 @@
     }[s] || 'gray');
   const bugStatusText = (s: string) =>
     ({
-      NEW: '新建',
-      CONFIRMED: '已确认',
-      FIXING: '修复中',
-      FIXED: '已修复',
-      VERIFIED: '已验证',
-      CLOSED: '已关闭',
-      REJECTED: '已驳回',
+      NEW: t('qa.testCase.bugStatus.new'),
+      CONFIRMED: t('qa.testCase.bugStatus.confirmed'),
+      FIXING: t('qa.testCase.bugStatus.fixing'),
+      FIXED: t('qa.testCase.bugStatus.fixed'),
+      VERIFIED: t('qa.testCase.bugStatus.verified'),
+      CLOSED: t('qa.testCase.bugStatus.closed'),
+      REJECTED: t('qa.testCase.bugStatus.rejected'),
     }[s] || s);
   const operationText = (op: string) =>
     ({
-      CREATE: '创建',
-      UPDATE: '编辑',
-      TRANSITION: '状态流转',
-      DELETE: '删除',
-      REVIEW_PASS: '评审通过',
-      REVIEW_REJECT: '评审打回',
-      VERSION: '版本快照',
+      CREATE: t('qa.testCase.operation.create'),
+      UPDATE: t('qa.testCase.operation.update'),
+      TRANSITION: t('qa.testCase.operation.transition'),
+      DELETE: t('qa.testCase.operation.delete'),
+      REVIEW_PASS: t('qa.testCase.operation.reviewPass'),
+      REVIEW_REJECT: t('qa.testCase.operation.reviewReject'),
+      VERSION: t('qa.testCase.operation.version'),
     }[op] || op);
   const operationColor = (op: string) =>
     ({
@@ -2125,7 +2120,8 @@
       REVIEW_REJECT: 'orange',
       VERSION: 'purple',
     }[op] || 'gray');
-  const fieldNameText = (field: string) => ({ status: '状态' }[field] || field);
+  const fieldNameText = (field: string) =>
+    ({ status: t('qa.testCase.status') }[field] || field);
   const renderLogValue = (field: string, value: any) => {
     if (value === null || value === undefined || value === '') return '-';
     if (field === 'status') return statusText(String(value));
