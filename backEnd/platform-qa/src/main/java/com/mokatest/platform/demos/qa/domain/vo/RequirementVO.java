@@ -59,6 +59,16 @@ public class RequirementVO {
 
     private String tags;
 
+    /** AI评审状态: NOT_REVIEWED/REVIEWED */
+    private String aiReviewStatus;
+
+    /** AI评审最新分数(0-100) */
+    private Integer aiReviewScore;
+
+    /** AI评审最新时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date aiReviewTime;
+
     private Integer createUserId;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")

@@ -6,10 +6,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
 import com.mokatest.platform.demos.domain.ui.User;
 import com.mokatest.platform.demos.mapper.ProjectMapper;
 import com.mokatest.platform.demos.mapper.TeamMapper;
 import com.mokatest.platform.demos.mapper.UserMapper;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.Bug;
 import com.mokatest.platform.demos.qa.domain.Requirement;
 import com.mokatest.platform.demos.qa.domain.TestCase;
@@ -249,12 +251,14 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     }
 
     @Override
+    @Transactional
     public SaResult saveOrUpdateBug(Bug bug) {
         if (bug == null) {
             return SaResult.error("缺少参数");
         }
-        if (bug.getProjectId() == null) {
-            return SaResult.error("缺少项目ID");
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
         }
         if (bug.getTitle() == null || bug.getTitle().trim().isEmpty()) {
             return SaResult.error("BUG标题不能为空");
@@ -275,10 +279,14 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         }
 
         Integer loginId = StpUtil.getLoginIdAsInt();
-        // 更新时记录变更日志
+        // 更新时记录变更日志；更新分支校验归属项目（IDOR）并以老 BUG projectId 覆盖入参，
+        // 新增分支以当前项目上下文覆盖，杜绝前端篡改 projectId 跨项目写入
         Bug oldBug = null;
         if (bug.getId() != null) {
-            oldBug = getById(bug.getId());
+            oldBug = ProjectEntityGuard.requireInProject(getById(bug.getId()));
+            bug.setProjectId(oldBug.getProjectId());
+        } else {
+            bug.setProjectId(ctxProjectId);
         }
 
         if (bug.getId() == null) {
@@ -376,10 +384,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        Bug bug = getById(id);
-        if (bug == null) {
-            return SaResult.error("BUG不存在");
-        }
+        Bug bug = ProjectEntityGuard.requireInProject(getById(id));
         Integer loginId = StpUtil.getLoginIdAsInt();
         // 发送删除通知（在删除附属数据之前）
         sendBugDeletedMessage(bug, loginId);
@@ -410,11 +415,12 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             return SaResult.error("未选择要删除的BUG");
         }
         Integer loginId = StpUtil.getLoginIdAsInt();
-        // 先查询 BUG 信息并发送删除通知
+        // 先查询 BUG 信息并逐条校验归属项目（IDOR）后发送删除通知
         List<Bug> bugs = baseMapper.selectBatchIds(ids);
         if (bugs != null) {
             for (Bug bug : bugs) {
                 if (bug != null) {
+                    ProjectEntityGuard.requireInProject(bug);
                     sendBugDeletedMessage(bug, loginId);
                 }
             }
@@ -449,10 +455,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        Bug bug = getById(id);
-        if (bug == null) {
-            return SaResult.error("BUG不存在");
-        }
+        Bug bug = ProjectEntityGuard.requireInProject(getById(id));
         return SaResult.ok().setData(bug);
     }
 
@@ -464,10 +467,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (targetStatus == null || !VALID_STATUSES.contains(targetStatus)) {
             return SaResult.error("无效的目标状态: " + targetStatus);
         }
-        Bug bug = getById(bugId);
-        if (bug == null) {
-            return SaResult.error("BUG不存在");
-        }
+        Bug bug = ProjectEntityGuard.requireInProject(getById(bugId));
         String oldStatus = bug.getStatus();
         Integer loginId = StpUtil.getLoginIdAsInt();
         bug.setStatus(targetStatus);
@@ -747,10 +747,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (bugId == null) {
             return SaResult.error("缺少BUG ID");
         }
-        Bug bug = getById(bugId);
-        if (bug == null) {
-            return SaResult.error("BUG不存在");
-        }
+        Bug bug = ProjectEntityGuard.requireInProject(getById(bugId));
         // 仅已修复/已验证/已关闭的 BUG 允许沉淀回归用例
         if (!Arrays.asList("FIXED", "VERIFIED", "CLOSED").contains(bug.getStatus())) {
             return SaResult.error("仅已修复/已验证/已关闭的BUG才能沉淀回归用例");
@@ -860,6 +857,8 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
         if (bugId == null) {
             return SaResult.error("缺少BUG ID");
         }
+        // 数据边界：BUG 须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(bugId));
         if (testCaseId == null) {
             // 解绑：删除 bug_case 中该 BUG 的所有关联
             QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> delW = new QueryWrapper<>();
@@ -867,7 +866,8 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
             boolean success = bugCaseMapper.delete(delW) > 0;
             return success ? SaResult.ok("已解绑用例") : SaResult.ok("无关联记录");
         }
-        // 关联：插入 bug_case（避免重复）
+        // 关联：用例须归属当前项目（双向校验），插入 bug_case（避免重复）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
         QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> existW = new QueryWrapper<>();
         existW.eq("bug_id", bugId).eq("test_case_id", testCaseId);
         if (bugCaseMapper.selectCount(existW) == 0) {
@@ -881,6 +881,11 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     public SaResult bindCases(Integer bugId, List<Integer> testCaseIds) {
         if (bugId == null) return SaResult.error("缺少BUG ID");
         if (testCaseIds == null || testCaseIds.isEmpty()) return SaResult.error("未选择用例");
+        // 数据边界：BUG 与待关联用例均须归属当前项目（双向校验，IDOR）
+        ProjectEntityGuard.requireInProject(getById(bugId));
+        for (Integer tcId : testCaseIds) {
+            ProjectEntityGuard.requireInProject(testCaseMapper.selectById(tcId));
+        }
         // 先查出已有的关联，避免重复插入
         QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> existWrapper = new QueryWrapper<>();
         existWrapper.eq("bug_id", bugId);
@@ -904,6 +909,10 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     @Override
     @Transactional
     public SaResult unbindCase(Integer bugId, Integer testCaseId) {
+        if (bugId == null || testCaseId == null) return SaResult.error("缺少参数");
+        // 数据边界：BUG 与用例均须归属当前项目（双向校验，IDOR）
+        ProjectEntityGuard.requireInProject(getById(bugId));
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
         QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> wrapper = new QueryWrapper<>();
         wrapper.eq("bug_id", bugId).eq("test_case_id", testCaseId);
         bugCaseMapper.delete(wrapper);
@@ -914,8 +923,7 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     @Transactional
     public SaResult bindPlanCase(Integer bugId, Integer planCaseId) {
         if (bugId == null) return SaResult.error("缺少BUG ID");
-        Bug bug = getById(bugId);
-        if (bug == null) return SaResult.error("BUG不存在");
+        Bug bug = ProjectEntityGuard.requireInProject(getById(bugId));
         if (planCaseId != null) {
             // 数据边界：计划用例必须存在且与 BUG 同项目，禁止跨项目绑定
             com.mokatest.platform.demos.qa.domain.TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
@@ -936,6 +944,8 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
     @Override
     public SaResult listPlanCaseBugs(Integer testCaseId) {
         if (testCaseId == null) return SaResult.error("缺少用例ID");
+        // 数据边界：用例须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
         // test_case_id -> test_plan_case.id -> bug.plan_case_id
         QueryWrapper<com.mokatest.platform.demos.qa.domain.TestPlanCase> pcW = new QueryWrapper<>();
         pcW.eq("test_case_id", testCaseId);
@@ -950,6 +960,9 @@ public class BugServiceImpl extends ServiceImpl<BugMapper, Bug> implements BugSe
 
     @Override
     public SaResult listLinkedCases(Integer bugId) {
+        if (bugId == null) return SaResult.error("缺少BUG ID");
+        // 数据边界：BUG 须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(bugId));
         QueryWrapper<com.mokatest.platform.demos.qa.domain.BugCase> wrapper = new QueryWrapper<>();
         wrapper.eq("bug_id", bugId);
         List<com.mokatest.platform.demos.qa.domain.BugCase> links = bugCaseMapper.selectList(wrapper);

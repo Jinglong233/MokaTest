@@ -509,6 +509,9 @@ create table requirement
     participants        varchar(500)                                                                                                      null comment '参与人ID(JSON数组)',
     expect_release_time datetime                                                                                                          null comment '期望上线时间',
     tags                varchar(255)                                                                                                      null comment '标签',
+    ai_review_status    varchar(20)                                                                             default 'NOT_REVIEWED'     null comment 'AI评审状态: NOT_REVIEWED/REVIEWED',
+    ai_review_score     int                                                                                                                null comment 'AI评审最新分数(0-100)',
+    ai_review_time      datetime                                                                                                          null comment 'AI评审最新时间',
     version             varchar(50)                                                                                                       null comment '归属版本',
     owner_id            int                                                                                                               null comment '负责人ID',
     create_user_id      int                                                                                                               not null,
@@ -1203,6 +1206,10 @@ INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('知识库-更新', 'knowledge:update', 'BUTTON', LAST_INSERT_ID(), 233),
 ('知识库-删除', 'knowledge:delete', 'BUTTON', LAST_INSERT_ID(), 234);
 
+-- AI 功能使用权限
+INSERT INTO permission (name, code, type, parent_id, sort) VALUES
+('AI 功能使用', 'qa:ai:use', 'BUTTON', NULL, 235);
+
 -- ----------------------------
 -- 自定义公共函数（auto:function）
 -- ----------------------------
@@ -1265,6 +1272,13 @@ JOIN permission p ON p.code = 'qa:review:execute'
 WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
 
+-- 补挂 AI 功能使用权限
+INSERT INTO role_permission (role_id, permission_id)
+SELECT r.id, p.id FROM role r
+JOIN permission p ON p.code = 'qa:ai:use'
+WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+
 -- 补挂评审创建/取消/删除权限（新建/编辑/取消/删除评审、关联/移除用例入口需要）
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id FROM role r
@@ -1293,6 +1307,8 @@ UPDATE permission SET scope_type='PROJECT', category='report', is_project_manage
   WHERE code='report' OR code LIKE 'report:%';
 UPDATE permission SET scope_type='PROJECT', category='knowledge', is_project_management=0, is_project_execution=1
   WHERE code='knowledge' OR code LIKE 'knowledge:%';
+UPDATE permission SET scope_type='PROJECT', category='qa', is_project_management=0, is_project_execution=1
+  WHERE code = 'qa:ai:use';
 -- =============================================================
 -- AI 功能（一期）表结构，2026-07-23
 -- 历史环境请执行 upgrade_ai_feature.sql
@@ -1313,12 +1329,15 @@ create table ai_config
     timeout_ms      int         default 60000 not null comment '请求超时（毫秒）',
     enabled         tinyint     default 0    not null comment '是否启用：0-未启用 1-启用（全表唯一生效行，服务层保证）',
     vision_enabled  tinyint     default 0    not null comment '是否启用多模态：0-否 1-是',
+    support_json_mode tinyint  default 0    not null comment '是否启用 JSON 模式（response_format=json_object）：0-否 1-是',
     remark          varchar(200)           null comment '备注（配置用途说明）',
+    thinking_mode   varchar(20) default 'AUTO' null comment 'Thinking模式：AUTO/DISABLED/ENABLED',
+    project_id      int                     null comment '所属项目（NULL=平台档案）',
     create_user_id  varchar(64)            null comment '创建人',
     update_user_id  varchar(64)            null comment '更新人',
     create_time     datetime               null comment '创建时间',
     update_time     datetime               null comment '更新时间'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 模型接入配置（系统级，多档案唯一生效）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 模型接入配置（平台级 + 项目级，按作用域互斥生效）';
 
 create table ai_usage_log
 (
@@ -1328,7 +1347,11 @@ create table ai_usage_log
     team_id        int                     null comment '团队ID',
     project_id     int                     null comment '项目ID（系统级调用为 NULL）',
     scene          varchar(50)             not null comment '场景：GENERATE_CASE/GENERATE_API_CASE/REPORT_SUMMARY/BUG_ANALYSIS/EMBEDDING/CONFIG_TEST',
-    tokens         int                     null comment '消耗 tokens',
+    tokens         int                     null comment '消耗 tokens（totalTokenCount）',
+    input_tokens   int                     null comment '输入 token 数（分拆计费用）',
+    output_tokens  int                     null comment '输出 token 数',
+    model_name     varchar(128)            null comment '使用的模型名',
+    finish_reason  varchar(64)             null comment '结束原因（STOP/LENGTH/CONTENT_FILTER 等）',
     duration_ms    int                     null comment '耗时（毫秒）',
     success        tinyint      default 1  not null comment '是否成功：0-失败 1-成功',
     error_msg      varchar(1000)           null comment '失败原因摘要',
@@ -1356,6 +1379,9 @@ create table ai_generation_record
     output_snapshot mediumtext             null comment '输出快照（JSON，追加生成时累积）',
     adopted_detail  mediumtext             null comment '采纳登记（哪些条目已入库、入库后的实体ID）',
     status          varchar(20) default 'ACTIVE' not null comment '状态：ACTIVE/EXPIRED（24h 过期）',
+    current_stage   varchar(32)            null comment '当前阶段：DRAFT/POINTS_GEN/POINTS_CONFIRM/CASE_GEN/AI_REVIEW/DONE/ADOPTED；并发控制用',
+    stage_payload   mediumtext             null comment '阶段产出物（JSON：testPoints/reviewReport等）',
+    version         int default 0          not null comment '乐观锁版本号',
     create_time     datetime               null comment '创建时间',
     expire_time     datetime               null comment '过期时间',
     constraint uk_ai_generation_record_no unique (record_no)
@@ -1363,6 +1389,38 @@ create table ai_generation_record
 
 create index idx_ai_generation_record_project_entity
     on ai_generation_record (project_id, scene, entity_id);
+
+-- Phase 1.6: AI 采纳明细独立表（record_no + draft_id 唯一索引兜底防并发重复入库）
+create table ai_adoption_detail
+(
+    id          bigint auto_increment comment '主键'
+        primary key,
+    record_no   varchar(64)           not null comment '生成记录编号',
+    draft_id    varchar(64)           not null comment '草稿ID',
+    case_id     int                   null comment '入库后的用例ID',
+    create_time datetime              null comment '创建时间',
+    constraint uk_ai_adoption_record_draft unique (record_no, draft_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 采纳明细（唯一索引兜底防并发重复）';
+
+create table ai_skill_definition
+(
+    id              bigint auto_increment comment '主键'
+        primary key,
+    project_id      int                   not null comment '项目ID',
+    scene           varchar(64)           not null comment '唯一标识，如 perf_test_plan',
+    name            varchar(128)          not null comment '显示名，如 性能测试方案',
+    description     text                  null comment '用户写的说明',
+    system_prompt   text                  not null comment 'Skill 的 system prompt',
+    context_sources varchar(256)          null comment '逗号分隔的 ContextSource code 列表',
+    temperature     decimal(3,2) default 0.40 null comment '模型温度',
+    max_tokens      int         default 4000 null comment '最大输出 token',
+    enabled         tinyint     default 1   null comment '0-禁用 1-启用',
+    tools_enabled   tinyint     default 1   not null comment '是否允许使用平台工具：1-允许 0-纯对话',
+    create_by       int                   null comment '创建人ID',
+    create_time     datetime  default CURRENT_TIMESTAMP null,
+    update_time     datetime  default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint uk_project_scene unique (project_id, scene)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 自定义 Skill 定义';
 
 create table knowledge_doc
 (
@@ -1372,7 +1430,7 @@ create table knowledge_doc
     title          varchar(200)            not null comment '文档标题',
     doc_type       varchar(20)  default 'MD' not null comment '文档类型：MD/TXT/PDF',
     content        mediumtext              null comment '文档内容（PDF 为解析后的纯文本）',
-    index_status   varchar(20)  default 'PENDING' not null comment '索引状态：PENDING/INDEXING/READY/FAILED',
+    index_status   varchar(20)  default 'PENDING' not null comment '索引状态：PENDING/INDEXING/READY/PARTIAL/FAILED',
     cite_count     int          default 0 not null comment 'AI 引用次数（生成时检索命中累计）',
     create_user_id varchar(64)             null comment '创建人',
     update_user_id varchar(64)             null comment '更新人',
@@ -1402,6 +1460,86 @@ create index idx_knowledge_chunk_doc
 
 create index idx_knowledge_chunk_project
     on knowledge_chunk (project_id);
+
+-- =============================================================
+-- Phase 3: AI 需求评审表
+-- =============================================================
+
+create table ai_requirement_review
+(
+    id             bigint auto_increment comment '主键'
+        primary key,
+    project_id     int                     not null comment '所属项目（隔离边界）',
+    requirement_id bigint                  null comment '关联需求ID',
+    scores_json    text                    null comment '六维评分JSON',
+    overall_score  int                     null comment '总评分 0-100',
+    risks_json     text                    null comment '风险列表JSON',
+    checklist_json mediumtext              null comment '检查表作答明细',
+    content_hash   varchar(64)             null comment '内容哈希（幂等复用键）',
+    confidence     varchar(8)              null comment '置信度 HIGH/MEDIUM/LOW',
+    status         varchar(16) default 'SUCCESS' null comment 'SUCCESS/FAILED/STOPPED/RUNNING',
+    summary        text                    null comment 'AI 总评',
+    raw_text       mediumtext              null comment '模型原始输出（排障用）',
+    expert_results mediumtext              null comment '专家级状态机+结论 JSON {completeness:{status,result},...}',
+    instruction    varchar(500)            null comment '用户补充评审指令',
+    model_name     varchar(100)            null comment '模型名',
+    tokens         int                     null comment '消耗 tokens',
+    create_user_id varchar(64)             null comment '创建人',
+    create_time    datetime                null comment '创建时间',
+    is_deleted     tinyint     default 0   not null comment '是否已删除：0-未删除 1-已删除',
+    deleted_at     datetime                null comment '删除时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 需求评审（项目级，保留历史）';
+
+create index idx_ai_requirement_review_project
+    on ai_requirement_review (project_id, requirement_id);
+
+create index idx_ai_req_hash
+    on ai_requirement_review (requirement_id, content_hash);
+
+-- =============================================================
+-- AI Agent 会话历史表（ai_chat_schema.sql 合并）
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS `ai_chat_session` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `project_id` INT NOT NULL COMMENT '项目ID',
+  `user_id` INT DEFAULT NULL COMMENT '创建人ID',
+  `title` VARCHAR(200) DEFAULT NULL COMMENT '会话标题（首条消息摘要）',
+  `skill_scene` VARCHAR(64) DEFAULT NULL COMMENT '会话级能力快照：绑定的快捷指令场景标识',
+  `tools_enabled` TINYINT DEFAULT NULL COMMENT '会话级能力快照：绑定时的工具开关值（1-允许 0-纯对话）',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` TINYINT DEFAULT 0 COMMENT '逻辑删除',
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_project` (`project_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI Agent 会话';
+
+CREATE TABLE IF NOT EXISTS `ai_chat_message` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `session_id` BIGINT NOT NULL COMMENT '会话ID',
+  `role` VARCHAR(20) NOT NULL COMMENT 'user/assistant/tool',
+  `content` TEXT COMMENT '消息内容',
+  `tool_name` VARCHAR(100) DEFAULT NULL COMMENT '工具名称（role=tool时）',
+  `tool_result` TEXT COMMENT '工具执行结果（role=tool时）',
+  `skill_scene` VARCHAR(64) DEFAULT NULL COMMENT '快捷指令场景标识（仅 role=user 时有值）',
+  `error_msg` VARCHAR(500) DEFAULT NULL COMMENT '失败原因（仅 role=assistant 且生成失败时有值）',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_session` (`session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI Agent 消息';
+-- =============================================================
+-- LangChain4j ChatMemory 持久化表（替代 ConversationHistory 手写摘要）
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS `ai_chat_memory` (
+  `memory_id` VARCHAR(128) NOT NULL COMMENT '记忆ID（recordNo 或 userId 会话标识）',
+  `messages` MEDIUMTEXT COMMENT 'ChatMessage JSON（ChatMessageSerializer.messagesToJson）',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`memory_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LangChain4j 聊天记忆持久化';
+
 -- =====================================================================
 -- 专业质量管理流程（2026-08-13）
 -- 存量库升级请执行 backEnd/sql/upgrade_professional_qa.sql

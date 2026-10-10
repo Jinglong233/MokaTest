@@ -1,9 +1,7 @@
 package com.mokatest.platform.demos.qa.ai.context;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.mokatest.platform.demos.ai.skill.ContextBlock;
-import com.mokatest.platform.demos.ai.skill.ContextSource;
-import com.mokatest.platform.demos.ai.skill.SkillRequest;
+import com.mokatest.platform.demos.ai.context.ContextBlocks;
 import com.mokatest.platform.demos.qa.domain.Bug;
 import com.mokatest.platform.demos.qa.domain.Requirement;
 import com.mokatest.platform.demos.qa.mapper.BugMapper;
@@ -17,9 +15,7 @@ import java.util.List;
  * L5 历史BUG上下文：同模块近期 BUG（从历史缺陷反推易错点，最先被裁剪）
  */
 @Component
-public class HistoryBugSource implements ContextSource {
-
-    public static final String CODE = "history_bugs";
+public class HistoryBugSource {
 
     @Autowired
     private BugMapper bugMapper;
@@ -27,34 +23,21 @@ public class HistoryBugSource implements ContextSource {
     @Autowired
     private RequirementMapper requirementMapper;
 
-    @Override
-    public String code() {
-        return CODE;
-    }
-
-    @Override
-    public String level() {
-        return "L5";
-    }
-
-    @Override
-    public boolean defaultEnabled() {
-        // 前端已移除上下文开关：所有上下文默认强关联当前需求加载，
-        // 用户可在指令中明确要求不使用某类上下文（由 prompt 约束模型忽略）
-        return true;
-    }
-
-    @Override
-    public ContextBlock load(SkillRequest request) {
+    public ContextBlocks.Block load(Long entityId, Integer projectId) {
         Requirement current = requirementMapper.selectOne(new QueryWrapper<Requirement>()
-                .eq("id", request.getEntityId())
-                .eq("project_id", request.getProjectId())
+                .eq("id", entityId)
+                .eq("project_id", projectId)
                 .select("id", "module_id"));
         if (current == null) {
             return null;
         }
+        return load(current, projectId);
+    }
+
+    /** L5 重载：复用 L1 已加载的 Requirement（含 moduleId），跳过冗余查询 */
+    public ContextBlocks.Block load(Requirement current, Integer projectId) {
         QueryWrapper<Bug> qw = new QueryWrapper<Bug>()
-                .eq("project_id", request.getProjectId())
+                .eq("project_id", projectId)
                 .select("id", "title", "severity", "status")
                 .orderByDesc("create_time")
                 .last("limit 15");
@@ -74,6 +57,6 @@ public class HistoryBugSource implements ContextSource {
             }
             sb.append('\n');
         }
-        return new ContextBlock("L5", CODE, "同模块历史BUG", sb.toString());
+        return new ContextBlocks.Block("L5", "同模块历史BUG", sb.toString(), true);
     }
 }

@@ -1,5 +1,6 @@
 package com.mokatest.platform.demos.qa.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -9,6 +10,7 @@ import com.mokatest.platform.demos.domain.ui.UserRole;
 import com.mokatest.platform.demos.mapper.TeamMemberMapper;
 import com.mokatest.platform.demos.mapper.UserMapper;
 import com.mokatest.platform.demos.mapper.UserRoleMapper;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.Bug;
 import com.mokatest.platform.demos.qa.domain.BugComment;
 import com.mokatest.platform.demos.qa.mapper.BugCommentMapper;
@@ -48,6 +50,8 @@ public class BugCommentServiceImpl extends ServiceImpl<BugCommentMapper, BugComm
 
     @Override
     public SaResult listByBug(Integer bugId) {
+        // 数据边界：BUG 须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(bugMapper.selectById(bugId));
         QueryWrapper<BugComment> wrapper = new QueryWrapper<>();
         wrapper.eq("bug_id", bugId).orderByDesc("create_time");
         List<BugComment> list = baseMapper.selectList(wrapper);
@@ -121,6 +125,8 @@ public class BugCommentServiceImpl extends ServiceImpl<BugCommentMapper, BugComm
         if (comment.getContent() == null || comment.getContent().trim().isEmpty()) {
             return SaResult.error("评论内容不能为空");
         }
+        // 数据边界：BUG 须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(bugMapper.selectById(comment.getBugId()));
         // 二级回复校验：父评论必须属于同一BUG；只允许两级，回复的回复挂到顶层父评论下
         Integer parentId = comment.getParentId();
         if (parentId != null && parentId > 0) {
@@ -362,6 +368,21 @@ public class BugCommentServiceImpl extends ServiceImpl<BugCommentMapper, BugComm
 
     @Override
     public SaResult deleteComment(Integer id) {
+        BugComment comment = getById(id);
+        if (comment == null) {
+            return SaResult.error("评论不存在");
+        }
+        // 数据边界：评论所属 BUG 须归属当前项目（IDOR）
+        Bug bug = ProjectEntityGuard.requireInProject(bugMapper.selectById(comment.getBugId()));
+        Integer loginId = StpUtil.getLoginIdAsInt();
+        // 仅本人或项目管理员可删除（项目管理员=在 user_role 表有该项目有效授权的用户）
+        if (comment.getCreateUserId() == null || !comment.getCreateUserId().equals(loginId)) {
+            QueryWrapper<UserRole> roleWrapper = new QueryWrapper<>();
+            roleWrapper.eq("scope_id", bug.getProjectId()).eq("user_id", loginId).eq("status", 1);
+            if (userRoleMapper.selectCount(roleWrapper) == 0) {
+                return SaResult.error("无权删除他人评论，仅本人或项目管理员可删除");
+            }
+        }
         boolean success = removeById(id);
         return success ? SaResult.ok("删除成功") : SaResult.error("删除失败");
     }

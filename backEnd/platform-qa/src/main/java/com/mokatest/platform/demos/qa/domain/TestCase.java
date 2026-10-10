@@ -17,7 +17,7 @@ import java.util.List;
  */
 @TableName(value = "test_case", autoResultMap = true)
 @Data
-public class TestCase {
+public class TestCase implements com.mokatest.platform.demos.qa.common.ProjectScoped {
 
     @TableId(type = IdType.AUTO)
     private Integer id;

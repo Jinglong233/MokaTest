@@ -1,9 +1,7 @@
 package com.mokatest.platform.demos.qa.ai.context;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.mokatest.platform.demos.ai.skill.ContextBlock;
-import com.mokatest.platform.demos.ai.skill.ContextSource;
-import com.mokatest.platform.demos.ai.skill.SkillRequest;
+import com.mokatest.platform.demos.ai.context.ContextBlocks;
 import com.mokatest.platform.demos.exception.BusinessException;
 import com.mokatest.platform.demos.qa.ai.util.RichTextCleaner;
 import com.mokatest.platform.demos.qa.domain.Requirement;
@@ -13,35 +11,29 @@ import org.springframework.stereotype.Component;
 
 /**
  * L1 核心需求上下文：当前需求完整信息（不可裁剪）
- *
- * 数据边界：按 id + project_id 联合查询，跨项目 entityId 直接报"需求不存在"。
  */
 @Component
-public class RequirementCoreSource implements ContextSource {
-
-    public static final String CODE = "requirement_core";
+public class RequirementCoreSource {
 
     @Autowired
     private RequirementMapper requirementMapper;
 
-    @Override
-    public String code() {
-        return CODE;
-    }
-
-    @Override
-    public String level() {
-        return "L1";
-    }
-
-    @Override
-    public ContextBlock load(SkillRequest request) {
+    public ContextBlocks.Block load(Long entityId, Integer projectId) {
         Requirement req = requirementMapper.selectOne(new QueryWrapper<Requirement>()
-                .eq("id", request.getEntityId())
-                .eq("project_id", request.getProjectId()));
+                .eq("id", entityId)
+                .eq("project_id", projectId));
         if (req == null) {
             throw new BusinessException("需求不存在");
         }
+        return buildBlock(req);
+    }
+
+    /** L1 重载：已加载的 Requirement 直接构建 Block，跳过 DB 查询 */
+    public ContextBlocks.Block load(Requirement req) {
+        return buildBlock(req);
+    }
+
+    private ContextBlocks.Block buildBlock(Requirement req) {
         StringBuilder sb = new StringBuilder();
         sb.append("需求编号：").append(req.getReqCode()).append('\n');
         sb.append("标题：").append(req.getTitle()).append('\n');
@@ -54,8 +46,6 @@ public class RequirementCoreSource implements ContextSource {
         if (req.getDescription() != null && !req.getDescription().isEmpty()) {
             sb.append("描述：\n").append(RichTextCleaner.toPlainText(req.getDescription()));
         }
-        ContextBlock block = new ContextBlock("L1", CODE, "核心需求", sb.toString());
-        block.setTrimmable(false);
-        return block;
+        return new ContextBlocks.Block("L1", "核心需求", sb.toString(), false);
     }
 }

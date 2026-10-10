@@ -7,10 +7,12 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
 import com.mokatest.platform.demos.domain.ui.User;
 import com.mokatest.platform.demos.mapper.ProjectMapper;
 import com.mokatest.platform.demos.mapper.TeamMapper;
 import com.mokatest.platform.demos.mapper.UserMapper;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.Requirement;
 import com.mokatest.platform.demos.qa.domain.TestCase;
 import com.mokatest.platform.demos.qa.domain.vo.RequirementVO;
@@ -48,6 +50,10 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
     private final com.mokatest.platform.demos.qa.mapper.BugCaseMapper bugCaseMapper;
     private final MessageService messageService;
     private final com.mokatest.platform.demos.qa.message.service.impl.NotifyDispatchService notifyDispatchService;
+    // §10.2-3：需求变更→归档审查 stale，@Lazy 避免循环依赖
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mokatest.platform.demos.qa.ai.service.AiCaseService aiCaseService;
 
     private static final Set<String> VALID_STATUSES = new HashSet<>(Arrays.asList(
             "DRAFT", "REVIEWING", "CONFIRMED", "DEVELOPING", "TESTING", "RELEASED", "CLOSED"
@@ -206,6 +212,9 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
             vo.setParticipants(req.getParticipants());
             vo.setExpectReleaseTime(req.getExpectReleaseTime());
             vo.setTags(req.getTags());
+            vo.setAiReviewStatus(req.getAiReviewStatus());
+            vo.setAiReviewScore(req.getAiReviewScore());
+            vo.setAiReviewTime(req.getAiReviewTime());
             vo.setCreateUserId(req.getCreateUserId());
             vo.setCreateTime(req.getCreateTime());
             vo.setUpdateTime(req.getUpdateTime());
@@ -221,12 +230,14 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
     }
 
     @Override
+    @Transactional
     public SaResult saveOrUpdateRequirement(Requirement requirement) {
         if (requirement == null) {
             return SaResult.error("缺少参数");
         }
-        if (requirement.getProjectId() == null) {
-            return SaResult.error("缺少项目ID");
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
         }
         if (requirement.getTitle() == null || requirement.getTitle().trim().isEmpty()) {
             return SaResult.error("需求标题不能为空");
@@ -247,10 +258,14 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
 
         Integer loginId = StpUtil.getLoginIdAsInt();
 
-        // 更新时记录原负责人
+        // 更新时记录原负责人；更新分支校验归属项目（IDOR）并以老需求 projectId 覆盖入参，
+        // 新增分支以当前项目上下文覆盖，杜绝前端篡改 projectId 跨项目写入
         Requirement oldRequirement = null;
         if (requirement.getId() != null) {
-            oldRequirement = getById(requirement.getId());
+            oldRequirement = ProjectEntityGuard.requireInProject(getById(requirement.getId()));
+            requirement.setProjectId(oldRequirement.getProjectId());
+        } else {
+            requirement.setProjectId(ctxProjectId);
         }
 
         if (requirement.getId() == null) {
@@ -275,6 +290,8 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
             // 编辑保存时发送更新通知（与指派场景独立开关）
             if (oldRequirement != null) {
                 sendRequirementUpdatedMessage(requirement, loginId);
+                // §10.2-3：需求内容编辑→归档会话审查结论标 stale
+                try { aiCaseService.markAuditStale(requirement.getId().longValue(), requirement.getProjectId()); } catch (Exception ignored) {}
             }
         }
 
@@ -372,10 +389,7 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        Requirement requirement = getById(id);
-        if (requirement == null) {
-            return SaResult.error("需求不存在");
-        }
+        Requirement requirement = ProjectEntityGuard.requireInProject(getById(id));
         Integer loginId = StpUtil.getLoginIdAsInt();
         // 发送删除通知（在解绑关联数据之前）
         sendRequirementDeletedMessage(requirement, loginId);
@@ -384,6 +398,24 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         UpdateWrapper<TestCase> caseUpdateWrapper = new UpdateWrapper<>();
         caseUpdateWrapper.eq("requirement_id", id).set("requirement_id", null);
         testCaseMapper.update(null, caseUpdateWrapper);
+        // 1.1 同步清理 test_case.requirement_ids CSV（多需求逗号串，逐条移除该需求 id）
+        List<TestCase> csvCases = testCaseMapper.selectList(
+                new QueryWrapper<TestCase>().apply("FIND_IN_SET({0}, requirement_ids)", id));
+        for (TestCase tc : csvCases) {
+            String csv = tc.getRequirementIds();
+            if (csv != null && !csv.isEmpty()) {
+                String target = String.valueOf(id);
+                String newCsv = Arrays.stream(csv.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty() && !s.equals(target))
+                        .collect(Collectors.joining(","));
+                if (!newCsv.equals(csv)) {
+                    UpdateWrapper<TestCase> csvUw = new UpdateWrapper<>();
+                    csvUw.eq("id", tc.getId()).set("requirement_ids", newCsv);
+                    testCaseMapper.update(null, csvUw);
+                }
+            }
+        }
 
         // 2. 解绑关联 BUG 的 requirement_id
         UpdateWrapper<com.mokatest.platform.demos.qa.domain.Bug> bugUpdateWrapper = new UpdateWrapper<>();
@@ -409,10 +441,9 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (requirementId == null || caseId == null) {
             return SaResult.error("缺少参数");
         }
-        TestCase tc = testCaseMapper.selectById(caseId);
-        if (tc == null) {
-            return SaResult.error("用例不存在");
-        }
+        // 校验需求与用例均归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(requirementId));
+        TestCase tc = ProjectEntityGuard.requireInProject(testCaseMapper.selectById(caseId));
         UpdateWrapper<TestCase> uw = new UpdateWrapper<>();
         uw.eq("id", caseId);
         boolean changed = false;
@@ -445,10 +476,9 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (requirementId == null || bugId == null) {
             return SaResult.error("缺少参数");
         }
-        com.mokatest.platform.demos.qa.domain.Bug bug = bugMapper.selectById(bugId);
-        if (bug == null) {
-            return SaResult.error("BUG不存在");
-        }
+        // 校验需求与BUG均归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(requirementId));
+        com.mokatest.platform.demos.qa.domain.Bug bug = ProjectEntityGuard.requireInProject(bugMapper.selectById(bugId));
         // 1. 直接关联：清 requirement_id
         if (java.util.Objects.equals(bug.getRequirementId(), requirementId)) {
             UpdateWrapper<com.mokatest.platform.demos.qa.domain.Bug> uw = new UpdateWrapper<>();
@@ -477,11 +507,12 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
             return SaResult.error("未选择要删除的需求");
         }
         Integer loginId = StpUtil.getLoginIdAsInt();
-        // 先查询需求信息并发送删除通知
+        // 先查询需求信息并逐条校验归属项目（IDOR）后发送删除通知
         List<Requirement> requirements = baseMapper.selectBatchIds(ids);
         if (requirements != null) {
             for (Requirement req : requirements) {
                 if (req != null) {
+                    ProjectEntityGuard.requireInProject(req);
                     sendRequirementDeletedMessage(req, loginId);
                 }
             }
@@ -491,6 +522,26 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         UpdateWrapper<TestCase> caseUpdateWrapper = new UpdateWrapper<>();
         caseUpdateWrapper.in("requirement_id", ids).set("requirement_id", null);
         testCaseMapper.update(null, caseUpdateWrapper);
+        // 1.1 同步清理 test_case.requirement_ids CSV（多需求逗号串，逐个需求 id 移除）
+        for (Integer reqId : ids) {
+            List<TestCase> csvCases = testCaseMapper.selectList(
+                    new QueryWrapper<TestCase>().apply("FIND_IN_SET({0}, requirement_ids)", reqId));
+            for (TestCase tc : csvCases) {
+                String csv = tc.getRequirementIds();
+                if (csv != null && !csv.isEmpty()) {
+                    String target = String.valueOf(reqId);
+                    String newCsv = Arrays.stream(csv.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty() && !s.equals(target))
+                            .collect(Collectors.joining(","));
+                    if (!newCsv.equals(csv)) {
+                        UpdateWrapper<TestCase> csvUw = new UpdateWrapper<>();
+                        csvUw.eq("id", tc.getId()).set("requirement_ids", newCsv);
+                        testCaseMapper.update(null, csvUw);
+                    }
+                }
+            }
+        }
 
         // 2. 解绑关联 BUG
         UpdateWrapper<com.mokatest.platform.demos.qa.domain.Bug> bugUpdateWrapper = new UpdateWrapper<>();
@@ -520,10 +571,7 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        Requirement requirement = getById(id);
-        if (requirement == null) {
-            return SaResult.error("需求不存在");
-        }
+        Requirement requirement = ProjectEntityGuard.requireInProject(getById(id));
         // parent_id 为 0 表示无父需求，前端统一用 null 展示
         if (requirement.getParentId() != null && requirement.getParentId() == 0) {
             requirement.setParentId(null);
@@ -539,10 +587,7 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (targetStatus == null || !VALID_STATUSES.contains(targetStatus)) {
             return SaResult.error("无效的目标状态: " + targetStatus);
         }
-        Requirement requirement = getById(requirementId);
-        if (requirement == null) {
-            return SaResult.error("需求不存在");
-        }
+        Requirement requirement = ProjectEntityGuard.requireInProject(getById(requirementId));
         String oldStatus = requirement.getStatus();
         Integer loginId = StpUtil.getLoginIdAsInt();
         requirement.setStatus(targetStatus);
@@ -875,10 +920,7 @@ public class RequirementServiceImpl extends ServiceImpl<RequirementMapper, Requi
         if (requirementId == null) {
             return SaResult.error("缺少需求ID");
         }
-        Requirement requirement = getById(requirementId);
-        if (requirement == null) {
-            return SaResult.error("需求不存在");
-        }
+        Requirement requirement = ProjectEntityGuard.requireInProject(getById(requirementId));
 
         // 查询关联用例
         QueryWrapper<TestCase> caseWrapper = new QueryWrapper<>();

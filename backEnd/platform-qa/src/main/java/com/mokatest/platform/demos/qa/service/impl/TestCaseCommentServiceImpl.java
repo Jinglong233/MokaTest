@@ -1,5 +1,6 @@
 package com.mokatest.platform.demos.qa.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,6 +11,7 @@ import com.mokatest.platform.demos.mapper.ProjectMapper;
 import com.mokatest.platform.demos.mapper.TeamMemberMapper;
 import com.mokatest.platform.demos.mapper.UserMapper;
 import com.mokatest.platform.demos.mapper.UserRoleMapper;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.TestCase;
 import com.mokatest.platform.demos.qa.domain.TestCaseComment;
 import com.mokatest.platform.demos.qa.mapper.TestCaseCommentMapper;
@@ -43,6 +45,8 @@ public class TestCaseCommentServiceImpl extends ServiceImpl<TestCaseCommentMappe
 
     @Override
     public SaResult listByCase(Integer testCaseId) {
+        // 数据边界：用例须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
         QueryWrapper<TestCaseComment> wrapper = new QueryWrapper<>();
         wrapper.eq("test_case_id", testCaseId).orderByDesc("create_time");
         List<TestCaseComment> list = baseMapper.selectList(wrapper);
@@ -77,6 +81,8 @@ public class TestCaseCommentServiceImpl extends ServiceImpl<TestCaseCommentMappe
         if (comment.getContent() == null || comment.getContent().trim().isEmpty()) {
             return SaResult.error("评论内容不能为空");
         }
+        // 数据边界：用例须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(comment.getTestCaseId()));
         // 二级回复校验：父评论必须属于同一用例；只允许两级，回复的回复挂到顶层父评论下
         Integer parentId = comment.getParentId();
         if (parentId != null && parentId > 0) {
@@ -251,6 +257,8 @@ public class TestCaseCommentServiceImpl extends ServiceImpl<TestCaseCommentMappe
         if (comment == null) {
             return SaResult.error("评论不存在");
         }
+        // 数据边界：评论所属用例须归属当前项目（IDOR）
+        TestCase testCase = ProjectEntityGuard.requireInProject(testCaseMapper.selectById(comment.getTestCaseId()));
         // 仅本人可编辑
         if (comment.getCreateUserId() == null || !comment.getCreateUserId().equals(operatorId)) {
             return SaResult.error("只能编辑自己的评论");
@@ -264,6 +272,21 @@ public class TestCaseCommentServiceImpl extends ServiceImpl<TestCaseCommentMappe
 
     @Override
     public SaResult deleteComment(Integer id) {
+        TestCaseComment comment = getById(id);
+        if (comment == null) {
+            return SaResult.error("评论不存在");
+        }
+        // 数据边界：评论所属用例须归属当前项目（IDOR）
+        TestCase testCase = ProjectEntityGuard.requireInProject(testCaseMapper.selectById(comment.getTestCaseId()));
+        Integer loginId = StpUtil.getLoginIdAsInt();
+        // 仅本人或项目管理员可删除（项目管理员=在 user_role 表有该项目有效授权的用户）
+        if (comment.getCreateUserId() == null || !comment.getCreateUserId().equals(loginId)) {
+            QueryWrapper<UserRole> roleWrapper = new QueryWrapper<>();
+            roleWrapper.eq("scope_id", testCase.getProjectId()).eq("user_id", loginId).eq("status", 1);
+            if (userRoleMapper.selectCount(roleWrapper) == 0) {
+                return SaResult.error("无权删除他人评论，仅本人或项目管理员可删除");
+            }
+        }
         // 删除顶层评论时级联删除其所有回复
         QueryWrapper<TestCaseComment> replyWrapper = new QueryWrapper<>();
         replyWrapper.eq("parent_id", id);

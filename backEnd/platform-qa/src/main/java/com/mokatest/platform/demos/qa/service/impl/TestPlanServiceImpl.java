@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.*;
 import com.mokatest.platform.demos.qa.mapper.*;
 import com.mokatest.platform.demos.qa.service.TestPlanService;
@@ -108,8 +110,18 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult saveOrUpdatePlan(TestPlan plan, Integer loginUserId) {
-        // 记录旧状态，用于「完成时自动生成报告」
-        TestPlan oldPlan = plan.getId() != null ? getById(plan.getId()) : null;
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
+        }
+        // 记录旧状态，用于「完成时自动生成报告」；更新分支校验归属项目（IDOR）并覆盖 projectId
+        TestPlan oldPlan = null;
+        if (plan.getId() != null) {
+            oldPlan = ProjectEntityGuard.requireInProject(getById(plan.getId()));
+            plan.setProjectId(oldPlan.getProjectId());
+        } else {
+            plan.setProjectId(ctxProjectId);
+        }
         String oldStatus = oldPlan != null ? oldPlan.getStatus() : null;
         if (plan.getId() == null) {
             plan.setCreateUserId(loginUserId);
@@ -140,10 +152,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult generatePlanReport(Integer planId, String triggerType, Integer loginUserId) {
-        TestPlan plan = getById(planId);
-        if (plan == null) {
-            return SaResult.error("计划不存在");
-        }
+        TestPlan plan = ProjectEntityGuard.requireInProject(getById(planId));
         SaResult reportRes = getPlanReport(planId);
         if (reportRes.getCode() != 200 || reportRes.getData() == null) {
             return SaResult.error("报告数据生成失败");
@@ -178,15 +187,21 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult deletePlan(Integer id) {
-        // 删除计划下的用例关联（依附数据，物理清理）
-        QueryWrapper<TestPlanCase> wrapper = new QueryWrapper<>();
-        wrapper.eq("plan_id", id);
-        testPlanCaseMapper.delete(wrapper);
-        // 逻辑删除计划
-        TestPlan plan = testPlanMapper.selectById(id);
-        if (plan == null) {
-            return SaResult.ok("删除成功");
+        // 先校验计划存在且归属当前项目（IDOR），再删关联
+        TestPlan plan = ProjectEntityGuard.requireInProject(testPlanMapper.selectById(id));
+        // 删除计划下的用例关联（依附数据，物理清理）；先清理 bug.plan_case_id 避免悬挂引用
+        QueryWrapper<TestPlanCase> pcW = new QueryWrapper<>();
+        pcW.eq("plan_id", id).select("id");
+        List<Integer> planCaseIds = testPlanCaseMapper.selectList(pcW).stream()
+                .map(TestPlanCase::getId).collect(Collectors.toList());
+        if (!planCaseIds.isEmpty()) {
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bug> bugUw =
+                    new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            bugUw.in("plan_case_id", planCaseIds).set("plan_case_id", null);
+            bugMapper.update(null, bugUw);
         }
+        testPlanCaseMapper.delete(new QueryWrapper<TestPlanCase>().eq("plan_id", id));
+        // 逻辑删除计划
         plan.setDeletedAt(new Date());
         boolean success = removeById(plan);
         return success ? SaResult.ok("删除成功") : SaResult.error("删除失败");
@@ -194,10 +209,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
 
     @Override
     public SaResult getPlanDetail(Integer id) {
-        TestPlan plan = getById(id);
-        if (plan == null) {
-            return SaResult.error("计划不存在");
-        }
+        TestPlan plan = ProjectEntityGuard.requireInProject(getById(id));
         // 查询计划下的用例
         QueryWrapper<TestPlanCase> wrapper = new QueryWrapper<>();
         wrapper.eq("plan_id", id).orderByAsc("sort", "id");
@@ -312,6 +324,11 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (caseIds == null || caseIds.isEmpty()) {
             return SaResult.error("用例ID列表不能为空");
         }
+        // 数据边界：计划与待加入用例均须归属当前项目（IDOR，计划与用例同项目校验）
+        ProjectEntityGuard.requireInProject(getById(planId));
+        for (Integer caseId : caseIds) {
+            ProjectEntityGuard.requireInProject(testCaseMapper.selectById(caseId));
+        }
         // 查询已有用例，避免重复添加
         QueryWrapper<TestPlanCase> wrapper = new QueryWrapper<>();
         wrapper.eq("plan_id", planId).in("test_case_id", caseIds);
@@ -335,6 +352,12 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult removeCase(Integer planCaseId) {
+        // 数据边界：计划用例须经其所属计划校验归属当前项目（IDOR）
+        TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
+        if (pc == null) {
+            return SaResult.error("计划用例不存在");
+        }
+        ProjectEntityGuard.requireInProject(getById(pc.getPlanId()));
         testPlanCaseMapper.deleteById(planCaseId);
         return SaResult.ok("移除成功");
     }
@@ -346,6 +369,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (pc == null) {
             return SaResult.error("计划用例不存在");
         }
+        // 数据边界：计划用例所属计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(pc.getPlanId()));
         // 更新计划用例执行结果
         pc.setExecuteResult(result);
         pc.setExecuteRemark(remark);
@@ -381,6 +406,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (planCaseIds == null || planCaseIds.isEmpty()) {
             return SaResult.error("未选择用例");
         }
+        // 数据边界：计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(planId));
         Date now = new Date();
         for (Integer planCaseId : planCaseIds) {
             TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
@@ -418,6 +445,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (pc == null) {
             return SaResult.error("计划用例不存在");
         }
+        // 数据边界：计划用例所属计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(pc.getPlanId()));
         if (!"FAIL".equals(pc.getExecuteResult())) {
             return SaResult.error("只有执行失败的用例才能提BUG");
         }
@@ -471,6 +500,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
         if (testCaseId == null) {
             return SaResult.error("缺少用例ID");
         }
+        // 数据边界：用例须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
         QueryWrapper<TestCaseExecution> wrapper = new QueryWrapper<>();
         wrapper.eq("test_case_id", testCaseId).orderByDesc("execute_time");
         List<TestCaseExecution> list = testCaseExecutionMapper.selectList(wrapper);
@@ -524,10 +555,7 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
 
     @Override
     public SaResult getPlanReport(Integer planId) {
-        TestPlan plan = getById(planId);
-        if (plan == null) {
-            return SaResult.error("计划不存在");
-        }
+        TestPlan plan = ProjectEntityGuard.requireInProject(getById(planId));
 
         // 1. 查询计划下的所有用例关联
         QueryWrapper<TestPlanCase> tpcWrapper = new QueryWrapper<>();
@@ -912,6 +940,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
 
     @Override
     public SaResult getTestPoints(Integer planId) {
+        // 数据边界：计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(planId));
         // 查测试点
         List<PlanTestPoint> tps = planTestPointMapper.selectList(
                 new QueryWrapper<PlanTestPoint>().eq("plan_id", planId).orderByAsc("sort_order"));
@@ -958,6 +988,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SaResult saveTestPoints(Integer planId, List<Map<String, Object>> testPoints) {
+        // 数据边界：计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(planId));
         // 查现有测试点
         List<PlanTestPoint> existing = planTestPointMapper.selectList(
                 new QueryWrapper<PlanTestPoint>().eq("plan_id", planId));
@@ -1012,6 +1044,8 @@ public class TestPlanServiceImpl extends ServiceImpl<TestPlanMapper, TestPlan> i
 
     @Override
     public SaResult updateCaseTestPoint(Integer planId, Integer planCaseId, Integer testPointId) {
+        // 数据边界：计划须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(getById(planId));
         TestPlanCase pc = testPlanCaseMapper.selectById(planCaseId);
         if (pc == null || !planId.equals(pc.getPlanId())) {
             return SaResult.error("用例不存在");

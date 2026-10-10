@@ -7,9 +7,11 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
 import com.mokatest.platform.demos.domain.ui.User;
 import com.mokatest.platform.demos.mapper.ProjectMapper;
 import com.mokatest.platform.demos.mapper.UserMapper;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.TestCase;
 import com.mokatest.platform.demos.qa.domain.vo.TestCaseVO;
 import com.mokatest.platform.demos.qa.mapper.TestCaseMapper;
@@ -48,6 +50,10 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
     private final ProjectMapper projectMapper;
     private final MessageService messageService;
     private final NotifyDispatchService notifyDispatchService;
+    // §9.1 覆盖度联动：@Lazy 避免与 AiCaseService 的循环依赖
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mokatest.platform.demos.qa.ai.service.AiCaseService aiCaseService;
 
     @Override
     public SaResult listByProject(Integer projectId, Integer moduleId, Integer setId, Integer requirementId, String keyword, String lastResult, Integer page, Integer pageSize, Integer excludePlanId, String status) {
@@ -300,10 +306,13 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         if (testCase == null) {
             return SaResult.error("缺少参数");
         }
-        if (testCase.getProjectId() == null) {
-            return SaResult.error("缺少项目ID");
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
         }
         boolean isNew = testCase.getId() == null;
+        // 数据边界：projectId 一律由服务端覆盖，不信前端入参（IDOR/防痏改归属）
+        testCase.setProjectId(ctxProjectId);
         // 新建必须有用例名称；编辑（含行内局部更新）只有显式传了名称但为空白时才拦截，
         // 未传名称表示本次不改名称，不能按新建校验（MyBatis-Plus updateById 忽略 null 字段，不会覆盖原值）
         if (testCase.getCaseName() == null || testCase.getCaseName().trim().isEmpty()) {
@@ -353,13 +362,10 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         testCase.setUpdateUserId(loginId);
         testCase.setUpdateTime(new Date());
 
-        // 编辑时先取旧用例，用于操作日志比对和 REVIEWED 基线版本快照
+        // 编辑时先取旧用例，用于操作日志比对和 REVIEWED 基线版本快照；更新分支校验归属项目（IDOR）
         TestCase oldCase = null;
         if (!isNew) {
-            oldCase = getById(testCase.getId());
-            if (oldCase == null) {
-                return SaResult.error("用例不存在");
-            }
+            oldCase = ProjectEntityGuard.requireInProject(getById(testCase.getId()));
         }
 
         boolean success = saveOrUpdate(testCase);
@@ -487,10 +493,7 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        TestCase testCase = getById(id);
-        if (testCase == null) {
-            return SaResult.error("用例不存在");
-        }
+        TestCase testCase = ProjectEntityGuard.requireInProject(getById(id));
         // 0. 删除前写操作日志
         testCaseOperationLogService.log(id, "DELETE", null, null, null, null);
 
@@ -524,6 +527,10 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         // 6. 逻辑删除用例本身
         testCase.setDeletedAt(new Date());
         boolean success = baseMapper.deleteById(testCase) > 0;
+        // §9.1 覆盖度联动：入库用例删除 → 标记 AI 会话审查结论 stale
+        if (success && testCase.getRequirementId() != null) {
+            try { aiCaseService.markAuditStale(testCase.getRequirementId().longValue(), testCase.getProjectId()); } catch (Exception ignored) {}
+        }
         return success ? SaResult.ok("删除成功") : SaResult.error("删除失败");
     }
 
@@ -532,6 +539,11 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
     public SaResult batchDeleteCase(List<Integer> ids) {
         if (ids == null || ids.isEmpty()) {
             return SaResult.error("未选择要删除的用例");
+        }
+        // 数据边界：逐条校验归属项目（IDOR），全部通过后再执行后续清理
+        List<TestCase> cases = baseMapper.selectBatchIds(ids);
+        for (TestCase tc : cases) {
+            ProjectEntityGuard.requireInProject(tc);
         }
         // 0. 删除前逐条写操作日志
         for (Integer id : ids) {
@@ -562,7 +574,6 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         testCaseReviewService.removeFromActiveReviews(ids);
 
         // 6. 批量逻辑删除用例（逐条设置 deleted_at）
-        List<TestCase> cases = baseMapper.selectBatchIds(ids);
         Date now = new Date();
         Integer loginId = StpUtil.getLoginIdAsInt();
         for (TestCase testCase : cases) {
@@ -571,6 +582,20 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
                 sendCaseDeletedMessage(testCase, loginId);
                 testCase.setDeletedAt(now);
                 baseMapper.deleteById(testCase);
+            }
+        }
+        // §9.1 覆盖度联动：批量删除 → 标记关联需求的 AI 会话审查结论 stale
+        java.util.Set<Long> affectedReqs = new java.util.HashSet<>();
+        Integer affectedProjectId = null;
+        for (TestCase tc : cases) {
+            if (tc != null && tc.getRequirementId() != null) {
+                affectedReqs.add(tc.getRequirementId().longValue());
+                affectedProjectId = tc.getProjectId();
+            }
+        }
+        if (affectedProjectId != null) {
+            for (Long reqId : affectedReqs) {
+                try { aiCaseService.markAuditStale(reqId, affectedProjectId); } catch (Exception ignored) {}
             }
         }
         return SaResult.ok("批量删除成功");
@@ -584,6 +609,10 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         }
         if (moduleId == null) {
             return SaResult.error("请选择目标模块");
+        }
+        // 数据边界：逐条校验用例归属当前项目（IDOR）
+        for (Integer id : ids) {
+            ProjectEntityGuard.requireInProject(getById(id));
         }
         // 0 归一化：moduleId=0 表示根节点，存储为 NULL
         Integer targetModuleId = moduleId == 0 ? null : moduleId;
@@ -604,6 +633,10 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         if (ids == null || ids.isEmpty()) {
             return SaResult.ok();
         }
+        // 数据边界：逐条校验用例归属当前项目（IDOR）
+        for (Integer id : ids) {
+            ProjectEntityGuard.requireInProject(getById(id));
+        }
         for (int i = 0; i < ids.size(); i++) {
             TestCase tc = new TestCase();
             tc.setId(ids.get(i));
@@ -618,10 +651,7 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         if (id == null) {
             return SaResult.error("缺少ID");
         }
-        TestCase testCase = getById(id);
-        if (testCase == null) {
-            return SaResult.error("用例不存在");
-        }
+        TestCase testCase = ProjectEntityGuard.requireInProject(getById(id));
         SaResult setResult = testCaseSetService.listByCaseId(id);
         @SuppressWarnings("unchecked")
         List<com.mokatest.platform.demos.qa.domain.TestCaseSet> sets = (List<com.mokatest.platform.demos.qa.domain.TestCaseSet>) setResult.getData();
@@ -655,10 +685,7 @@ public class TestCaseServiceImpl extends ServiceImpl<TestCaseMapper, TestCase> i
         if (targetStatus == null || !VALID_STATUSES.contains(targetStatus)) {
             return SaResult.error("无效的目标状态: " + targetStatus);
         }
-        TestCase testCase = getById(testCaseId);
-        if (testCase == null) {
-            return SaResult.error("用例不存在");
-        }
+        TestCase testCase = ProjectEntityGuard.requireInProject(getById(testCaseId));
         String oldStatus = testCase.getStatus();
         // 评审中打回草稿时意见必填
         if ("DRAFT".equals(targetStatus) && "REVIEWING".equals(oldStatus)

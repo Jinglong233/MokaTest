@@ -2,6 +2,7 @@ package com.mokatest.platform.demos.qa.service.impl;
 
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mokatest.platform.demos.qa.domain.QaModule;
@@ -239,6 +240,11 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         if (module == null) {
             return SaResult.ok("模块已删除");
         }
+        // 数据边界：模块须归属当前项目（IDOR）
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null || !ctxProjectId.equals(module.getProjectId())) {
+            return SaResult.error("无权操作该项目数据");
+        }
 
         // 1. 解绑关联需求的 module_id
         UpdateWrapper<com.mokatest.platform.demos.qa.domain.Requirement> reqWrapper = new UpdateWrapper<>();
@@ -259,6 +265,11 @@ public class QaModuleServiceImpl extends ServiceImpl<QaModuleMapper, QaModule> i
         UpdateWrapper<TestPlan> planWrapper = new UpdateWrapper<>();
         planWrapper.eq("module_id", id).set("module_id", null);
         testPlanMapper.update(null, planWrapper);
+
+        // 3.6 解绑关联评审单的 module_id
+        UpdateWrapper<com.mokatest.platform.demos.qa.domain.TestCaseReview> reviewWrapper = new UpdateWrapper<>();
+        reviewWrapper.eq("module_id", id).set("module_id", null);
+        testCaseReviewMapper.update(null, reviewWrapper);
 
         // 4. 子模块变为根模块
         UpdateWrapper<QaModule> childWrapper = new UpdateWrapper<>();

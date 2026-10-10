@@ -7,8 +7,11 @@ import com.mokatest.platform.demos.api.domain.ApiRequest;
 import com.mokatest.platform.demos.api.mapper.ApiRequestMapper;
 import com.mokatest.platform.demos.domain.ui.Scene;
 import com.mokatest.platform.demos.mapper.SceneMapper;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
+import com.mokatest.platform.demos.qa.common.ProjectEntityGuard;
 import com.mokatest.platform.demos.qa.domain.TestCaseAutoBind;
 import com.mokatest.platform.demos.qa.mapper.TestCaseAutoBindMapper;
+import com.mokatest.platform.demos.qa.mapper.TestCaseMapper;
 import com.mokatest.platform.demos.qa.service.TestCaseAutoBindService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,9 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
     @Resource
     private ApiRequestMapper apiRequestMapper;
 
+    @Resource
+    private TestCaseMapper testCaseMapper;
+
     @Override
     public SaResult bind(Integer testCaseId, String autoType, Integer autoId, String bindRemark) {
         if (testCaseId == null || autoType == null || autoId == null) {
@@ -34,6 +40,23 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
         }
         if (!"UI_SCENE".equals(autoType) && !"API_CASE".equals(autoType)) {
             return SaResult.error("无效的自动化类型: " + autoType);
+        }
+        // 数据边界：用例与自动化资源均须归属当前项目（双向校验，IDOR）
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
+        }
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(testCaseId));
+        if ("UI_SCENE".equals(autoType)) {
+            Scene scene = sceneMapper.selectById(autoId);
+            if (scene == null || !ctxProjectId.equals(scene.getProjectId())) {
+                return SaResult.error("场景不存在或不属于当前项目");
+            }
+        } else {
+            ApiRequest api = apiRequestMapper.selectById(autoId);
+            if (api == null || !ctxProjectId.equals(api.getProjectId())) {
+                return SaResult.error("接口不存在或不属于当前项目");
+            }
         }
 
         // 查询是否已绑定
@@ -66,6 +89,12 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
         if (bindId == null) {
             return SaResult.error("缺少绑定ID");
         }
+        // 数据边界：绑定记录须经其所属用例校验归属当前项目（IDOR）
+        TestCaseAutoBind bind = baseMapper.selectById(bindId);
+        if (bind == null) {
+            return SaResult.error("绑定不存在");
+        }
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(bind.getTestCaseId()));
         boolean success = removeById(bindId);
         return success ? SaResult.ok("解绑成功") : SaResult.error("解绑失败");
     }
@@ -75,6 +104,8 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
         if (caseId == null) {
             return SaResult.error("缺少用例ID");
         }
+        // 数据边界：用例须归属当前项目（IDOR）
+        ProjectEntityGuard.requireInProject(testCaseMapper.selectById(caseId));
         QueryWrapper<TestCaseAutoBind> wrapper = new QueryWrapper<>();
         wrapper.eq("test_case_id", caseId).orderByDesc("create_time");
         List<TestCaseAutoBind> list = baseMapper.selectList(wrapper);
@@ -86,14 +117,17 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
         if (autoType == null) {
             return SaResult.error("缺少自动化类型");
         }
+        // 数据边界：projectId 改为必传（以当前项目上下文为准，忽略入参防跨项目泄露，IDOR）
+        Integer ctxProjectId = ProjectContextHolder.getProjectId();
+        if (ctxProjectId == null) {
+            return SaResult.error("缺少项目上下文（X-Project-Id）");
+        }
         List<Map<String, Object>> options = new ArrayList<>();
 
         if ("UI_SCENE".equals(autoType)) {
-            // 查询场景列表
+            // 查询场景列表（按当前项目隔离）
             QueryWrapper<Scene> wrapper = new QueryWrapper<>();
-            if (projectId != null) {
-                wrapper.eq("project_id", projectId);
-            }
+            wrapper.eq("project_id", ctxProjectId);
             wrapper.orderByDesc("create_at");
             List<Scene> scenes = sceneMapper.selectList(wrapper);
             for (Scene scene : scenes) {
@@ -104,11 +138,9 @@ public class TestCaseAutoBindServiceImpl extends ServiceImpl<TestCaseAutoBindMap
                 options.add(item);
             }
         } else if ("API_CASE".equals(autoType)) {
-            // 查询API接口/用例列表（按项目隔离，避免跨项目泄露）
+            // 查询API接口/用例列表（按当前项目隔离，避免跨项目泄露）
             QueryWrapper<ApiRequest> wrapper = new QueryWrapper<>();
-            if (projectId != null) {
-                wrapper.eq("project_id", projectId);
-            }
+            wrapper.eq("project_id", ctxProjectId);
             wrapper.orderByDesc("create_time");
             List<ApiRequest> apis = apiRequestMapper.selectList(wrapper);
             for (ApiRequest api : apis) {

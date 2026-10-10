@@ -37,8 +37,20 @@ public class CaseDraftDTO {
     /** 预期执行时长（分钟） */
     private Integer expectDuration;
 
+    /** 测试设计方法：EQUIVALENCE(等价类)/BOUNDARY(边界值)/SCENARIO(场景法)/ERROR_GUESSING(错误推测) */
+    private String designMethod;
+
+    /** 覆盖的设计维度点ID列表：["TP-1","TP-3"] */
+    private List<String> coverPoints;
+
     /** 枚举兜底标记：true=有字段被兜底，前端标黄提示人工确认 */
     private Boolean enumFallback;
+
+    /** 手动编辑标记：前端编辑过任何字段后置 true，AI 轮次不得覆盖 */
+    private Boolean manuallyEdited;
+
+    /** 与已有用例重名标记：dedup 阶段检测到该草稿名称与 DB 已有用例重名，前端标黄提示 */
+    private Boolean dupWithExisting;
 
     @Data
     public static class StepItem {

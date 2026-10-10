@@ -11,12 +11,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
+import com.mokatest.platform.demos.qa.aireview.AiRequirementReview;
+import com.mokatest.platform.demos.qa.aireview.AiRequirementReviewMapper;
+import com.mokatest.platform.demos.qa.domain.Requirement;
+import com.mokatest.platform.demos.qa.domain.TestCase;
+import com.mokatest.platform.demos.qa.mapper.RequirementMapper;
+import com.mokatest.platform.demos.qa.mapper.TestCaseMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +48,9 @@ public class AiCaseController {
 
     private final AiCaseService aiCaseService;
     private final com.mokatest.platform.demos.ai.stream.AiStreamReattachSupport reattachSupport;
+    private final RequirementMapper requirementMapper;
+    private final TestCaseMapper testCaseMapper;
+    private final AiRequirementReviewMapper reviewMapper;
 
     /**
      * 流式生成测试用例（新会话，SSE）
@@ -158,8 +172,23 @@ public class AiCaseController {
         return SaResult.ok("已删除");
     }
 
+    /**
+     * 归档会话记录（标记为 ARCHIVED，不影响已入库用例，列表排除已归档）
+     */
+    @SaCheckPermission("qa:testcase:create")
+    @PostMapping("/archive")
+    public SaResult archiveRecord(@RequestParam String recordNo) {
+        aiCaseService.archiveRecord(recordNo);
+        return SaResult.ok("会话已归档");
+    }
+
     private void runAsync(Runnable task, SseEmitter emitter) {
-        Thread thread = new Thread(() -> {
+        // 捕获请求线程上下文，传递到异步线程（ThreadLocal 不跨线程，ModelManager 解析项目档案依赖它）
+        Integer projectId = ProjectContextHolder.getProjectId();
+        Integer teamId = com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.getTeamId();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            ProjectContextHolder.setProjectId(projectId);
+            com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.setTeamId(teamId);
             try {
                 task.run();
             } catch (Throwable e) {
@@ -171,11 +200,125 @@ public class AiCaseController {
                 } catch (Exception ignored) {
                 }
                 emitter.complete();
+            } finally {
+                ProjectContextHolder.clear();
+                com.mokatest.platform.demos.config.saTokenConfig.TeamContextHolder.clear();
             }
         });
-        thread.setDaemon(true);
-        thread.start();
     }
+
+    // ==================== Phase 4: 四阶段接口 ====================
+
+    /**
+     * 覆盖度审查（用户触发，同步返回审查结论）
+     */
+    @SaCheckPermission("qa:ai:use")
+    @PostMapping("/auditCoverage")
+    public SaResult auditCoverage(@RequestBody java.util.Map<String, String> body) {
+        String recordNo = body.get("recordNo");
+        Integer projectId = ProjectContextHolder.getProjectId();
+        return SaResult.ok().setData(aiCaseService.auditCoverage(recordNo, projectId));
+    }
+
+    /**
+     * 阶段1：生成设计维度点（SSE 流式）
+     */
+    @SaCheckPermission("qa:ai:use")
+    @PostMapping(value = "/points/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter pointsStream(@RequestBody PointsRequest body) {
+        SseEmitter emitter = new SseEmitter(180_000L);
+        SkillRequest request;
+        try {
+            request = aiCaseService.buildRequest(body.getRequirementId(), null, body.getInstruction());
+            request.setCount(body.getCount());
+        } catch (Exception e) {
+            runAsync(() -> { throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e); }, emitter);
+            return emitter;
+        }
+        runAsync(() -> aiCaseService.pointsStream(request, emitter), emitter);
+        return emitter;
+    }
+
+    /**
+     * 保存用户确认/编辑后的设计维度点
+     */
+    @SaCheckPermission("qa:ai:use")
+    @PutMapping("/record/{recordNo}/testPoints")
+    public SaResult saveTestPoints(@PathVariable String recordNo, @RequestBody String testPointsJson) {
+        aiCaseService.saveTestPoints(recordNo,
+                com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.getProjectId(),
+                testPointsJson);
+        return SaResult.ok("设计维度点已保存");
+    }
+
+    /**
+     * 阶段2：用例生成（SSE 流式）
+     */
+    @SaCheckPermission("qa:ai:use")
+    @PostMapping(value = "/cases/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter casesStream(@RequestBody CasesRequest body) {
+        // 15 分钟：自动补全循环最多 3 轮生成 + 1 次审查，5 分钟墙钟不够
+        SseEmitter emitter = new SseEmitter(900_000L);
+        emitter.onTimeout(() -> {
+            try {
+                emitter.send(SseEmitter.event().name("error").data("生成超时，请重试"));
+                emitter.complete();
+            } catch (Exception ignored) {}
+        });
+        SkillRequest request;
+        try {
+            request = aiCaseService.buildRequest(body.getRequirementId(), body.getRecordNo(), body.getInstruction());
+            request.setCount(body.getCount());
+            request.setTargetTpId(body.getTargetTpId());
+        } catch (Exception e) {
+            runAsync(() -> { throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e); }, emitter);
+            return emitter;
+        }
+        runAsync(() -> aiCaseService.casesStream(request, emitter), emitter);
+        return emitter;
+    }
+
+    /**
+     * 全量状态恢复（断线重连用）
+     */
+    @SaCheckPermission("qa:ai:use")
+    @GetMapping("/record/{recordNo}")
+    public SaResult getRecord(@PathVariable String recordNo) {
+        return SaResult.ok().setData(aiCaseService.getRecordState(recordNo,
+                com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.getProjectId()));
+    }
+
+    /**
+     * 增量保存草稿（前端就地编辑后调用）
+     */
+    @SaCheckPermission("qa:ai:use")
+    @PutMapping("/record/{recordNo}/drafts")
+    public SaResult saveDrafts(@PathVariable String recordNo, @RequestBody String draftsJson) {
+        aiCaseService.saveDrafts(recordNo,
+                com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder.getProjectId(),
+                draftsJson);
+        return SaResult.ok("草稿已保存");
+    }
+
+    @Data
+    public static class PointsRequest {
+        private Long requirementId;
+        private String instruction;
+        private Integer count;
+    }
+
+    @Data
+    public static class CasesRequest {
+        private String recordNo;
+        private String instruction;
+        private Integer count;
+        /** 新流程（无设计点环节）：无 recordNo 时按需求直接发起生成 */
+        private Long requirementId;
+        /** 单维度重生：只为该维度点生成用例（指令由后端拼装） */
+        private String targetTpId;
+    }
+
+    // ==================== 旧版接口（兼容） ====================
 
     @Data
     public static class GenerateRequest {
@@ -193,5 +336,34 @@ public class AiCaseController {
     public static class AdoptRequest {
         private String recordNo;
         private List<CaseDraftDTO> items;
+    }
+
+    // ==================== 需求摘要（Card 1 用） ====================
+
+    @SaCheckPermission("qa:ai:use")
+    @GetMapping("/req-summary/{reqId}")
+    public SaResult getReqSummary(@PathVariable Long reqId) {
+        Integer projectId = ProjectContextHolder.getProjectId();
+        Requirement req = requirementMapper.selectOne(new QueryWrapper<Requirement>()
+                .eq("id", reqId).eq("project_id", projectId)
+                .select("id", "req_code", "title", "status", "priority"));
+        if (req == null) return SaResult.error("需求不存在");
+        Long caseCount = testCaseMapper.selectCount(new QueryWrapper<TestCase>()
+                .eq("project_id", projectId).eq("requirement_id", reqId));
+        AiRequirementReview latestReview = reviewMapper.selectOne(new QueryWrapper<AiRequirementReview>()
+                .eq("requirement_id", reqId)
+                .eq("project_id", projectId)
+                .orderByDesc("create_time").last("limit 1"));
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("id", req.getId());
+        result.put("reqCode", req.getReqCode());
+        result.put("title", req.getTitle());
+        result.put("status", req.getStatus());
+        result.put("priority", req.getPriority());
+        result.put("caseCount", caseCount);
+        result.put("aiReviewScore", latestReview != null ? latestReview.getOverallScore() : null);
+        // §10.2-1：检查是否存在已归档且审查通过的会话
+        result.putAll(aiCaseService.getArchivedAuditSummary(reqId, projectId));
+        return SaResult.ok().setData(result);
     }
 }

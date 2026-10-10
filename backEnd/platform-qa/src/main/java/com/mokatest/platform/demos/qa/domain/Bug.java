@@ -15,7 +15,7 @@ import java.util.Date;
  */
 @TableName(value = "bug")
 @Data
-public class Bug {
+public class Bug implements com.mokatest.platform.demos.qa.common.ProjectScoped {
 
     @TableId(type = IdType.AUTO)
     private Integer id;

@@ -61,13 +61,12 @@ public class CaseDraftParser {
         int arrStart = text.indexOf('[');
         // 新契约：{ 出现在 [ 之前 → 按对象解析
         if (objStart >= 0 && (arrStart < 0 || objStart < arrStart)) {
-            int objEnd = text.lastIndexOf('}');
-            if (objEnd <= objStart) {
-                throw new BusinessException("模型输出不是合法 JSON 对象");
-            }
+            // 用括号平衡+自动补全提取（截断/散文混入时尽量打捞，替代脆弱的 first/lastIndexOf）
+            String objectJson = com.mokatest.platform.demos.ai.skill.ReviewChecklist
+                    .extractJson(text.substring(objStart));
             JSONObject root;
             try {
-                root = JSON.parseObject(text.substring(objStart, objEnd + 1));
+                root = JSON.parseObject(objectJson);
             } catch (Exception e) {
                 throw new BusinessException("模型输出不是合法 JSON 对象");
             }
@@ -140,6 +139,21 @@ public class CaseDraftParser {
             }
         }
         draft.setTestSteps(stepItems);
+
+        // Phase 4 v3 契约：设计方法 + 覆盖维度点
+        draft.setDesignMethod(normalize(obj.getString("designMethod")));
+        JSONArray coverPoints = obj.getJSONArray("coverPoints");
+        if (coverPoints != null) {
+            List<String> cpList = new ArrayList<>();
+            for (int i = 0; i < coverPoints.size(); i++) {
+                String cp = coverPoints.getString(i);
+                if (cp != null && !cp.trim().isEmpty()) {
+                    cpList.add(cp.trim());
+                }
+            }
+            draft.setCoverPoints(cpList);
+        }
+
         draft.setEnumFallback(fallback);
         return draft;
     }
