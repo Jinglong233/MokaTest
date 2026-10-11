@@ -11,8 +11,7 @@
     "report": "cross-env REPORT=true npm run build",
     "preview": "npm run build && vite preview --host",
     "type:check": "vue-tsc --noEmit --skipLibCheck",
-    "lint-staged": "npx lint-staged",
-    "prepare": "husky install"
+    "lint-staged": "npx lint-staged"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx}": [
@@ -127,9 +126,7 @@
     "typescript": "^5.9.3",
     "unplugin-vue-components": "^0.24.1",
     "vite": "^3.2.5",
-    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-eslint": "^1.8.1",
-    "vite-plugin-imagemin": "^0.6.1",
     "vite-svg-loader": "^3.6.0",
     "vue-tsc": "^3.2.1"
   },

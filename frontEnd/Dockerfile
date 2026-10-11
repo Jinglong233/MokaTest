@@ -24,7 +24,15 @@ RUN yarn install --frozen-lockfile
 COPY . .
 
 # 构建生产包
-RUN yarn build
+# 堆上限必须低于容器内存上限，否则 V8 分配失败直接 abort（exit 134）；
+# ACR 构建机配额未知，这里按 cgroup 实际配额取 3/4，读不到就退回 2048MB
+RUN LIMIT=$( (cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null; \
+              cat /sys/fs/cgroup/memory.max 2>/dev/null) | grep -E '^[0-9]+$' | sort -n | head -1 ); \
+    MB=$(( ${LIMIT:-0} / 1048576 )); \
+    [ "$MB" -lt 1024 ] && MB=2048; \
+    [ "$MB" -gt 4096 ] && MB=3072; \
+    echo "cgroup mem limit: ${LIMIT:-unknown} bytes, heap ${MB}MB"; \
+    NODE_OPTIONS="--max-old-space-size=${MB}" yarn build
 
 # ---- 阶段 2：运行 ----
 FROM nginx:alpine

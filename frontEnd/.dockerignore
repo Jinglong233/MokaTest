@@ -1,0 +1,9 @@
+# 构建上下文排除：compose 的 context 是 ./frontEnd，根目录 .dockerignore 在这里不生效
+# 不排除 node_modules 的话，本地 docker build 会把 Windows 依赖目录盖掉容器里 yarn install 的结果
+node_modules
+dist
+.git
+.cache
+*.log
+.eslintcache
+.stylelintcache

@@ -26,20 +26,16 @@ RUN mkdir -p /root/.m2 && \
     echo '  </mirrors>' >> /root/.m2/settings.xml && \
     echo '</settings>' >> /root/.m2/settings.xml
 
-# 先复制所有 pom.xml，利用 Docker 缓存层（依赖不变时不重复下载）
-COPY pom.xml .
-COPY platform-automation/pom.xml platform-automation/
-COPY platform-qa/pom.xml platform-qa/
-COPY platform-starter/pom.xml platform-starter/
-
-# 预下载依赖（使用阿里云镜像）
-RUN mvn -s /root/.m2/settings.xml dependency:go-offline -pl platform-starter -am -q
-
 # 复制完整源码
+# 不再逐模块 COPY pom：父 pom 里有 5 个 <module>（common/ai/automation/qa/starter），
+# 漏一个 Maven 就报 "Child project pom.xml does not exist"，加模块时还得回来补行
 COPY . .
 
 # 打包（跳过测试，使用阿里云镜像）
-RUN mvn -s /root/.m2/settings.xml clean package -pl platform-starter -am -DskipTests -q
+# 已删 dependency:go-offline 预热：它比 package 多拉一整遍（全插件+全 scope），
+# ACR 每次都是全新构建机、层缓存不复用，等于白下载，还容易在这步卡死
+# -ntp：不刷屏下载进度；不用 -q：失败要能看到真正的报错
+RUN mvn -s /root/.m2/settings.xml -B -ntp clean package -pl platform-starter -am -DskipTests
 
 # ---- 阶段 2：运行 ----
 # Playwright 官方 Java 镜像，已包含 Chrome + 依赖

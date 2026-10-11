@@ -7,6 +7,8 @@ uploads/
 # IDE
 .idea/
 *.iml
+.qoder/
+.claude/
 
 # 日志
 *.log

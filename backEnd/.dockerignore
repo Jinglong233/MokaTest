@@ -1,0 +1,7 @@
+# 构建上下文排除：compose 的 context 是 ./backEnd，根目录 .dockerignore 在这里不生效
+# 不排除 target/ 的话，本地 docker build 会把宿主机编译产物带进镜像、上下文白胖几百 MB
+**/target
+.git
+*.log
+logs
+uploads
