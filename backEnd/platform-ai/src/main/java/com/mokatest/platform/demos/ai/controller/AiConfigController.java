@@ -1,5 +1,6 @@
 package com.mokatest.platform.demos.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.util.SaResult;
 import com.mokatest.platform.demos.ai.domain.AiConfig;
 import com.mokatest.platform.demos.ai.service.AiConfigService;
@@ -11,11 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * AI 配置管理接口（系统级）
+ * AI 配置管理接口（项目维度）
  *
- * 鉴权：服务层强制校验超级管理员（对齐操作日志模块的做法），
- * 不走 @SaCheckPermission，因为 AI 配置属于平台级能力，不属于任何团队/项目权限域。
+ * 鉴权：project:aiconfig:update，项目 owner/团队管理员自动持有，普通成员需角色分配；
+ * 数据按 ProjectContextHolder 当前项目过滤，跨项目操作在服务层归属校验拦截。
  */
+@SaCheckPermission("project:aiconfig:update")
 @RestController
 @RequestMapping("/ai/config")
 public class AiConfigController {

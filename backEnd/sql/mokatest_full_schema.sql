@@ -1036,6 +1036,10 @@ SELECT '项目成员删除', 'project:member:delete', 'BUTTON', id, 28 FROM perm
 INSERT INTO permission (name, code, type, parent_id, sort)
 SELECT '项目配置编辑', 'project:config:update', 'BUTTON', id, 29 FROM permission WHERE code = 'project';
 
+-- 项目级 AI 配置权限（/aiConfig 菜单与 /api/ai/config/* 接口共用；owner/团队管理员自动持有，普通成员需角色分配）
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT 'AI 配置管理', 'project:aiconfig:update', 'BUTTON', id, 29 FROM permission WHERE code = 'project';
+
 INSERT INTO permission (name, code, type, parent_id, sort) VALUES
 ('需求管理', 'qa:requirement', 'MENU', NULL, 30),
 ('需求查看', 'qa:requirement:view', 'BUTTON', 9, 31),
@@ -1294,7 +1298,7 @@ UPDATE permission SET scope_type='TEAM', category='platform', is_project_managem
 UPDATE permission SET scope_type='TEAM', category='team', is_project_management=0, is_project_execution=0
   WHERE code='team' OR code LIKE 'team:%';
 UPDATE permission SET scope_type='PROJECT', category='project_manage', is_project_management=1, is_project_execution=0
-  WHERE code IN ('project','project:update','project:delete','project:member:view','project:member:create','project:member:update','project:member:delete','project:config:update');
+  WHERE code IN ('project','project:update','project:delete','project:member:view','project:member:create','project:member:update','project:member:delete','project:config:update','project:aiconfig:update');
 UPDATE permission SET scope_type='TEAM', category='project_manage', is_project_management=1, is_project_execution=0
   WHERE code='project:create';
 UPDATE permission SET scope_type='PROJECT', category='execution', is_project_management=0, is_project_execution=1
