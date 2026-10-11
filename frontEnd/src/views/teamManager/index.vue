@@ -151,12 +151,6 @@
               操作日志
             </router-link>
           </a-menu-item>
-          <a-menu-item key="aiConfig">
-            <router-link to="/team/aiConfig">
-              <icon-robot/>
-              AI 配置
-            </router-link>
-          </a-menu-item>
           <a-menu-item key="loginLog">
             <router-link to="/team/loginLog">
               <icon-safe/>
@@ -264,7 +258,6 @@ watch(() => route.path, (newPath) => {
   else if (newPath.includes('userManager')) selectedKey.value = 'userManager'
   else if (newPath.includes('roleManager')) selectedKey.value = 'roleManager'
   else if (newPath.includes('operationLog')) selectedKey.value = 'operationLog'
-  else if (newPath.includes('aiConfig')) selectedKey.value = 'aiConfig'
   else if (newPath.includes('loginLog')) selectedKey.value = 'loginLog'
   else if (newPath.includes('/team/userSetting')) selectedKey.value = 'userSetting'
 }, {immediate: true})

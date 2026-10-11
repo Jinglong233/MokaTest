@@ -79,6 +79,10 @@ public class AiConfigServiceImpl implements AiConfigService {
         if (input.getChatModel() == null || input.getChatModel().trim().isEmpty()) {
             throw new BusinessException("对话模型名不能为空");
         }
+        // 向量模型必填：无向量模型时知识库只能降级关键词检索，不再允许留空
+        if (input.getEmbeddingModel() == null || input.getEmbeddingModel().trim().isEmpty()) {
+            throw new BusinessException("向量模型不能为空");
+        }
         String loginId = StpUtil.getLoginIdAsString();
         Date now = new Date();
 

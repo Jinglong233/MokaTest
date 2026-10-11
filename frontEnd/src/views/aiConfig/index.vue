@@ -53,8 +53,8 @@
         <a-form-item field="chatModel" label="对话模型" required>
           <a-input v-model="editing.chatModel" placeholder="如：deepseek-chat" />
         </a-form-item>
-        <a-form-item field="embeddingModel" label="向量模型">
-          <a-input v-model="editing.embeddingModel" placeholder="如：text-embedding-3-small（留空则知识库降级为关键词检索）" />
+        <a-form-item field="embeddingModel" label="向量模型" required>
+          <a-input v-model="editing.embeddingModel" placeholder="如：text-embedding-3-small" />
         </a-form-item>
         <a-form-item field="thinkingMode" label="Thinking 模式">
           <a-select v-model="editing.thinkingMode">
@@ -117,7 +117,7 @@ function editConfig(cfg?: any) {
 
 async function saveItem() {
   const e = { ...editing.value, enabled: editing.value.enabled ? 1 : 0 };
-  if (!e.configName || !e.baseUrl || !e.chatModel) { Message.warning('请填写名称、API 地址和对话模型'); return; }
+  if (!e.configName || !e.baseUrl || !e.chatModel || !e.embeddingModel) { Message.warning('请填写名称、API 地址、对话模型和向量模型'); return; }
   if (!e.id && !e.apiKey) { Message.warning('新建配置请填写 API Key'); return; }
   saving.value = true;
   try {

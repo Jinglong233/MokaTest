@@ -1327,7 +1327,7 @@ create table ai_config
     base_url        varchar(500)           not null comment 'OpenAI 兼容端点',
     api_key         varchar(1000)          not null default '' comment 'API Key（AES 加密存储）',
     chat_model      varchar(100)           not null comment '对话模型名',
-    embedding_model varchar(100)           null comment '向量模型名，未配置则知识库降级为关键词检索',
+    embedding_model varchar(100)           null comment '向量模型名（必填，历史行可能为空，空时知识库降级关键词检索）',
     max_tokens      int         default 4096 not null comment '单次最大输出 tokens',
     temperature     decimal(2, 1) default 0.3 not null comment '采样温度',
     timeout_ms      int         default 60000 not null comment '请求超时（毫秒）',
