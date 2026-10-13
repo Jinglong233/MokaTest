@@ -86,48 +86,24 @@
                 @cancel="closeMockPopover(rowIndex)"
             />
           </div>
-          <div v-else-if="isIntegerType(record)" class="complex-cell">
-            <a-input-number
-                :model-value="record.value ? Number(record.value) : undefined"
-                :disabled="disabled"
-                :step="1"
-                :placeholder="$t('api.param.integerPlaceholder')"
-                hide-button
-                @change="(val: number | string | undefined) => onIntegerChange(record, val)"
-            >
-              <template #suffix>
-                <ParameterMockActions
-                    :record="record"
-                    :visible="mockPopoverVisibleMap[rowIndex]"
-                    :disabled="disabled"
-                    @update:visible="(val: boolean) => mockPopoverVisibleMap[rowIndex] = val"
-                    @select="(config: MockConfig) => onMockDataSelect(record, config, rowIndex)"
-                    @cancel="closeMockPopover(rowIndex)"
-                />
-              </template>
-            </a-input-number>
-          </div>
-          <div v-else-if="isNumberType(record)" class="complex-cell">
-            <a-input-number
-                :model-value="record.value ? Number(record.value) : undefined"
-                :disabled="disabled"
-                :step="0.01"
-                :placeholder="$t('api.param.numberPlaceholder')"
-                hide-button
-                @change="(val: number | string | undefined) => onNumberChange(record, val)"
-            >
-              <template #suffix>
-                <ParameterMockActions
-                    :record="record"
-                    :visible="mockPopoverVisibleMap[rowIndex]"
-                    :disabled="disabled"
-                    @update:visible="(val: boolean) => mockPopoverVisibleMap[rowIndex] = val"
-                    @select="(config: MockConfig) => onMockDataSelect(record, config, rowIndex)"
-                    @cancel="closeMockPopover(rowIndex)"
-                />
-              </template>
-            </a-input-number>
-          </div>
+          <ExprSuggestInput
+              v-else-if="isIntegerType(record) || isNumberType(record)"
+              :model-value="record.value"
+              :placeholder="isIntegerType(record) ? $t('api.param.integerPlaceholder') : $t('api.param.numberPlaceholder')"
+              :disabled="disabled"
+              @update:model-value="(val: string) => { record.value = val; onDataChange(); }"
+          >
+            <template #suffix>
+              <ParameterMockActions
+                  :record="record"
+                  :visible="mockPopoverVisibleMap[rowIndex]"
+                  :disabled="disabled"
+                  @update:visible="(val: boolean) => mockPopoverVisibleMap[rowIndex] = val"
+                  @select="(config: MockConfig) => onMockDataSelect(record, config, rowIndex)"
+                  @cancel="closeMockPopover(rowIndex)"
+              />
+            </template>
+          </ExprSuggestInput>
           <a-textarea
               v-else-if="isJsonType(record)"
               v-model="record.value"
@@ -525,26 +501,6 @@ const onTypeChange = (record: RequestParameter) => {
 
 const onBooleanChange = (record: RequestParameter, val: boolean | string | number) => {
   record.value = String(val === true || val === 'true')
-  onDataChange()
-}
-
-const onIntegerChange = (record: RequestParameter, val: number | string | undefined) => {
-  if (val === undefined || val === '') {
-    record.value = '0'
-  } else {
-    const num = typeof val === 'string' ? Number(val) : val
-    record.value = String(Math.floor(isNaN(num) ? 0 : num))
-  }
-  onDataChange()
-}
-
-const onNumberChange = (record: RequestParameter, val: number | string | undefined) => {
-  if (val === undefined || val === '') {
-    record.value = '0'
-  } else {
-    const num = typeof val === 'string' ? Number(val) : val
-    record.value = String(isNaN(num) ? 0 : num)
-  }
   onDataChange()
 }
 
