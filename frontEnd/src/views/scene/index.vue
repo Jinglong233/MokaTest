@@ -77,6 +77,10 @@
                 <icon-desktop v-else-if="node.sceneType==='SCENE' && node.sceneCategory !== 'API'" style="font-size: 16px; color: rgb(var(--arcoblue-6));"/>
                 <icon-code v-else-if="node.sceneType==='SCENE' && node.sceneCategory === 'API'" style="font-size: 16px; color: rgb(var(--green-6));"/>
               </template>
+              <template #icon="{ node }">
+                <icon-computer v-if="node.sceneType==='SCENE' && node.sceneCategory !== 'API'" style="font-size: 16px; color: rgb(var(--arcoblue-6));"/>
+                <icon-code v-else-if="node.sceneType==='SCENE' && node.sceneCategory === 'API'" style="font-size: 16px; color: rgb(var(--green-6));"/>
+              </template>
               <template #title="node">
                 <div class="scene-node-title-wrap">
                   <a-tooltip
@@ -947,7 +951,7 @@
 </template>
 
 <script lang="ts" setup>
-import {IconCopy, IconCode, IconDesktop, IconFile, IconFolder, IconMore, IconRight} from '@arco-design/web-vue/es/icon';
+import {IconComputer, IconCopy, IconCode, IconDesktop, IconFile, IconFolder, IconMore, IconRight} from '@arco-design/web-vue/es/icon';
 import {computed, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue'
 import {useI18n} from 'vue-i18n';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
