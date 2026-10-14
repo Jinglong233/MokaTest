@@ -15,8 +15,8 @@
           </template>
         </a-button>
       </a-popover>
-      <a-dropdown v-permission="'auto:api:create'" style="flex: 1" @select="userAddInterFace">
-        <a-button style="width: 100%">
+      <a-dropdown style="flex: 1" @select="userAddInterFace">
+        <a-button v-permission="'auto:api:create'" style="width: 100%">
           <template #icon>
             <icon-file />
           </template>
