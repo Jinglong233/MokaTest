@@ -52,11 +52,28 @@
                   <a-tag color="cyan" size="large">
                     {{ getStepTypeChinese(el.stepType) }}
                   </a-tag>
-                  <!-- 文本区域 -->
+                  <!-- 文本区域：有概览时步骤名限宽，把弹性空间让给概览 -->
                   <a-typography-text
-                      style="flex: 1;min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">
+                      :style="{
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flex: stepOverviewMap.get(el.id)?.segments.length ? '0 1 auto' : '1',
+                        maxWidth: stepOverviewMap.get(el.id)?.segments.length ? '45%' : 'none'
+                      }">
                     {{ el.stepName }}
                   </a-typography-text>
+                  <!-- 概览信息：迷你 tag 标签 + 灰色值分段展示，窄面板时优先截断，hover 看全文 -->
+                  <a-tooltip v-if="stepOverviewMap.get(el.id)?.segments.length"
+                             :content="stepOverviewMap.get(el.id)?.text">
+                    <div class="step-overview">
+                      <template v-for="(seg, i) in stepOverviewMap.get(el.id)?.segments" :key="i">
+                        <a-tag size="small" color="gray" class="step-overview-label">{{ seg.label }}</a-tag>
+                        <span class="step-overview-value">{{ seg.value }}</span>
+                      </template>
+                    </div>
+                  </a-tooltip>
                   <a-tag v-if="el.isDisable === 1" color="gray" size="small" style="flex-shrink: 0;">{{ $t('scene.step.disabled') }}</a-tag>
                   <!-- 本步提取的变量（数据流可见） -->
                   <a-tooltip v-if="getStepExtractVars(el).length" :content="$t('scene.step.extractVars') + getStepExtractVars(el).map((v) => '${'+v+'}').join('  ')">
@@ -533,6 +550,162 @@ const getStepExtractVars = (el: any): string[] => {
     return [];
   }
 };
+
+// ===== 步骤概览（列表同行展示的摘要信息） =====
+const parseStepDetail = (el: any): any => {
+  try {
+    return typeof el?.stepDetail === 'string' ? JSON.parse(el.stepDetail) : el?.stepDetail;
+  } catch (e) {
+    return null;
+  }
+};
+
+const truncateText = (text: any, max = 24): string => {
+  const s = text == null ? '' : String(text);
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+};
+
+// 元素描述：优先元素名，其次「定位类型=定位值」；locatorSource 为空的历史数据按后端「库选优先」规则取值
+const resolveElementDesc = (element: any): string => {
+  if (!element) return '';
+  const lib = element.locator;
+  const custom = element.customLocator;
+  const loc = element.locatorSource === 'CUSTOM'
+      ? (custom?.locatorValue ? custom : lib)
+      : (lib?.locatorValue ? lib : custom);
+  if (!loc) return '';
+  if (loc.elementName) return loc.elementName;
+  return loc.locatorValue ? `${loc.locatorType || ''}=${loc.locatorValue}` : '';
+};
+
+const TAB_MODE_LABEL: Record<string, string> = {
+  FIRST: '第一个', LAST: '上一个', NEXT: '下一个', END: '最后一个'
+};
+
+const CLOSE_MODE_LABEL: Record<string, string> = {
+  CURRENT: '当前页面', FIRST: '第一个页面', LAST: '上一个页面',
+  NEXT: '下一个页面', END: '最后一个页面', ALL: '所有页面'
+};
+
+const DIALOG_OP_LABEL: Record<string, string> = {
+  ACCEPT: '接受', DISMISS: '取消', MESSAGE: '获取消息'
+};
+
+// 概览分段：label 用迷你 tag 展示，value 用灰色小字展示
+interface OverviewSegment {
+  label: string;
+  value: string;
+}
+
+// 值非空才保留分段
+const seg = (label: string, value: any): OverviewSegment[] => {
+  const v = value == null ? '' : String(value).trim();
+  return v ? [{label, value: v}] : [];
+};
+
+// 按步骤类型构建概览分段；无可展示信息（BACK/FORWARD/REFRESH 等）返回空数组
+const buildStepOverviewSegments = (el: any): OverviewSegment[] => {
+  const d = parseStepDetail(el);
+  if (!d) return [];
+  switch (el.stepType) {
+    case 'OPEN_PAGE':
+      return seg('地址', d.url);
+    case 'CLICK':
+    case 'HOVER':
+      return seg('元素', resolveElementDesc(d.element));
+    case 'KEYBOARD':
+      return [
+        ...seg('元素', resolveElementDesc(d.element)),
+        ...(d.inputType === 'KEYBOARD' ? seg('按键', d.keyboardKey) : seg('输入', d.inputValue)),
+      ];
+    case 'DRAG': {
+      const from = resolveElementDesc(d.dragElement);
+      const to = resolveElementDesc(d.targetElement);
+      return seg('拖拽', from && to ? `${from} → ${to}` : '');
+    }
+    case 'WAIT':
+      return seg('等待', d.waitTime != null ? `${d.waitTime}s` : '');
+    case 'EXTRACT':
+      return seg('提取', d.variableName ? `\${${d.variableName}}` : '');
+    case 'IF':
+      return Array.isArray(d.conditionList) && d.conditionList.length
+          ? seg('条件', `${d.conditionList.length} 个`) : [];
+    case 'WHILE': {
+      if (!Array.isArray(d.conditionList) || !d.conditionList.length) return [];
+      return [
+        ...seg('条件', `${d.conditionList.length} 个`),
+        ...seg('最多', d.maxLoopCount ? `${d.maxLoopCount} 次` : ''),
+      ];
+    }
+    case 'FOR':
+      if (d.cycleType === 'FILES') return seg('循环', d.cycleFile ? '按文件' : '');
+      return seg('循环', d.cycleTimes ? `${d.cycleTimes} 次` : '');
+    case 'IFRAME':
+      switch (d.switchIframeType) {
+        case 'EXIT': return seg('iframe', '退出');
+        case 'URL': return seg('iframe', d.url);
+        case 'NAME': return seg('iframe', d.iframeName);
+        case 'ID': return seg('iframe', d.iframeId ? `#${d.iframeId}` : '');
+        case 'INDEX': return seg('iframe', d.iframeIndex != null ? `第 ${d.iframeIndex} 个` : '');
+        case 'ELEMENT': return seg('iframe', resolveElementDesc(d.element));
+        default: return [];
+      }
+    case 'SWITCH_TAB':
+      return seg('页签', d.switchTabMode === 'CUSTOM_INDEX'
+          ? `#${d.customIndex ?? 0}`
+          : TAB_MODE_LABEL[d.switchTabMode] || '');
+    case 'CLOSE_PAGE':
+      return seg('关闭', d.closePageMode === 'CUSTOM_INDEX'
+          ? `页面 #${d.customIndex ?? 0}`
+          : CLOSE_MODE_LABEL[d.closePageMode] || '');
+    case 'FILE_UPLOAD':
+      return [
+        ...seg('元素', resolveElementDesc(d.element)),
+        ...seg('文件', Array.isArray(d.fileIds) && d.fileIds.length ? `${d.fileIds.length} 个` : ''),
+      ];
+    case 'ELEMENT_DOM_OPERATION':
+      switch (d.operationType) {
+        case 'SET_ATTRIBUTE': return seg('属性', d.attributeName ? `${d.attributeName}=${d.attributeValue ?? ''}` : '');
+        case 'REMOVE_ATTRIBUTE': return seg('移除属性', d.attributeName);
+        case 'SET_STYLE': return seg('样式', d.styleName ? `${d.styleName}: ${d.styleValue ?? ''}` : '');
+        case 'ADD_CLASS': return seg('+类', (d.classNames || []).join(' '));
+        case 'REMOVE_CLASS': return seg('-类', (d.classNames || []).join(' '));
+        case 'DISPATCH_EVENT': return seg('事件', d.eventType);
+        default: return [];
+      }
+    case 'DIALOG':
+      return seg('弹窗', [DIALOG_OP_LABEL[d.dialogOperationType] || '', d.dialogMessage].filter(Boolean).join(' '));
+    case 'SCRIPT': {
+      const firstLine = String(d.scriptContent || '').split('\n').map((l: string) => l.trim()).find(Boolean) || '';
+      return seg('脚本', truncateText(firstLine, 24));
+    }
+    case 'API_REQUEST':
+    case 'SQL': {
+      const req = [d.apiConfig?.requestMethod, d.apiConfig?.requestPath].filter(Boolean).join(' ');
+      return seg('接口', req || d.apiName || '');
+    }
+    default:
+      return [];
+  }
+};
+
+// 一次性遍历整棵树生成概览，避免模板里每个节点重复解析 stepDetail JSON
+// text 为 tooltip 用的完整文案（值不截断，行内靠 CSS 省略）
+const stepOverviewMap = computed(() => {
+  const map = new Map<number, { segments: OverviewSegment[]; text: string }>();
+  const walk = (nodes: any[]) => {
+    (nodes || []).forEach((n: any) => {
+      const segments = buildStepOverviewSegments(n);
+      map.set(n.id, {
+        segments,
+        text: segments.map((s) => `${s.label} ${s.value}`).join('  ·  '),
+      });
+      if (Array.isArray(n.children)) walk(n.children);
+    });
+  };
+  walk(props.modelValue);
+  return map;
+});
 
 const list = computed({
   get: () => props.modelValue,
@@ -1175,6 +1348,29 @@ watch(() => props.stepDebugList, async (newVal) => {
 
 :deep(.arco-card-body) {
   padding: 12px !important;
+}
+
+.step-overview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.step-overview-label {
+  flex-shrink: 0;
+}
+
+.step-overview-value {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-3);
+  font-size: 12px;
 }
 
 .debug-result-trigger {
