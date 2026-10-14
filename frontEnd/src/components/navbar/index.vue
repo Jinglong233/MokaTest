@@ -51,20 +51,18 @@
         </a-tooltip>
       </li>
       <li>
-        <a-tooltip :content="$t('settings.language')">
-          <a-button
-              class="nav-btn"
-              type="outline"
-              :shape="'circle'"
-              @click="setDropDownVisible"
-          >
-            <template #icon>
-              <icon-language/>
-            </template>
-          </a-button>
-        </a-tooltip>
         <a-dropdown trigger="click" @select="changeLocale as any">
-          <div ref="triggerBtn" class="trigger-btn"></div>
+          <a-tooltip :content="$t('settings.language')">
+            <a-button
+                class="nav-btn"
+                type="outline"
+                :shape="'circle'"
+            >
+              <template #icon>
+                <icon-language/>
+              </template>
+            </a-button>
+          </a-tooltip>
           <template #content>
             <a-doption
                 v-for="item in locales"
@@ -284,17 +282,8 @@ const handleToggleTheme = () => {
 const setVisible = () => {
   appStore.updateSettings({globalSettings: true});
 };
-const triggerBtn = ref();
 const handleLogout = () => {
   logout();
-};
-const setDropDownVisible = () => {
-  const event = new MouseEvent('click', {
-    view: window,
-    bubbles: true,
-    cancelable: true,
-  });
-  triggerBtn.value.dispatchEvent(event);
 };
 const toggleDrawerMenu = inject('toggleDrawerMenu') as () => void;
 
@@ -452,12 +441,6 @@ watch(
     border-color: rgb(var(--gray-2));
     color: rgb(var(--gray-8));
     font-size: 16px;
-  }
-
-  .trigger-btn {
-    position: absolute;
-    bottom: 14px;
-    margin-left: 14px;
   }
 
   .user-trigger {
