@@ -230,7 +230,7 @@
       <a-tab-pane key="auth" v-if="!isSqlMode">
         <template #title>{{ $t('api.form.tabAuth') }}</template>
         <div class="auth-panel">
-          <a-form layout="horizontal" auto-label-width>
+          <a-form :model="localFormData.authConfig" layout="horizontal" auto-label-width>
             <a-form-item :label="$t('api.form.authType')">
               <a-radio-group
                   v-model="localFormData.authConfig.authType"
