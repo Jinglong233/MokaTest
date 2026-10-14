@@ -156,20 +156,56 @@
           <!--      顶部场景数据-->
           <a-card class="scene-top-card">
             <div v-if="topSceneInfo && topSceneInfo.id != null && selectedScene!=null && selectedScene[0] != 0" class="scene-top-bar">
-              <!-- 第一行：场景身份（名称即标题）+ 调试主操作 -->
+              <!-- 第一行：左侧名称/描述上下堆叠（点击图标就地编辑），右侧环境/场景工具 + 调试主操作 -->
               <div class="scene-top-main">
+                <!-- 左列：名称（即标题）与描述上下堆叠，点击编辑图标就地编辑 -->
                 <div class="scene-identity">
-                  <a-input
-                      v-model="topSceneInfo.name"
-                      class="scene-name-input"
-                      :placeholder="$t('scene.top.sceneNamePlaceholder')"
-                      :max-length="50"
+                  <div class="scene-name-row">
+                    <a-typography-paragraph
+                        v-model:edit-text="topSceneInfo.name"
+                        class="scene-name-text"
+                        :editable="hasSceneUpdatePermission"
+                        @edit-end="handleTopSceneInfoUpdate"
+                    >{{ topSceneInfo.name }}</a-typography-paragraph>
+                    <a-tag :color="topSceneInfo.sceneCategory === 'API' ? 'green' : 'arcoblue'" size="small" class="scene-category-tag">
+                      {{ topSceneInfo.sceneCategory === 'API' ? 'API' : 'UI' }}
+                    </a-tag>
+                  </div>
+                  <a-typography-paragraph
+                      v-model:edit-text="topSceneInfo.description"
+                      class="scene-desc-text"
+                      :class="{ 'is-empty': !topSceneInfo.description }"
+                      :editable="hasSceneUpdatePermission"
+                      @edit-end="handleTopSceneInfoUpdate"
+                  >{{ topSceneInfo.description || $t('scene.top.descPlaceholder') }}</a-typography-paragraph>
+                </div>
+                <div class="scene-tools">
+                  <!-- 环境选择：API/UI 场景共用（UI 场景里的 HTTP/SQL 步骤执行时按环境合并 baseUrl/环境变量/数据库连接） -->
+                  <a-select
+                      v-model="selectedEnvironmentId"
+                      :placeholder="$t('scene.top.selectEnv')"
+                      allow-clear
                       :disabled="!hasSceneUpdatePermission"
-                      @blur="handleTopSceneInfoUpdate"
-                  />
-                  <a-tag :color="topSceneInfo.sceneCategory === 'API' ? 'green' : 'arcoblue'" size="small" class="scene-category-tag">
-                    {{ topSceneInfo.sceneCategory === 'API' ? 'API' : 'UI' }}
-                  </a-tag>
+                      @change="onEnvironmentChange"
+                      style="width: 140px;"
+                  >
+                    <a-option
+                        v-for="env in envList"
+                        :key="env.id"
+                        :value="env.id"
+                    >
+                      {{ env.envName }}
+                    </a-option>
+                  </a-select>
+                  <!-- 环境配置入口：与 API 测试页同一个配置弹窗，关闭后刷新下拉选项 -->
+                  <a-tooltip :content="$t('scene.top.envConfig')">
+                    <a-button v-if="hasEnvConfigPermission" type="text" shape="circle" :aria-label="$t('scene.top.envConfig')" @click="envConfigVisible = true">
+                      <icon-settings/>
+                    </a-button>
+                  </a-tooltip>
+                  <a-divider direction="vertical" style="margin: 0 4px;"/>
+                  <a-button @click="openCommonFunctionDialog()">{{ $t('scene.top.commonFunction') }}</a-button>
+                  <a-button v-permission="'auto:scene:update'" @click="editSceneConfig()">{{ $t('scene.top.sceneConfig') }}</a-button>
                 </div>
                 <div class="scene-debug-actions">
                   <a-badge v-if="healSuggestions.length > 0" :count="pendingHealCount">
@@ -218,49 +254,12 @@
                   </a-button>
                 </div>
               </div>
-              <!-- 第二行：描述 + 运行环境 + 辅助工具 + 视图切换 -->
-              <div class="scene-top-secondary">
-                <a-input
-                    v-model="topSceneInfo.description"
-                    class="scene-desc-input"
-                    :placeholder="$t('scene.top.descPlaceholder')"
-                    :max-length="200"
-                    :disabled="!hasSceneUpdatePermission"
-                    @blur="handleTopSceneInfoUpdate"
-                />
-                <div class="scene-tools">
-                  <!-- 环境选择：API/UI 场景共用（UI 场景里的 HTTP/SQL 步骤执行时按环境合并 baseUrl/环境变量/数据库连接） -->
-                  <a-select
-                      v-model="selectedEnvironmentId"
-                      :placeholder="$t('scene.top.selectEnv')"
-                      allow-clear
-                      :disabled="!hasSceneUpdatePermission"
-                      @change="onEnvironmentChange"
-                      style="width: 140px;"
-                  >
-                    <a-option
-                        v-for="env in envList"
-                        :key="env.id"
-                        :value="env.id"
-                    >
-                      {{ env.envName }}
-                    </a-option>
-                  </a-select>
-                  <!-- 环境配置入口：与 API 测试页同一个配置弹窗，关闭后刷新下拉选项 -->
-                  <a-tooltip :content="$t('scene.top.envConfig')">
-                    <a-button v-if="hasEnvConfigPermission" type="text" shape="circle" :aria-label="$t('scene.top.envConfig')" @click="envConfigVisible = true">
-                      <icon-settings/>
-                    </a-button>
-                  </a-tooltip>
-                  <a-divider direction="vertical" style="margin: 0 4px;"/>
-                  <a-button @click="openCommonFunctionDialog()">{{ $t('scene.top.commonFunction') }}</a-button>
-                  <a-button v-permission="'auto:scene:update'" @click="editSceneConfig()">{{ $t('scene.top.sceneConfig') }}</a-button>
-                  <a-radio-group v-model="stepListShowModel" type="button">
-                    <a-radio value="list">{{ $t('scene.top.listView') }}</a-radio>
-                    <a-radio value="workflow">{{ $t('scene.top.workflowView') }}</a-radio>
-                  </a-radio-group>
-                </div>
-              </div>
+              <!-- 分割线在视图切换 Tab 顶部，通栏横贯卡片 -->
+              <a-divider class="scene-view-tabs-divider"/>
+              <a-tabs v-model:active-key="stepListShowModel" class="scene-view-tabs" hide-content>
+                <a-tab-pane key="list" :title="$t('scene.top.listView')"/>
+                <a-tab-pane key="workflow" :title="$t('scene.top.workflowView')"/>
+              </a-tabs>
             </div>
           </a-card>
           <!--      核心步骤列表-->
@@ -2527,6 +2526,11 @@ const handleSubmit = async (stepDetail: any) => {
 
 // 顶部场景信息更新
 const handleTopSceneInfoUpdate = async () => {
+  // 就地编辑无 max-length 限制，保存前按原输入框口径截断
+  topSceneInfo.value.name = topSceneInfo.value.name?.slice(0, 50);
+  if (topSceneInfo.value.description) {
+    topSceneInfo.value.description = topSceneInfo.value.description.slice(0, 200);
+  }
   // 校验空信息
   if (topSceneInfo.value.name == null || topSceneInfo.value.name.trim() === '') {
     Message.error({
@@ -2535,6 +2539,11 @@ const handleTopSceneInfoUpdate = async () => {
     })
     // 重新赋值
     topSceneInfo.value = {...currentEditScene.value};
+    return;
+  }
+  // 内容未变化（打开编辑态直接失焦）时不发请求，避免无效的成功提示和树刷新
+  if (topSceneInfo.value.name === currentEditScene.value.name
+      && (topSceneInfo.value.description || '') === (currentEditScene.value.description || '')) {
     return;
   }
   let result = await updateScene(topSceneInfo.value);
@@ -2546,6 +2555,8 @@ const handleTopSceneInfoUpdate = async () => {
     // 重新加载目录
     await reloadSceneTree();
     await reloadFolderLIst();
+    // 同步基准数据，供「内容未变化不保存」的守卫比对
+    currentEditScene.value = {...currentEditScene.value, ...topSceneInfo.value};
     // 清空表单
     addOrUpdateSceneForm.value = {};
 
@@ -4367,7 +4378,7 @@ watch(
   flex: 0 0 auto;
 }
 
-/* 顶部栏：第一行身份+调试主操作，第二行描述+工具；窄屏各自换行 */
+/* 顶部栏：第一行身份+描述+调试主操作+环境/场景工具；分割线之下是列表/工作流切换 Tab；窄屏各自换行 */
 .scene-top-bar {
   display: flex;
   flex-direction: column;
@@ -4384,39 +4395,37 @@ watch(
 
 .scene-identity {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   flex: 1;
   min-width: 240px;
 }
 
-.scene-category-tag {
-  flex: 0 0 auto;
+.scene-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
 }
 
-/* 场景名即标题：无边框输入，hover/focus 才显形（class 落在 arco-input-wrapper 根上） */
-.scene-top-bar :deep(.arco-input-wrapper.scene-name-input) {
-  background: transparent;
-  border-color: transparent;
-  transition: border-color 0.15s, background 0.15s;
-  flex: 1;
-  min-width: 0;
-  max-width: 420px;
-}
-
-.scene-top-bar :deep(.arco-input-wrapper.scene-name-input:hover) {
-  background: var(--color-fill-2);
-}
-
-.scene-top-bar :deep(.arco-input-wrapper.scene-name-input:focus-within) {
-  background: var(--color-bg-2);
-  border-color: rgb(var(--primary-6));
-}
-
-.scene-top-bar :deep(.arco-input-wrapper.scene-name-input .arco-input) {
+/* 场景名即标题：typography 就地编辑，保持 17px/600 标题观感 */
+.scene-name-text {
+  margin-bottom: 0;
   font-size: 17px;
   font-weight: 600;
   color: var(--color-text-1);
+}
+
+/* 描述：次级文字，空内容时显示占位文案 */
+.scene-desc-text {
+  margin-bottom: 0;
+  font-size: 13px;
+  color: var(--color-text-3);
+}
+
+.scene-category-tag {
+  flex: 0 0 auto;
 }
 
 .scene-debug-actions {
@@ -4434,36 +4443,18 @@ watch(
   color: inherit;
 }
 
-.scene-top-secondary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+/* 视图切换 Tab 顶部分割线：负边距抵消卡片内边距（16px），通栏横贯 */
+.scene-view-tabs-divider {
+  margin: 8px -16px 0;
 }
 
-/* 描述：次级文字、无边框，占位引导补充（class 落在 arco-input-wrapper 根上） */
-.scene-top-bar :deep(.arco-input-wrapper.scene-desc-input) {
-  background: transparent;
-  border-color: transparent;
-  transition: border-color 0.15s, background 0.15s;
-  flex: 1;
-  min-width: 200px;
-  max-width: 480px;
+.scene-view-tabs {
+  margin-top: 0;
 }
 
-.scene-top-bar :deep(.arco-input-wrapper.scene-desc-input:hover) {
-  background: var(--color-fill-2);
-}
-
-.scene-top-bar :deep(.arco-input-wrapper.scene-desc-input:focus-within) {
-  background: var(--color-bg-2);
-  border-color: rgb(var(--primary-6));
-}
-
-.scene-top-bar :deep(.arco-input-wrapper.scene-desc-input .arco-input) {
-  font-size: 13px;
-  color: var(--color-text-3);
+/* 去掉 Tab 底部默认分割线（顶部已有通栏分割线） */
+.scene-view-tabs :deep(.arco-tabs-nav::before) {
+  display: none;
 }
 
 .scene-tools {
