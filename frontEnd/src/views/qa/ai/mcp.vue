@@ -1,6 +1,6 @@
 <template>
   <div class="ai-mcp-page">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.aiMcp']" />
+    <Breadcrumb :items="['menu.ai', 'menu.qa.aiMcp']" />
     <a-alert type="info" :bordered="false" style="margin-bottom: 16px">
       {{ $t('qa.ai.mcp.tip') }}
     </a-alert>

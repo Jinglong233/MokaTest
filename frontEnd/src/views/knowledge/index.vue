@@ -1,6 +1,6 @@
 <template>
   <div class="knowledge-page" v-if="projectStore.getProjectId">
-    <Breadcrumb :items="['menu.knowledge']"/>
+    <Breadcrumb :items="['menu.ai', 'menu.knowledge']"/>
 
     <a-card class="general-card" :bordered="false">
       <!-- 顶部操作区 -->

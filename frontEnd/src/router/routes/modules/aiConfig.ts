@@ -1,32 +1,20 @@
-import {DEFAULT_LAYOUT} from '../base';
 import {AppRouteRecordRaw} from '../types';
 
+// AI 配置已迁入「AI 中心」菜单(/ai/config)，保留旧路径重定向避免旧链接失效
 const AiConfig: AppRouteRecordRaw = {
     path: '/aiConfig',
     name: 'AiConfig',
-    redirect: '/aiConfig/index',
-    component: DEFAULT_LAYOUT,
+    redirect: to => ({path: '/ai/config', query: to.query}),
     meta: {
-        locale: 'menu.aiConfig',
-        icon: 'icon-robot',
         requiresAuth: false,
-        order: 92,
         requiresProject: true,
-        hideChildrenInMenu: true,
-        permission: ['project:aiconfig:update'],
+        hideInMenu: true,
     },
     children: [
         {
             path: 'index',
-            name: 'AiConfigIndex',
-            component: () => import('@/views/aiConfig/index.vue'),
-            meta: {
-                locale: 'menu.aiConfig',
-                requiresAuth: false,
-                requiresProject: true,
-                activeMenu: 'AiConfig',
-                ignoreCache: true,
-            },
+            redirect: to => ({path: '/ai/config', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
     ],
 };

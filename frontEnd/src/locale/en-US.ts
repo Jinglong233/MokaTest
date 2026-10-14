@@ -50,6 +50,7 @@ export default {
     'menu.project': 'Project Overview',
     'menu.projectMember': 'Project Members',
     'menu.projectConfig': 'Project Config',
+    'menu.ai': 'AI Center',
     'menu.aiConfig': 'AI Config',
     'menu.knowledge': 'Knowledge Base',
 

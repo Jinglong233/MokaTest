@@ -51,6 +51,7 @@ export default {
     'menu.project': '项目概览',
     'menu.projectMember': '项目成员',
     'menu.projectConfig': '项目配置',
+    'menu.ai': 'AI 中心',
     'menu.aiConfig': 'AI 配置',
     'menu.knowledge': '知识库',
 

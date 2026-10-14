@@ -1,47 +1,25 @@
-import {DEFAULT_LAYOUT} from '../base';
 import {AppRouteRecordRaw} from '../types';
 
+// 知识库已迁入「AI 中心」菜单(/ai/knowledge)，保留旧路径重定向避免旧链接失效
 const Knowledge: AppRouteRecordRaw = {
     path: '/knowledge',
     name: 'Knowledge',
-    redirect: '/knowledge/index',
-    component: DEFAULT_LAYOUT,
+    redirect: to => ({path: '/ai/knowledge', query: to.query}),
     meta: {
-        locale: 'menu.knowledge',
-        icon: 'icon-book',
         requiresAuth: false,
-        order: 92,
         requiresProject: true,
-        hideChildrenInMenu: true,
-        permission: [
-            'knowledge:view',
-        ],
+        hideInMenu: true,
     },
     children: [
         {
             path: 'index',
-            name: 'KnowledgeIndex',
-            component: () => import('@/views/knowledge/index.vue'),
-            meta: {
-                locale: 'menu.knowledge',
-                requiresAuth: false,
-                requiresProject: true,
-                activeMenu: 'Knowledge',
-                ignoreCache: true,
-            },
+            redirect: to => ({path: '/ai/knowledge', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
         {
             path: 'edit',
-            name: 'KnowledgeEdit',
-            component: () => import('@/views/knowledge/edit.vue'),
-            meta: {
-                locale: 'menu.knowledge',
-                requiresAuth: false,
-                requiresProject: true,
-                activeMenu: 'Knowledge',
-                hideInMenu: true,
-                ignoreCache: true,
-            },
+            redirect: to => ({path: '/ai/knowledge/edit', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
     ],
 };

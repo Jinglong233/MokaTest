@@ -1,6 +1,6 @@
 <template>
   <div class="workbench-page" v-if="projectStore.hasProjectSelected">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.aiWorkbench']" />
+    <Breadcrumb :items="['menu.ai', 'menu.qa.aiWorkbench']" />
     <div class="wb-layout">
       <!-- 左栏：会话列表 -->
       <div class="wb-sessions">

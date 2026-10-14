@@ -18,7 +18,6 @@ const QA: AppRouteRecordRaw = {
             'qa:module:view',
             'qa:testplan:view',
             'qa:overview:view',
-            'qa:ai:use',
         ],
     },
     children: [
@@ -194,47 +193,26 @@ const QA: AppRouteRecordRaw = {
                 permission: 'qa:requirement:view',
             },
         },
+        // AI 相关菜单已迁至「AI 中心」(/ai)，保留旧路径重定向避免旧链接失效
         {
             path: 'aiWorkbench',
-            name: 'AiWorkbench',
-            component: () => import('@/views/qa/ai/workbench.vue'),
-            meta: {
-                locale: 'menu.qa.aiWorkbench',
-                requiresAuth: false,
-                permission: 'qa:ai:use',
-            },
+            redirect: to => ({path: '/ai/workbench', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
         {
             path: 'aiSkills',
-            name: 'AiSkills',
-            component: () => import('@/views/qa/ai/skills.vue'),
-            meta: {
-                locale: 'menu.qa.aiSkills',
-                requiresAuth: false,
-                permission: 'qa:ai:use',
-            },
+            redirect: to => ({path: '/ai/skills', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
         {
             path: 'aiReview',
-            name: 'AiReview',
-            component: () => import('@/views/qa/ai/review.vue'),
-            meta: {
-                locale: 'menu.qa.aiReview',
-                requiresAuth: false,
-                hideInMenu: true,
-                permission: 'qa:ai:use',
-            },
+            redirect: to => ({path: '/ai/review', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
         {
             path: 'aiCaseGen',
-            name: 'AiCaseGen',
-            component: () => import('@/views/qa/ai/caseGen.vue'),
-            meta: {
-                locale: 'menu.qa.aiCaseGen',
-                requiresAuth: false,
-                hideInMenu: true,
-                permission: 'qa:ai:use',
-            },
+            redirect: to => ({path: '/ai/caseGen', query: to.query}),
+            meta: {requiresAuth: false, hideInMenu: true},
         },
     ],
 };

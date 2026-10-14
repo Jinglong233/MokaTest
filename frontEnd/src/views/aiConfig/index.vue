@@ -1,6 +1,6 @@
 <template>
   <div class="ai-config-page">
-    <Breadcrumb :items="['menu.projectConfig', 'menu.aiConfig']" />
+    <Breadcrumb :items="['menu.ai', 'menu.aiConfig']" />
     <a-card :bordered="false" class="config-card">
       <div class="page-header">
         <h3 style="margin: 0">AI 配置</h3>

@@ -1,6 +1,6 @@
 <template>
   <div class="knowledge-edit-page">
-    <Breadcrumb :items="['menu.knowledge', docId ? '编辑文档' : '新建文档']"/>
+    <Breadcrumb :items="['menu.ai', 'menu.knowledge', docId ? '编辑文档' : '新建文档']"/>
 
     <a-card class="general-card" :bordered="false" :loading="loading">
       <!-- 标题 + 操作 -->

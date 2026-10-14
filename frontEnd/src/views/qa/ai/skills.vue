@@ -1,6 +1,6 @@
 <template>
   <div class="ai-skills-page">
-    <Breadcrumb :items="['menu.qa', 'menu.qa.aiSkillsMgmt']" />
+    <Breadcrumb :items="['menu.ai', 'menu.qa.aiSkillsMgmt']" />
 
     <a-card :bordered="false">
       <div class="toolbar">
