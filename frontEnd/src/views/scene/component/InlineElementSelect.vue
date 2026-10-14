@@ -24,7 +24,6 @@
     <ElementSelect
         v-if="visible"
         v-model="innerValue"
-        project-id="1"
         :disabled="disabled"
         @change="handleChange"
     />

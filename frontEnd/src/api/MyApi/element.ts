@@ -1,5 +1,6 @@
 import axios from "axios";
 import {Scene} from "@/types/domain/Scene";
+import {Element} from "@/types/domain/Element";
 import {ElementVO} from "@/types/vo/ElementVO";
 import {ElementQueryDTO} from "@/types/dto/queryDTO/ElementQueryDTO";
 import {SceneVO} from "@/types/vo/SceneVO";

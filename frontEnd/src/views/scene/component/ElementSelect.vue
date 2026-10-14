@@ -178,8 +178,6 @@ import {ElementDTO} from "@/types/dto/ElementDTO";
 import {useProjectStore} from "@/store";
 
 interface Props {
-  // 项目id
-  projectId: string
   // 当前选择元素
   modelValue: ElementDTO
   // 只读模式（无步骤编辑权限或调试锁定时不允许修改元素选择/自定义定位）
@@ -295,7 +293,7 @@ const folderTree = ref<ElementVO[]>([])
 
 // 加载目录列表
 const reloadFolderTree = async () => {
-  const folderList = await getFolderList(projectStore.getProjectId)
+  const folderList = await getFolderList(String(projectStore.getProjectId ?? ''))
   folderTree.value = folderList.data
 }
 
@@ -390,12 +388,12 @@ const handleElementBeforeOk = async () => {
     return false
   }
 
-  let result
+  let result: any
   if (addOrUpdateElementForm.value.id != null) {
     // id不为空代表是更新
     result = await update(addOrUpdateElementForm.value)
   } else { // 添加
-    addOrUpdateElementForm.value.projectId = projectStore.getProjectId
+    addOrUpdateElementForm.value.projectId = String(projectStore.getProjectId ?? '')
     addOrUpdateElementForm.value.createUserId = '1'
     addOrUpdateElementForm.value.updateUserId = "1"
     addOrUpdateElementForm.value.elementType = 'ELEMENT'
@@ -459,7 +457,7 @@ const allElement = async () => {
     await searchElement();
     return;
   }
-  let axiosResponse = await getAllElementByProjectId(projectStore.getProjectId)
+  let axiosResponse = await getAllElementByProjectId(String(projectStore.getProjectId ?? ''))
   elementList.value = axiosResponse.data
 }
 

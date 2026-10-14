@@ -684,7 +684,7 @@
                 <div class="record-import-uploader">
                   <RecordImportInline
                       ref="recordImportPanelRef"
-                      :project-id="projectStore.getProjectId"
+                      :project-id="String(projectStore.getProjectId ?? '')"
                       @stepsChange="onRecordStepsChange"
                   />
                 </div>

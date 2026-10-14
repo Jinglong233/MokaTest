@@ -120,7 +120,6 @@
         <ElementSelect
             v-else-if="field.type === 'elementSelect' && !compactElementSelect"
             v-model="formData[field.key]"
-            :project-id="1"
             :disabled="disabled"
             @change="handleFieldUpdate"
         />
