@@ -160,22 +160,38 @@ defineExpose({
 .script-step-editor :deep(.arco-form-item:last-child) {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.script-step-editor :deep(.arco-form-item:last-child .arco-form-item-wrapper) {
+/* 横向截断：content-wrapper 是行向 flex，子项默认 min-width:auto，
+   宽内容会撑破抽屉；钉 0 后由 Monaco 自身横向滚动接管。
+   高度：wrapper-col 由 flex:1 提供确定高度后，逐级 100% 传下去，
+   编辑器才能填满抽屉剩余空间 */
+.script-step-editor :deep(.arco-form-item:last-child .arco-form-item-wrapper-col) {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+}
+
+.script-step-editor :deep(.arco-form-item:last-child .arco-form-item-content-wrapper) {
+  height: 100%;
+  min-width: 0;
 }
 
 .script-step-editor :deep(.arco-form-item:last-child .arco-form-item-content) {
   height: 100%;
+  min-width: 0;
 }
 
 .script-editor-wrap {
+  /* arco-form-item-content 默认带 content-flex（display:flex），
+     插槽内容是 flex 子项，不显式给宽度会按内容收缩 */
+  width: 100%;
   height: 100%;
   min-height: 320px;
+  min-width: 0;
   display: flex;
   gap: 12px;
   border: 1px solid var(--color-border-2);
@@ -199,6 +215,8 @@ defineExpose({
 .script-code-pane :deep(.editor-container) {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .script-help-pane {
