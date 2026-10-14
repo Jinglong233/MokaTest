@@ -1240,6 +1240,8 @@ INSERT INTO permission (name, code, type, parent_id, sort)
 SELECT '评审取消', 'qa:review:cancel', 'BUTTON', id, 59 FROM permission WHERE code = 'qa:review';
 INSERT INTO permission (name, code, type, parent_id, sort)
 SELECT '评审删除', 'qa:review:delete', 'BUTTON', id, 60 FROM permission WHERE code = 'qa:review';
+INSERT INTO permission (name, code, type, parent_id, sort)
+SELECT '评审编辑', 'qa:review:update', 'BUTTON', id, 61 FROM permission WHERE code = 'qa:review';
 
 -- 平台级权限（仅超级管理员/平台管理员可用，团队自定义角色不可分配）
 INSERT INTO permission (name, code, type, parent_id, sort) VALUES
@@ -1283,10 +1285,10 @@ JOIN permission p ON p.code = 'qa:ai:use'
 WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
 
--- 补挂评审创建/取消/删除权限（新建/编辑/取消/删除评审、关联/移除用例入口需要）
+-- 补挂评审创建/编辑/取消/删除权限（新建/编辑/取消/删除评审、关联/移除用例入口需要）
 INSERT INTO role_permission (role_id, permission_id)
 SELECT r.id, p.id FROM role r
-JOIN permission p ON p.code IN ('qa:review:create', 'qa:review:cancel', 'qa:review:delete')
+JOIN permission p ON p.code IN ('qa:review:create', 'qa:review:update', 'qa:review:cancel', 'qa:review:delete')
 WHERE r.code = 'project_member' AND r.scope_type = 'TEMPLATE' AND r.team_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM role_permission rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
 
