@@ -335,10 +335,14 @@ public class AgentController {
                 }
             }
 
-            // §7.2 护栏段单版本 + skill 模板组合；无 skill 时走默认 @SystemMessage
+            // §7.2 护栏段单版本 + skill 模板组合；无 skill 时走默认 system prompt
+            // 固化当前生效 scene 供流式回调使用（归因落库；lambda 需要 effectively-final）
+            final String msgSkillScene = skillScene;
             AgentAssistant assistant;
             if (skillPrompt != null) {
                 String combinedPrompt = com.mokatest.platform.demos.ai.service.AgentGuardrail.compose(skillPrompt);
+                log.info("快捷指令注入: session={}, scene={}, prompt长度={}", sessionId, skillScene, combinedPrompt.length());
+                log.debug("快捷指令 system prompt: {}", combinedPrompt);
                 assistant = assistantFactory.createAgentWithSystemPrompt(agentCtx.getProjectId(), combinedPrompt, tools);
             } else {
                 assistant = assistantFactory.createAgent(agentCtx.getProjectId(), tools);
@@ -391,7 +395,7 @@ public class AgentController {
                             full = partialContent + full;
                         }
                         if (!full.isBlank()) {
-                            upsertAssistantMessage(sessionId, partialMsgId[0], full, null);
+                            upsertAssistantMessage(sessionId, partialMsgId[0], full, null, msgSkillScene);
                         }
                         ctx.done = true;
                         ACTIVE_STREAMS.remove(sessionId);
@@ -412,7 +416,7 @@ public class AgentController {
                         }
                         String errMsg = error.getMessage() != null ? error.getMessage() : "对话异常";
                         // 无条件 upsert：即使内容为空也落库，保留 error_msg 供切走再回来恢复错误状态
-                        upsertAssistantMessage(sessionId, partialMsgId[0], full, errMsg);
+                        upsertAssistantMessage(sessionId, partialMsgId[0], full, errMsg, msgSkillScene);
                         sendError(ctx.emitter, errMsg);
                     })
                     .start();
@@ -426,7 +430,7 @@ public class AgentController {
             String errMsg = e.getMessage() != null ? e.getMessage() : "对话异常";
             // 流式启动前/中抛异常也落库：保留 error_msg 供切走再回来恢复错误状态
             try {
-                upsertAssistantMessage(sessionId, partialMsgId[0], partialContent != null ? partialContent : "", errMsg);
+                upsertAssistantMessage(sessionId, partialMsgId[0], partialContent != null ? partialContent : "", errMsg, skillScene);
             } catch (Exception persistEx) {
                 log.warn("失败状态落库异常: {}", persistEx.getMessage());
             }
@@ -435,17 +439,18 @@ public class AgentController {
     }
 
     /** 落库 assistant 消息：继续生成场景更新占位消息，否则新插（防半截+完整重复历史） */
-    private void upsertAssistantMessage(Long sessionId, Long messageId, String content, String errorMsg) {
+    private void upsertAssistantMessage(Long sessionId, Long messageId, String content, String errorMsg, String skillScene) {
         if (messageId != null) {
             AgentMessage msg = new AgentMessage();
             msg.setId(messageId);
             msg.setContent(content);
             msg.setErrorMsg(errorMsg);
+            msg.setSkillScene(skillScene);
             msg.setCreateTime(new Date());
             messageMapper.updateById(msg);
             return;
         }
-        saveMessage(sessionId, "assistant", content, null, null, null, errorMsg);
+        saveMessage(sessionId, "assistant", content, null, null, skillScene, errorMsg);
     }
 
     /** 工具执行完成回调：推 tool_result 事件 + 持久化 tool 消息（tool 开始事件在 beforeToolExecution 已推） */

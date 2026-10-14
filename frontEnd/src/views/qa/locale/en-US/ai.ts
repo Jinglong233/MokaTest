@@ -38,6 +38,8 @@ export default {
   // ==================== Chat panel ====================
   'qa.ai.chat.basis': 'Based on',
   'qa.ai.chat.docTitle': '"{title}"',
+  'qa.ai.chat.skillDriven': 'Powered by skill "{name}"',
+  'qa.ai.chat.skillDisabled': 'This quick skill has been disabled',
   'qa.ai.chat.continue': 'Continue',
   'qa.ai.chat.suggestHint': 'You can ask me:',
   'qa.ai.chat.userAvatar': 'Me',

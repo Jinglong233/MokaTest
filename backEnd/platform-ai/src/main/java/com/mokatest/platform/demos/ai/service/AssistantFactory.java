@@ -49,7 +49,9 @@ public class AssistantFactory {
                     + "本次请基于已有信息用文字回答；该工具后续可能恢复，用户再次明确要求时可以重试。");
 
     private ChatMemoryProvider memoryProvider() {
+        // 必须 .id(memoryId)：缺省时所有记忆 id 都是 "default"，持久化存储下会串会话/串用户
         return memoryId -> TokenWindowChatMemory.builder()
+                .id(memoryId)
                 .maxTokens(MEMORY_MAX_TOKENS, new com.mokatest.platform.demos.ai.config.GenericTokenCountEstimator())
                 .chatMemoryStore(memoryStore)
                 .build();
@@ -107,6 +109,7 @@ public class AssistantFactory {
                 .chatModel(model)
                 .streamingChatModel(streamingModel)
                 .chatMemoryProvider(memoryProvider())
+                .systemMessageProvider(memoryId -> AgentAssistant.SYSTEM_PROMPT)
                 .hallucinatedToolNameStrategy(HALLUCINATED_TOOL_STRATEGY);
         ContentRetriever retriever = createContentRetriever(projectId);
         if (retriever != null) {
@@ -130,6 +133,7 @@ public class AssistantFactory {
                 .chatModel(model)
                 .streamingChatModel(streamingModel)
                 .chatMemoryProvider(memoryProvider())
+                .systemMessageProvider(memoryId -> AgentAssistant.SYSTEM_PROMPT)
                 .hallucinatedToolNameStrategy(HALLUCINATED_TOOL_STRATEGY);
         ContentRetriever retriever = createContentRetriever(projectId);
         if (retriever != null) {
@@ -245,8 +249,8 @@ public class AssistantFactory {
     }
 
     /**
-     * Agent 助手 + 自定义 system prompt（快捷指令注入：覆盖 @SystemMessage）
-     * 工具/RAG/记忆全部复用，只替换 system prompt
+     * Agent 助手 + 自定义 system prompt（快捷指令注入）
+     * 工具/RAG/记忆全部复用，仅 system prompt 不同（provider 方式，接口不得加 @SystemMessage 注解）
      */
     public AgentAssistant createAgentWithSystemPrompt(Integer projectId, String systemPrompt,
                                                          java.util.Map<ToolSpecification, ToolExecutor> tools) {

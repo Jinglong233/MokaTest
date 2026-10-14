@@ -3,13 +3,16 @@ package com.mokatest.platform.demos.ai.service;
 import com.mokatest.platform.demos.ai.guardrail.PromptInjectionGuard;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 
 /**
  * AI 对话工作台助手（工具调用 + 流式 + 多轮记忆 + 输入护栏）
+ *
+ * 注意：system prompt 不得用 @SystemMessage 注解配置——langchain4j 中注解优先于
+ * systemMessageProvider，会静默覆盖快捷指令注入。统一由 AssistantFactory 的
+ * systemMessageProvider 提供（默认走 SYSTEM_PROMPT）。
  */
 @InputGuardrails(PromptInjectionGuard.class)
 public interface AgentAssistant extends ChatMemoryAccess {
@@ -23,9 +26,7 @@ public interface AgentAssistant extends ChatMemoryAccess {
             + "2. start_case_generation 一次只能针对一个需求调用，且每次对话中调用一次即可，禁止循环批量调用。\n"
             + "3. 工具返回 error 时向用户说明原因，不要重试同一工具超过一次。";
 
-    @SystemMessage(SYSTEM_PROMPT)
     String chat(@MemoryId String memoryId, @UserMessage String message);
 
-    @SystemMessage(SYSTEM_PROMPT)
     TokenStream chatStream(@MemoryId String memoryId, @UserMessage String message);
 }

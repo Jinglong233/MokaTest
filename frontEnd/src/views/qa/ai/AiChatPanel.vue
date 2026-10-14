@@ -6,7 +6,6 @@
           <!-- 用户消息 -->
           <template v-if="msg.role === 'user'">
             <div class="bubble user-bubble">
-              <a-tag v-if="msg.skillScene" size="small" color="arcoblue" style="margin-bottom: 4px">📎 {{ skillName(msg.skillScene) }}</a-tag>
               <div>{{ msg.content }}</div>
             </div>
             <a-avatar :size="28" class="msg-avatar user-avatar" shape="circle"><IconUser /></a-avatar>
@@ -24,6 +23,11 @@
                   :typewriter="!msg._done"
                   :code-block-props="{ showHeader: true, showTooltips: true }"
                   @copy-code="handleCopyCode" />
+              </div>
+              <div v-if="msg.skillScene" class="skill-chip" :class="{ 'skill-chip-disabled': skillDisabled(msg.skillScene) }">
+                <a-tooltip :content="skillDisabled(msg.skillScene) ? $t('qa.ai.chat.skillDisabled') : $t('qa.ai.chat.skillDriven', { name: skillName(msg.skillScene) })">
+                  <span>⚡ {{ skillName(msg.skillScene) }}</span>
+                </a-tooltip>
               </div>
               <div v-if="msg.citations?.length" class="msg-citations">
                 <IconBook /> {{ $t('qa.ai.chat.basis') }} <template v-for="(t, i) in msg.citations" :key="i">《{{ t }}》{{ i < msg.citations.length - 1 ? ' ' : '' }}</template>
@@ -117,6 +121,12 @@ function skillName(scene: string): string {
   return props.skills?.find((s: any) => s.scene === scene)?.name || scene;
 }
 
+/** 指令是否已停用/删除（归因胶囊变灰） */
+function skillDisabled(scene: string): boolean {
+  const s = props.skills?.find((sk: any) => sk.scene === scene);
+  return !s || s.enabled !== 1;
+}
+
 /** 判断最后一条消息是否是 AI 侧消息（assistant/tool/card），用于决定是否显示等待loading */
 const hasActiveAiMessage = computed(() => {
   const last = props.messages[props.messages.length - 1];
@@ -198,6 +208,13 @@ defineExpose({ getChatBody, chatBodyRef });
 .msg-content { flex: 1; min-width: 0; }
 .msg-actions { margin-top: 4px; }
 .msg-citations { margin-top: 4px; font-size: 12px; color: var(--color-text-3); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.skill-chip { margin-top: 4px; }
+.skill-chip span {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; padding: 1px 10px; border-radius: 10px;
+  background: rgb(var(--primary-1)); color: rgb(var(--primary-6)); cursor: default;
+}
+.skill-chip-disabled span { background: var(--color-fill-2); color: var(--color-text-3); }
 .msg-error { margin-top: 4px; font-size: 12px; color: rgb(var(--danger-6)); display: flex; align-items: center; gap: 4px; }
 .thinking-dots { display: inline-flex; gap: 4px; padding: 4px 0; }
 .thinking-dots .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-3); animation: thinking-bounce 1.4s infinite ease-in-out; }

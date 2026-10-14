@@ -38,7 +38,7 @@
           :generating="generating"
           :isAtBottom="isAtBottom"
           :suggestions="suggestions"
-          :skills="customSkills"
+          :skills="allSkills"
           @scroll="onScrollChange"
           @regenerate="regenerate"
           @retry="retry"
@@ -171,7 +171,7 @@ function appendDelta(t: string, withCitations = false) {
       last.content += pendingDelta;
       if (withCitations) attachPendingCitations(last);
     } else {
-      const msg = { role: 'assistant', content: pendingDelta, _done: false };
+      const msg = { role: 'assistant', content: pendingDelta, _done: false, skillScene: boundSkillScene.value || undefined };
       pushMsg(msg);
       if (withCitations) attachPendingCitations(msg);
     }
@@ -284,7 +284,7 @@ async function selectSession(s: any) {
       const statusRes: any = await getStreamStatus(s.id);
       if (statusRes.data?.active) {
         // 有进行中的回复：创建 assistant 占位消息，建立恢复 SSE 连接
-        pushMsg({ role: 'assistant', content: '', _done: false, _uid: ++msgUid });
+        pushMsg({ role: 'assistant', content: '', _done: false, _uid: ++msgUid, skillScene: boundSkillScene.value || undefined });
         generating.value = true;
         resumeStream(s.id);
         return;
@@ -431,7 +431,7 @@ function startStream(message: string, skillScene?: string, retry = false) {
         if (streamSessionId !== currentSessionId.value) return;
         let last = messages.value[messages.value.length - 1];
         if (!last || last.role !== 'assistant') {
-          last = { role: 'assistant', content: '' };
+          last = { role: 'assistant', content: '', skillScene: boundSkillScene.value || undefined };
           pushMsg(last);
         }
         last._done = true;
@@ -517,7 +517,7 @@ function resumeStream(sessionId: number) {
         if (sessionId !== currentSessionId.value) return;
         let last = messages.value[messages.value.length - 1];
         if (!last || last.role !== 'assistant') {
-          last = { role: 'assistant', content: '' };
+          last = { role: 'assistant', content: '', skillScene: boundSkillScene.value || undefined };
           pushMsg(last);
         }
         last._done = true;
@@ -564,7 +564,7 @@ function continueGeneration() {
         if (streamSessionId !== currentSessionId.value) return;
         let lastMsg = messages.value[messages.value.length - 1];
         if (!lastMsg || lastMsg.role !== 'assistant') {
-          lastMsg = { role: 'assistant', content: '' };
+          lastMsg = { role: 'assistant', content: '', skillScene: boundSkillScene.value || undefined };
           pushMsg(lastMsg);
         }
         lastMsg._done = true;

@@ -5,6 +5,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mokatest.platform.demos.ai.domain.AiSkillDefinition;
+import com.mokatest.platform.demos.ai.guardrail.PromptInjectionGuard;
 import com.mokatest.platform.demos.ai.mapper.AiSkillDefinitionMapper;
 import com.mokatest.platform.demos.config.saTokenConfig.ProjectContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,10 @@ import java.util.List;
  * 自定义 Skill 定义管理（项目级 CRUD）
  *
  * 权限：qa:ai:use（复用 AI 工作台权限，项目管理员可操作）
+ *
+ * 越权防护：projectId 一律取自服务端上下文（ProjectContextHolder），不接受前端传值；
+ * 内容防护：Skill prompt 会注入到项目内所有使用者的会话，创建/更新时做注入黑名单
+ * 与长度校验，防止 Skill 作者构造破甲指令影响他人。
  */
 @Slf4j
 @RestController
@@ -25,6 +30,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @SaCheckPermission("qa:ai:use")
 public class SkillDefinitionController {
+
+    private static final int MAX_NAME_LEN = 50;
+    private static final int MAX_DESC_LEN = 500;
+    private static final int MAX_PROMPT_LEN = 4000;
 
     private final AiSkillDefinitionMapper mapper;
 
@@ -41,11 +50,9 @@ public class SkillDefinitionController {
     @PostMapping("/")
     public SaResult create(@RequestBody AiSkillDefinition body) {
         Integer projectId = ProjectContextHolder.getProjectId();
-        if (body.getName() == null || body.getName().isBlank()) {
-            return SaResult.error("名称必填");
-        }
-        if (body.getSystemPrompt() == null || body.getSystemPrompt().isBlank()) {
-            return SaResult.error("System Prompt 必填");
+        SaResult check = validateContent(body.getName(), body.getDescription(), body.getSystemPrompt(), true);
+        if (check != null) {
+            return check;
         }
         body.setProjectId(projectId);
         body.setCreateBy(StpUtil.getLoginIdAsInt());
@@ -69,6 +76,10 @@ public class SkillDefinitionController {
         AiSkillDefinition existing = mapper.selectById(id);
         if (existing == null || !existing.getProjectId().equals(projectId)) {
             return SaResult.error("Skill 不存在或无权访问");
+        }
+        SaResult check = validateContent(body.getName(), body.getDescription(), body.getSystemPrompt(), true);
+        if (check != null) {
+            return check;
         }
         existing.setName(body.getName());
         existing.setDescription(body.getDescription());
@@ -101,5 +112,31 @@ public class SkillDefinitionController {
         existing.setUpdateTime(new Date());
         mapper.updateById(existing);
         return SaResult.ok(existing.getEnabled() == 1 ? "已启用" : "已禁用");
+    }
+
+    /** 校验失败返回 SaResult，通过返回 null */
+    private SaResult validateContent(String name, String description, String systemPrompt, boolean promptRequired) {
+        if (name == null || name.isBlank()) {
+            return SaResult.error("名称必填");
+        }
+        if (name.length() > MAX_NAME_LEN) {
+            return SaResult.error("名称长度不能超过 " + MAX_NAME_LEN + " 字");
+        }
+        if (description != null && description.length() > MAX_DESC_LEN) {
+            return SaResult.error("描述长度不能超过 " + MAX_DESC_LEN + " 字");
+        }
+        if (promptRequired && (systemPrompt == null || systemPrompt.isBlank())) {
+            return SaResult.error("System Prompt 必填");
+        }
+        if (systemPrompt != null) {
+            if (systemPrompt.length() > MAX_PROMPT_LEN) {
+                return SaResult.error("System Prompt 长度不能超过 " + MAX_PROMPT_LEN + " 字");
+            }
+            if (PromptInjectionGuard.containsInjection(systemPrompt)) {
+                log.warn("Skill 内容命中注入黑名单: name={}", name);
+                return SaResult.error("System Prompt 包含不允许的指令内容");
+            }
+        }
+        return null;
     }
 }

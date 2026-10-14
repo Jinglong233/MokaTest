@@ -38,6 +38,8 @@ export default {
   // ==================== 对话面板 ====================
   'qa.ai.chat.basis': '依据',
   'qa.ai.chat.docTitle': '《{title}》',
+  'qa.ai.chat.skillDriven': '由快捷指令「{name}」驱动',
+  'qa.ai.chat.skillDisabled': '该快捷指令已停用',
   'qa.ai.chat.continue': '继续生成',
   'qa.ai.chat.suggestHint': '你可以问我：',
   'qa.ai.chat.userAvatar': '我',
