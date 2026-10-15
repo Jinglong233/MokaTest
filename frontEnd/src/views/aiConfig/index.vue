@@ -67,7 +67,7 @@
           <a-input v-model="editing.remark" placeholder="配置用途说明（可选）" />
         </a-form-item>
         <a-form-item>
-          <a-checkbox v-model="editing.enabled" :true-value="1" :false-value="0">保存后立即激活</a-checkbox>
+          <a-checkbox v-model="enabledChecked">保存后立即激活</a-checkbox>
         </a-form-item>
       </a-form>
       <div style="display: flex; gap: 8px; margin-top: 16px">
@@ -83,7 +83,7 @@ export default { name: 'AiConfigIndex' };
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import { IconPlus } from '@arco-design/web-vue/es/icon';
 import Breadcrumb from '@/components/breadcrumb/index.vue';
@@ -97,6 +97,12 @@ const editorVisible = ref(false);
 const editing = ref<any>({});
 const saving = ref(false);
 const testing = ref(false);
+
+// Arco checkbox 仅支持布尔 v-model，这里与 editing.enabled 的 0/1 做映射
+const enabledChecked = computed({
+  get: () => editing.value.enabled === 1,
+  set: (v: boolean) => { editing.value.enabled = v ? 1 : 0; },
+});
 
 async function loadConfigs() {
   loading.value = true;
