@@ -242,7 +242,7 @@ public class AssistantFactory {
         }
         return EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(store)
-                .embeddingModel(modelManager.getEmbeddingModel())
+                .embeddingModel(modelManager.getEmbeddingModel(projectId))
                 .maxResults(3)
                 .minScore(0.70)
                 .build();

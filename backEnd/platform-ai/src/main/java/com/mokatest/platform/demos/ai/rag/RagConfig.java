@@ -56,8 +56,8 @@ public class RagConfig {
      * QdrantEmbeddingStore 不会自动建集合（缺失时抛异常），这里先用 QdrantClient
      * 探测并按向量模型实际维度创建（COSINE 距离）。
      */
-    public EmbeddingStore<TextSegment> createEmbeddingStore(String collectionName) {
-        ensureCollection(collectionName);
+    public EmbeddingStore<TextSegment> createEmbeddingStore(Integer projectId, String collectionName) {
+        ensureCollection(projectId, collectionName);
         return QdrantEmbeddingStore.builder()
                 .host(host)
                 .port(port)
@@ -68,7 +68,7 @@ public class RagConfig {
     }
 
     /** collection 不存在则创建；维度通过向量模型探测一次获得 */
-    private void ensureCollection(String collectionName) {
+    private void ensureCollection(Integer projectId, String collectionName) {
         if (ensuredCollections.contains(collectionName)) {
             return;
         }
@@ -87,7 +87,7 @@ public class RagConfig {
                     return;
                 }
                 // 维度探测：embed 一个短文本取向量长度，避免硬编码各模型维度
-                int dimension = modelManager.getEmbeddingModel()
+                int dimension = modelManager.getEmbeddingModel(projectId)
                         .embed("dimension probe").content().vector().length;
                 client.createCollectionAsync(collectionName, VectorParams.newBuilder()
                         .setSize(dimension)
@@ -105,7 +105,7 @@ public class RagConfig {
         }
     }
 
-    public EmbeddingModel getEmbeddingModel() {
-        return modelManager.getEmbeddingModel();
+    public EmbeddingModel getEmbeddingModel(Integer projectId) {
+        return modelManager.getEmbeddingModel(projectId);
     }
 }

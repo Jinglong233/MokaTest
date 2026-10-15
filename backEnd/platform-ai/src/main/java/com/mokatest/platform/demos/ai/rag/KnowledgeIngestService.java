@@ -40,14 +40,14 @@ public class KnowledgeIngestService {
     /** 获取项目级 EmbeddingStore（collection = kb_{projectId}） */
     private EmbeddingStore<TextSegment> getStore(Integer projectId) {
         return storeCache.computeIfAbsent("kb_" + projectId,
-                name -> ragConfig.createEmbeddingStore(name));
+                name -> ragConfig.createEmbeddingStore(projectId, name));
     }
 
     /** 获取项目级 EmbeddingStoreIngestor（缓存复用，显式配置 splitter） */
     private EmbeddingStoreIngestor getIngestor(Integer projectId) {
         return ingestorCache.computeIfAbsent("kb_" + projectId, name ->
                 EmbeddingStoreIngestor.builder()
-                        .embeddingModel(ragConfig.getEmbeddingModel())
+                        .embeddingModel(ragConfig.getEmbeddingModel(projectId))
                         .embeddingStore(getStore(projectId))
                         .documentSplitter(DocumentSplitters.recursive(1000, 200,
                                 new GenericTokenCountEstimator()))
