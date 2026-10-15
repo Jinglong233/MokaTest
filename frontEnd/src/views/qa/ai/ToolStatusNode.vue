@@ -32,6 +32,9 @@ const labelKeyMap: Record<string, string> = {
   get_requirement_trace: 'qa.ai.tool.getRequirementTrace',
   create_test_case: 'qa.ai.tool.createTestCase',
   start_case_generation: 'qa.ai.tool.startCaseGeneration',
+  ask_case_gen_type: 'qa.ai.tool.askCaseGenType',
+  search_apis: 'qa.ai.tool.searchApis',
+  start_api_case_generation: 'qa.ai.tool.startApiCaseGeneration',
 };
 
 const toolLabel = labelKeyMap[name] ? t(labelKeyMap[name]) : name;

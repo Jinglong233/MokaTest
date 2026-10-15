@@ -460,10 +460,15 @@ public class AgentController {
             String toolName = req.name();
             String result = exec.result();
             // SSE 只推状态，不推查询结果内容（避免数据库字段暴露到前端）。
-            // 例外：start_case_generation 的结果是不含敏感字段的需求摘要，前端要据此建工作流卡片
+            // 例外：start_case_generation 的结果是不含敏感字段的需求摘要，前端要据此建工作流卡片；
+            // ask_case_gen_type / search_apis 的结果是前端卡片数据（类型选择/接口候选列表）；
+            // start_api_case_generation 的结果是接口摘要，前端据此推送候选卡片并自动唤起生成弹窗
             JSONObject evt = new JSONObject();
             evt.put("tool", toolName);
-            if ("start_case_generation".equals(toolName)) {
+            if ("start_case_generation".equals(toolName)
+                    || "ask_case_gen_type".equals(toolName)
+                    || "search_apis".equals(toolName)
+                    || "start_api_case_generation".equals(toolName)) {
                 evt.put("result", result);
             } else if (isToolError(result)) {
                 evt.put("error", true);

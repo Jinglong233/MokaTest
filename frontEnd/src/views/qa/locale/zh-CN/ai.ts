@@ -29,6 +29,9 @@ export default {
   'qa.ai.tool.getRequirementTrace': '分析需求血缘',
   'qa.ai.tool.createTestCase': '创建用例',
   'qa.ai.tool.startCaseGeneration': '准备用例生成',
+  'qa.ai.tool.askCaseGenType': '确认用例类型',
+  'qa.ai.tool.searchApis': '搜索接口',
+  'qa.ai.tool.startApiCaseGeneration': '确认接口',
   'qa.ai.tool.pending': '正在{name}…',
   'qa.ai.tool.done': '已{name}',
   'qa.ai.tool.failed': '{name}失败',
@@ -100,6 +103,8 @@ export default {
   'qa.ai.workbench.stoppedContent': '（已停止）',
   'qa.ai.workbench.resumeFailed': '恢复失败',
   'qa.ai.workbench.continueFailed': '继续失败',
+  'qa.ai.workbench.genFunctionCases': '我要生成功能测试用例',
+  'qa.ai.workbench.genApiCases': '我要生成接口测试用例',
 
   // ==================== 卡片 ====================
   'qa.ai.cards.adoptResult': '采纳结果',
@@ -177,6 +182,17 @@ export default {
   'qa.ai.cards.reviewed': '已评审',
   'qa.ai.cards.unfinished': '未完成',
   'qa.ai.cards.goReview': '前往评审',
+  'qa.ai.cards.caseTypeTitle': '你想生成哪类测试用例？',
+  'qa.ai.cards.caseTypeFunction': '功能测试用例',
+  'qa.ai.cards.caseTypeFunctionDesc': '基于需求生成，覆盖功能场景',
+  'qa.ai.cards.caseTypeApi': '接口测试用例',
+  'qa.ai.cards.caseTypeApiDesc': '基于 API 接口生成，覆盖请求参数与断言',
+  'qa.ai.cards.caseTypeUi': 'UI 自动化用例',
+  'qa.ai.cards.caseTypeUiDesc': '基于页面元素生成自动化场景',
+  'qa.ai.cards.comingSoon': '即将上线',
+  'qa.ai.cards.apiCandidatesTitle': '找到以下接口，点击一个开始生成用例：',
+  'qa.ai.cards.noApisFound': '未找到匹配的接口，可以换个关键词再试',
+  'qa.ai.cards.apiCandidateId': 'ID {id}',
 
   // ==================== 用例类型 ====================
   'qa.ai.caseType.FUNCTION': '功能',

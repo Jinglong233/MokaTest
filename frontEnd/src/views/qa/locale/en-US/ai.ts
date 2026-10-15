@@ -29,6 +29,9 @@ export default {
   'qa.ai.tool.getRequirementTrace': 'Analyze requirement traceability',
   'qa.ai.tool.createTestCase': 'Create test case',
   'qa.ai.tool.startCaseGeneration': 'Prepare case generation',
+  'qa.ai.tool.askCaseGenType': 'Confirm case type',
+  'qa.ai.tool.searchApis': 'Search APIs',
+  'qa.ai.tool.startApiCaseGeneration': 'Confirm API',
   'qa.ai.tool.pending': '{name} in progress…',
   'qa.ai.tool.done': '{name} done',
   'qa.ai.tool.failed': '{name} failed',
@@ -100,6 +103,8 @@ export default {
   'qa.ai.workbench.stoppedContent': '(Stopped)',
   'qa.ai.workbench.resumeFailed': 'Resume failed',
   'qa.ai.workbench.continueFailed': 'Continue failed',
+  'qa.ai.workbench.genFunctionCases': 'I want to generate functional test cases',
+  'qa.ai.workbench.genApiCases': 'I want to generate API test cases',
 
   // ==================== Cards ====================
   'qa.ai.cards.adoptResult': 'Adoption Result',
@@ -177,6 +182,17 @@ export default {
   'qa.ai.cards.reviewed': 'Reviewed',
   'qa.ai.cards.unfinished': 'Unfinished',
   'qa.ai.cards.goReview': 'Go to Review',
+  'qa.ai.cards.caseTypeTitle': 'Which type of test cases do you want to generate?',
+  'qa.ai.cards.caseTypeFunction': 'Functional Test Cases',
+  'qa.ai.cards.caseTypeFunctionDesc': 'Generate from requirements, covering functional scenarios',
+  'qa.ai.cards.caseTypeApi': 'API Test Cases',
+  'qa.ai.cards.caseTypeApiDesc': 'Generate from API definitions, covering request params and assertions',
+  'qa.ai.cards.caseTypeUi': 'UI Automation Cases',
+  'qa.ai.cards.caseTypeUiDesc': 'Generate automation scenarios from page elements',
+  'qa.ai.cards.comingSoon': 'Coming soon',
+  'qa.ai.cards.apiCandidatesTitle': 'Found the following APIs — click one to start generating:',
+  'qa.ai.cards.noApisFound': 'No matching APIs found, try another keyword',
+  'qa.ai.cards.apiCandidateId': 'ID {id}',
 
   // ==================== Case types ====================
   'qa.ai.caseType.FUNCTION': 'Functional',

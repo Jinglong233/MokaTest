@@ -59,6 +59,14 @@
                 <ReviewEntryCard
                   v-else-if="msg.cardType === 'review-entry'"
                   :data="msg.data" :disabled="msg.done || props.generating" />
+                <CaseTypeCard
+                  v-else-if="msg.cardType === 'case-type-select'"
+                  :data="msg.data" :disabled="msg.done || props.generating"
+                  @select="(type) => onCardEvent({ cardType: 'case-type-select', type })" />
+                <ApiCandidateCard
+                  v-else-if="msg.cardType === 'api-candidates'"
+                  :data="msg.data" :disabled="msg.done || props.generating"
+                  @select="(api) => onCardEvent({ cardType: 'api-candidates', api })" />
               </slot>
             </div>
           </template>
@@ -106,6 +114,8 @@ import MarkdownRender, { setCustomComponents } from 'markstream-vue';
 import 'markstream-vue/index.css';
 import CasegenEntryCard from './cards/CasegenEntryCard.vue';
 import ReviewEntryCard from './cards/ReviewEntryCard.vue';
+import CaseTypeCard from './CaseTypeCard.vue';
+import ApiCandidateCard from './ApiCandidateCard.vue';
 import ToolStatusNode from './ToolStatusNode.vue';
 
 setCustomComponents('ai-chat', {
@@ -129,6 +139,9 @@ const props = withDefaults(defineProps<{
     get_requirement_trace: 'qa.ai.tool.getRequirementTrace',
     create_test_case: 'qa.ai.tool.createTestCase',
     start_case_generation: 'qa.ai.tool.startCaseGeneration',
+    ask_case_gen_type: 'qa.ai.tool.askCaseGenType',
+    search_apis: 'qa.ai.tool.searchApis',
+    start_api_case_generation: 'qa.ai.tool.startApiCaseGeneration',
   }),
 });
 

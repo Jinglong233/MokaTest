@@ -44,6 +44,7 @@
           @retry="retry"
           @continue="continueGeneration"
           @suggestion="useSuggestion"
+          @cardEvent="onCardEvent"
         />
         <!-- P1-2 绑定会话常驻横幅 -->
         <div v-if="skillBound" class="skill-banner">
@@ -89,6 +90,9 @@
     </div>
 
     <!-- AI 工作台全部操作在卡片内闭环，不再使用抽屉 -->
+
+    <!-- 接口候选卡片点击后直接唤起：接口用例生成弹窗（场景四，不经过 LLM） -->
+    <AiGenerateChatModal ref="aiCaseModalRef" scene="apiCase" :entity-id="aiCaseApiId" />
   </div>
   <NoProjectPlaceholder v-else />
 </template>
@@ -106,6 +110,7 @@ import { IconPlus, IconDelete, IconSend, IconStop, IconSettings } from '@arco-de
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import NoProjectPlaceholder from '@/components/no-project-placeholder/index.vue';
 import AiChatPanel from './AiChatPanel.vue';
+import AiGenerateChatModal from '@/components/ai-generate/AiGenerateChatModal.vue';
 import { useProjectStore } from '@/store';
 import { createAgentSession, listAgentSessions, deleteAgentSession, getAgentMessages, streamAgentChat, saveCardMessage, stopAgentChat, getStreamStatus, resumeStreamChat } from '@/api/MyApi/aiAgent';
 import { listSkillDefinitions } from '@/api/MyApi/ai';
@@ -207,6 +212,26 @@ const suggestions = computed(() => [
 // ==================== 会话管理 ====================
 function useSuggestion(text: string) {
   inputText.value = text;
+}
+
+// ==================== 卡片事件（AiChatPanel fallback 卡片经 cardEvent 回传） ====================
+const aiCaseModalRef = ref<InstanceType<typeof AiGenerateChatModal>>();
+const aiCaseApiId = ref(0);
+
+function onCardEvent(payload: any) {
+  // 类型选择卡片：替用户发送明确消息，走正常 LLM 路由
+  if (payload?.cardType === 'case-type-select') {
+    inputText.value = payload.type === 'apiCase'
+      ? t('qa.ai.workbench.genApiCases')
+      : t('qa.ai.workbench.genFunctionCases');
+    sendMessage();
+    return;
+  }
+  // 接口候选卡片：直接唤起接口用例生成弹窗（不经过 LLM）
+  if (payload?.cardType === 'api-candidates' && payload.api?.id) {
+    aiCaseApiId.value = payload.api.id;
+    nextTick(() => aiCaseModalRef.value?.open());
+  }
 }
 
 async function loadSessions() {
@@ -392,6 +417,57 @@ function startStream(message: string, skillScene?: string, retry = false) {
               pushMsg(rvCard);
               if (currentSessionId.value) saveCardMessage(currentSessionId.value, 'review-entry', rvCard.data).catch(() => {});
               forceScrollToBottom();
+            }
+          } catch { /* ignore */ }
+        }
+        // 生成用例意图但类型不明 → 推类型选择卡片
+        if (data.tool === 'ask_case_gen_type') {
+          const ctCard = reactive({
+            role: 'card',
+            cardType: 'case-type-select',
+            data: {},
+            _done: true,
+          });
+          pushMsg(ctCard);
+          if (currentSessionId.value) saveCardMessage(currentSessionId.value, 'case-type-select', ctCard.data).catch(() => {});
+          forceScrollToBottom();
+        }
+        // 接口用例意图 → 推接口候选卡片；无候选时推文本提示
+        if (data.tool === 'search_apis' && data.result) {
+          try {
+            const apis = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+            if (Array.isArray(apis) && apis.length) {
+              const apiCard = reactive({
+                role: 'card',
+                cardType: 'api-candidates',
+                data: { apis },
+                _done: true,
+              });
+              pushMsg(apiCard);
+              if (currentSessionId.value) saveCardMessage(currentSessionId.value, 'api-candidates', apiCard.data).catch(() => {});
+              forceScrollToBottom();
+            } else if (Array.isArray(apis)) {
+              pushMsg({ role: 'assistant', content: t('qa.ai.cards.noApisFound'), _done: true });
+              forceScrollToBottom();
+            }
+          } catch { /* ignore */ }
+        }
+        // 用户文字选定了接口 → 推单接口候选卡片（可持久化点击）并立即自动打开生成弹窗
+        if (data.tool === 'start_api_case_generation' && data.result) {
+          try {
+            const api = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+            if (api && api.apiId) {
+              const apiCard = reactive({
+                role: 'card',
+                cardType: 'api-candidates',
+                data: { apis: [{ id: api.apiId, name: api.name, method: api.method, path: api.path }] },
+                _done: true,
+              });
+              pushMsg(apiCard);
+              if (currentSessionId.value) saveCardMessage(currentSessionId.value, 'api-candidates', apiCard.data).catch(() => {});
+              forceScrollToBottom();
+              aiCaseApiId.value = api.apiId;
+              nextTick(() => aiCaseModalRef.value?.open());
             }
           } catch { /* ignore */ }
         }
