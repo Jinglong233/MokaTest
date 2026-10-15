@@ -58,12 +58,14 @@ function buildHeaders(): Record<string, string> {
  * @param body   请求体
  * @param callbacks 回调
  * @param signal AbortSignal（可选，用于取消）
+ * @param extraTerminalEvents 额外的终态事件名（如 result）：收到后不再触发"未收到完成事件"兜底报错
  */
 export async function streamPost(
     url: string,
     body: any,
     callbacks: AiStreamCallbacks,
     signal?: AbortSignal,
+    extraTerminalEvents?: string[],
 ) {
     try {
         const resp = await fetch(url, {
@@ -76,7 +78,38 @@ export async function streamPost(
             callbacks.onError?.(`请求失败（HTTP ${resp.status}）`);
             return;
         }
-        const reader = resp.body.getReader();
+        await readEventStream(resp, callbacks, extraTerminalEvents);
+    } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+            callbacks.onError?.(e?.message || '网络异常');
+        }
+    }
+}
+
+/** SSE GET 流式请求（断线重连/回放用），事件协议与 streamPost 一致 */
+export async function streamGet(
+    url: string,
+    callbacks: AiStreamCallbacks,
+    signal?: AbortSignal,
+    extraTerminalEvents?: string[],
+) {
+    try {
+        const resp = await fetch(url, {headers: buildHeaders(), signal});
+        if (!resp.ok || !resp.body) {
+            callbacks.onError?.(`请求失败（HTTP ${resp.status}）`);
+            return;
+        }
+        await readEventStream(resp, callbacks, extraTerminalEvents);
+    } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+            callbacks.onError?.(e?.message || '网络异常');
+        }
+    }
+}
+
+/** 读取 SSE 响应流并逐帧分发到回调 */
+async function readEventStream(resp: Response, callbacks: AiStreamCallbacks, extraTerminalEvents?: string[]) {
+        const reader = resp.body!.getReader();
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
         let currentEvent = '';
@@ -161,12 +194,14 @@ export async function streamPost(
                 } else if (eventName === 'error') {
                     terminalReceived = true;
                     callbacks.onError?.(data || '生成失败');
-                }
-                // 未识别的自定义事件统一走 onEvent 兜底分发
-                if (callbacks.onEvent && !['delta','tool','tool_result','citations','done','reused','restart','record','stopped','error','ping','restore'].includes(eventName)) {
-                    let parsed: any = data;
-                    try { parsed = JSON.parse(data); } catch { /* 非 JSON 原样透传 */ }
-                    callbacks.onEvent(eventName, parsed);
+                } else {
+                    if (extraTerminalEvents?.includes(eventName)) terminalReceived = true;
+                    // 未识别的自定义事件统一走 onEvent 兜底分发
+                    if (callbacks.onEvent && eventName !== 'ping') {
+                        let parsed: any = data;
+                        try { parsed = JSON.parse(data); } catch { /* 非 JSON 原样透传 */ }
+                        callbacks.onEvent(eventName, parsed);
+                    }
                 }
             }
         }
@@ -174,9 +209,4 @@ export async function streamPost(
         if (!terminalReceived) {
             callbacks.onError?.('连接已结束但未收到完成事件，可能已超时，请重试');
         }
-    } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-            callbacks.onError?.(e?.message || '网络异常');
-        }
-    }
 }

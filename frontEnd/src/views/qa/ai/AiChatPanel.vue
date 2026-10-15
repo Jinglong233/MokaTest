@@ -24,7 +24,7 @@
                   :code-block-props="{ showHeader: true, showTooltips: true }"
                   @copy-code="handleCopyCode" />
               </div>
-              <div v-if="msg.skillScene" class="skill-chip" :class="{ 'skill-chip-disabled': skillDisabled(msg.skillScene) }">
+              <div v-if="msg.skillScene && props.skills?.length" class="skill-chip" :class="{ 'skill-chip-disabled': skillDisabled(msg.skillScene) }">
                 <a-tooltip :content="skillDisabled(msg.skillScene) ? $t('qa.ai.chat.skillDisabled') : $t('qa.ai.chat.skillDriven', { name: skillName(msg.skillScene) })">
                   <span>⚡ {{ skillName(msg.skillScene) }}</span>
                 </a-tooltip>
@@ -48,16 +48,18 @@
               </div>
             </div>
           </template>
-          <!-- casegen 入口卡片（状态橱窗 + 跳转入口，不包含生成逻辑） -->
+          <!-- 卡片消息：fallback 渲染工作台内置卡片，调用方可用 #card 插槽完全接管 -->
           <template v-else-if="msg.role === 'card'">
             <a-avatar :size="28" class="msg-avatar ai-avatar" shape="circle"><IconRobot /></a-avatar>
             <div class="msg-content">
-              <CasegenEntryCard
-                v-if="msg.cardType === 'casegen-workflow' || msg.cardType === 'req-confirm' || msg.cardType === 'test-points' || msg.cardType === 'gen-progress' || msg.cardType === 'adopt-workspace' || msg.cardType === 'adopt-result'"
-                :data="msg.data" :disabled="msg.done || props.generating" />
-              <ReviewEntryCard
-                v-else-if="msg.cardType === 'review-entry'"
-                :data="msg.data" :disabled="msg.done || props.generating" />
+              <slot name="card" :msg="msg" :on-card-event="onCardEvent">
+                <CasegenEntryCard
+                  v-if="msg.cardType === 'casegen-workflow' || msg.cardType === 'req-confirm' || msg.cardType === 'test-points' || msg.cardType === 'gen-progress' || msg.cardType === 'adopt-workspace' || msg.cardType === 'adopt-result'"
+                  :data="msg.data" :disabled="msg.done || props.generating" />
+                <ReviewEntryCard
+                  v-else-if="msg.cardType === 'review-entry'"
+                  :data="msg.data" :disabled="msg.done || props.generating" />
+              </slot>
             </div>
           </template>
         </div>
@@ -76,10 +78,12 @@
         </div>
       </template>
       <div v-else class="empty-suggestions">
-        <p class="suggestion-hint">{{ $t('qa.ai.chat.suggestHint') }}</p>
-        <div class="suggestion-chips">
-          <span v-for="s in suggestions" :key="s" class="suggestion-chip" @click="$emit('suggestion', s)">{{ s }}</span>
-        </div>
+        <slot name="empty">
+          <p class="suggestion-hint">{{ $t('qa.ai.chat.suggestHint') }}</p>
+          <div class="suggestion-chips">
+            <span v-for="s in suggestions" :key="s" class="suggestion-chip" @click="$emit('suggestion', s)">{{ s }}</span>
+          </div>
+        </slot>
       </div>
       <!-- 回到底部按钮 -->
       <div v-if="!isAtBottom && messages.length" class="scroll-bottom-btn" @click="forceScrollToBottom">
@@ -108,13 +112,25 @@ setCustomComponents('ai-chat', {
   'tool-status': ToolStatusNode,
 });
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   messages: any[];
   generating: boolean;
   isAtBottom: boolean;
   suggestions?: string[];
   skills?: any[];
-}>();
+  toolLabels?: Record<string, string>;
+}>(), {
+  // 默认值即 qa 工作台工具名映射；编译器要求默认值内联，不能引用局部常量
+  toolLabels: () => ({
+    search_requirements: 'qa.ai.tool.searchRequirements',
+    search_cases: 'qa.ai.tool.searchCases',
+    search_bugs: 'qa.ai.tool.searchBugs',
+    search_knowledge: 'qa.ai.tool.searchKnowledge',
+    get_requirement_trace: 'qa.ai.tool.getRequirementTrace',
+    create_test_case: 'qa.ai.tool.createTestCase',
+    start_case_generation: 'qa.ai.tool.startCaseGeneration',
+  }),
+});
 
 /** 从 skills prop 查找指令名 */
 function skillName(scene: string): string {
@@ -140,21 +156,16 @@ const emit = defineEmits<{
   scroll: [atBottom: boolean];
 }>();
 
+/** #card 插槽回传卡片事件（工作台卡片事件总线，插槽实现可自由选择是否使用） */
+function onCardEvent(data: any) {
+  emit('cardEvent', data);
+}
+
 /** 工具名 → 动作标签（主流交互：不暴露底层函数名和查询参数，只告诉用户 AI 在做什么） */
 const { t } = useI18n();
 
-const TOOL_LABEL_KEYS: Record<string, string> = {
-  search_requirements: 'qa.ai.tool.searchRequirements',
-  search_cases: 'qa.ai.tool.searchCases',
-  search_bugs: 'qa.ai.tool.searchBugs',
-  search_knowledge: 'qa.ai.tool.searchKnowledge',
-  get_requirement_trace: 'qa.ai.tool.getRequirementTrace',
-  create_test_case: 'qa.ai.tool.createTestCase',
-  start_case_generation: 'qa.ai.tool.startCaseGeneration',
-};
-
 function toolActionLabel(toolName: string, pending: boolean): string {
-  const key = TOOL_LABEL_KEYS[toolName];
+  const key = props.toolLabels[toolName];
   if (key) {
     const name = t(key);
     return pending ? t('qa.ai.tool.pending', { name }) : t('qa.ai.tool.done', { name });

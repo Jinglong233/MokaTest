@@ -44,173 +44,64 @@
         </a-spin>
       </div>
 
-      <!-- 右侧：对话区 -->
+      <!-- 右侧：对话区（消息列表复用 AI 工作台聊天面板，卡片经 #card 插槽注入） -->
       <div class="chat-panel">
-        <div ref="chatBodyRef" class="chat-body">
-          <template v-if="rounds.length > 0">
-            <div v-for="(round, idx) in rounds" :key="idx" class="round">
-              <!-- 用户消息 -->
-              <div class="msg user-msg">
-                <div class="bubble">{{ round.instruction || $t('components.aiGenerate.noInstruction') }}</div>
+        <AiChatPanel
+            ref="chatPanelRef"
+            :messages="chatMessages"
+            :generating="generating"
+            :isAtBottom="isAtBottom"
+            @scroll="onScrollChange"
+        >
+          <template #empty>
+            <a-empty :description="$t('components.aiGenerate.emptyHint', { entity: sceneConfig.entityName })"/>
+          </template>
+          <template #card="{ msg }">
+            <!-- 需求不确定点提示：模型主动暴露的需求缺陷，引导补充后重新生成 -->
+            <div v-if="msg.cardType === 'uncertainties'" class="unc-banner">
+              <div class="unc-title">
+                <icon-exclamation-circle-fill/>
+                {{ $t('components.aiGenerate.uncertaintiesTitle', { count: msg.data.items.length }) }}
               </div>
-              <!-- AI 消息 -->
-              <div class="msg ai-msg">
-                <div class="bubble ai-bubble" :class="{ 'error-bubble': isFailed(round) }">
-                  <!-- 生成中：流式文字实时渲染 -->
-                  <template v-if="round.status === 'GENERATING'">
-                    <div class="round-tag"><icon-loading/> {{ $t('components.aiGenerate.generating') }}</div>
-                    <pre class="stream-text">{{ round.rawText || ' ' }}<span class="cursor">▍</span></pre>
-                  </template>
-                  <!-- 失败 -->
-                  <template v-else-if="isFailed(round)">
-                    <div class="round-tag">{{ $t('components.aiGenerate.generateFailed') }}</div>
-                    <div class="error-text">{{ round.error }}</div>
-                  </template>
-                  <!-- 停止/完成：原文（可折叠） + 草稿卡片 -->
-                  <template v-else>
-                    <div v-if="round.status === 'STOPPED'" class="round-tag stopped-tag">{{ $t('components.aiGenerate.stoppedTag') }}</div>
-                    <!-- 问答轮：markdown 渲染展示回答 -->
-                    <div v-if="round.type === 'qa'" class="stream-text md-body" v-html="renderMarkdown(round.rawText)"></div>
-                    <template v-else>
-                      <pre v-if="round.rawText && round._showRaw" class="stream-text">{{ round.rawText }}</pre>
-                      <a-link v-if="round.rawText" class="raw-toggle" @click="round._showRaw = !round._showRaw">
-                        {{ round._showRaw ? $t('components.aiGenerate.collapseRaw') : $t('components.aiGenerate.viewRaw') }}
-                      </a-link>
-                    </template>
-
-                    <!-- 知识库引用：生成时检索命中的文档片段，可展开查看 -->
-                    <div v-if="round.citations?.length" class="cite-banner">
-                      <div class="cite-title" @click="round._showCites = !round._showCites">
-                        <icon-book/>
-                        <span>{{ $t('components.aiGenerate.citeBasedOn', { titles: citeTitles(round) }) }}</span>
-                        <icon-down v-if="!round._showCites"/>
-                        <icon-up v-else/>
-                      </div>
-                      <ul v-if="round._showCites" class="cite-list">
-                        <li v-for="(c, i) in round.citations" :key="i">
-                          <span class="cite-doc">《{{ c.title }}》</span>{{ c.snippet }}
-                        </li>
-                      </ul>
-                    </div>
-
-                    <!-- 需求不确定点提示：模型主动暴露的需求缺陷，引导补充后重新生成 -->
-                    <div v-if="round.uncertainties?.length" class="unc-banner">
-                      <div class="unc-title">
-                        <icon-exclamation-circle-fill/>
-                        {{ $t('components.aiGenerate.uncertaintiesTitle', { count: round.uncertainties.length }) }}
-                      </div>
-                      <ul class="unc-list">
-                        <li v-for="(u, i) in round.uncertainties" :key="i">{{ u }}</li>
-                      </ul>
-                      <a-button
-                          v-if="isLatest(idx) && !currentExpired"
-                          size="mini"
-                          type="outline"
-                          @click="fillSupplement"
-                      >
-                        {{ $t('components.aiGenerate.supplementRegenerate') }}
-                      </a-button>
-                    </div>
-
-                    <a-table
-                        v-if="round.drafts.length"
-                        :data="round.drafts"
-                        :pagination="false"
-                        size="small"
-                        :scroll="{ y: 260 }"
-                        style="margin-top: 6px"
-                    >
-                      <template #columns>
-                        <a-table-column v-if="isLatest(idx) && !currentExpired" :width="40" title="">
-                          <template #cell="{ record }">
-                            <a-checkbox v-model="record._checked" :disabled="record._adopted"/>
-                          </template>
-                        </a-table-column>
-                        <a-table-column :title="$t('components.aiGenerate.colName')" :width="200">
-                          <template #cell="{ record }">
-                            <a-input v-if="isLatest(idx) && !currentExpired && !record._adopted" v-model="record.caseName" size="mini"/>
-                            <span v-else>{{ record.caseName }}</span>
-                            <a-tag v-if="record._adopted" size="small" color="green" style="margin-left: 4px">{{ $t('components.aiGenerate.adoptedTag') }}</a-tag>
-                          </template>
-                        </a-table-column>
-                        <template v-if="scene === 'case'">
-                          <a-table-column :title="$t('components.aiGenerate.colType')" :width="90">
-                            <template #cell="{ record }">
-                              <a-tag size="small" :color="record.enumFallback ? 'orange' : undefined">{{ record.caseType }}</a-tag>
-                            </template>
-                          </a-table-column>
-                          <a-table-column :title="$t('components.aiGenerate.colPriority')" :width="70">
-                            <template #cell="{ record }">
-                              <a-tag size="small" :color="record.enumFallback ? 'orange' : undefined">{{ record.priority }}</a-tag>
-                            </template>
-                          </a-table-column>
-                          <a-table-column :title="$t('components.aiGenerate.colSteps')" :width="70">
-                            <template #cell="{ record }">{{ record.testSteps?.length || 0 }}</template>
-                          </a-table-column>
-                        </template>
-                        <template v-else>
-                          <a-table-column :title="$t('components.aiGenerate.colDescription')" :width="200">
-                            <template #cell="{ record }">{{ record.description || '-' }}</template>
-                          </a-table-column>
-                          <a-table-column :title="$t('components.aiGenerate.colAssert')" :width="60">
-                            <template #cell="{ record }">{{ record.assertions?.length || 0 }}</template>
-                          </a-table-column>
-                          <a-table-column title="Body" :width="70">
-                            <template #cell="{ record }">
-                              <a-tag v-if="record.bodyJson" size="small" color="blue">{{ $t('components.aiGenerate.bodyOverride') }}</a-tag>
-                              <span v-else style="color: var(--color-text-3)">{{ $t('components.aiGenerate.bodyInherit') }}</span>
-                            </template>
-                          </a-table-column>
-                        </template>
-                      </template>
-                    </a-table>
-                  </template>
-
-                  <!-- 消息动作条（最新一轮） -->
-                  <div v-if="isLatest(idx) && !currentExpired && round.status !== 'GENERATING'" class="round-actions">
-                    <a-tooltip :content="$t('components.aiGenerate.regenerateTip')">
-                      <a-button size="mini" :loading="generating" :disabled="!recordNo" @click="handleRegenerate">
-                        <template #icon><icon-refresh/></template>
-                        {{ $t('components.aiGenerate.regenerate') }}
-                      </a-button>
-                    </a-tooltip>
-                    <a-button v-if="isFailed(round) || round.status === 'STOPPED'" size="mini" type="primary"
-                              @click="handleRetry(round)">
-                      {{ round.status === 'STOPPED' ? $t('components.aiGenerate.continueGenerate') : $t('components.aiGenerate.retry') }}
-                    </a-button>
-                    <template v-if="round.drafts.length">
-                      <a-button size="mini" :disabled="adoptableCount(round) === 0" @click="toggleAll(round)">
-                        {{ allChecked(round) ? $t('components.aiGenerate.deselectAll') : $t('components.aiGenerate.selectAll') }}
-                      </a-button>
-                      <a-button
-                          v-if="adoptableCount(round) > 0"
-                          type="primary"
-                          size="mini"
-                          :loading="adopting"
-                          :disabled="checkedCount(round) === 0"
-                          @click="handleAdopt(round)"
-                      >
-                        {{ $t('components.aiGenerate.adoptSelected', { count: checkedCount(round) }) }}
-                      </a-button>
-                      <a-tag v-else color="green">{{ $t('components.aiGenerate.allAdopted') }}</a-tag>
-                    </template>
-                  </div>
-                </div>
+              <ul class="unc-list">
+                <li v-for="(u, i) in msg.data.items" :key="i">{{ u }}</li>
+              </ul>
+              <a-button
+                  v-if="msg.data.actionable"
+                  size="mini"
+                  type="outline"
+                  @click="fillSupplement"
+              >
+                {{ $t('components.aiGenerate.supplementRegenerate') }}
+              </a-button>
+            </div>
+            <!-- 草稿表格卡片 -->
+            <ApiCaseDraftCard
+                v-else-if="msg.cardType === 'drafts'"
+                :scene="scene"
+                :drafts="msg.data.round.drafts"
+                :editable="msg.data.editable"
+                :adopting="adopting"
+                @adopt="(items) => handleAdopt(msg.data.round, items)"
+            />
+            <!-- 轮次页脚：已停止标记 + 最新一轮的重新生成/重试动作 -->
+            <div v-else-if="msg.cardType === 'round-footer'" class="round-footer">
+              <div v-if="msg.data.stopped" class="round-tag stopped-tag">{{ $t('components.aiGenerate.stoppedTag') }}</div>
+              <div v-if="msg.data.showActions" class="round-actions">
+                <a-tooltip :content="$t('components.aiGenerate.regenerateTip')">
+                  <a-button size="mini" :loading="generating" :disabled="!recordNo" @click="handleRegenerate">
+                    <template #icon><icon-refresh/></template>
+                    {{ $t('components.aiGenerate.regenerate') }}
+                  </a-button>
+                </a-tooltip>
+                <a-button v-if="msg.data.failed || msg.data.stopped" size="mini" type="primary"
+                          @click="handleRetry(msg.data.round)">
+                  {{ msg.data.stopped ? $t('components.aiGenerate.continueGenerate') : $t('components.aiGenerate.retry') }}
+                </a-button>
               </div>
             </div>
           </template>
-
-          <!-- 新会话流式输出中 -->
-          <div v-if="generating && !rounds.length" class="msg ai-msg">
-            <div class="bubble ai-bubble">
-              <div class="round-tag"><icon-loading/> {{ $t('components.aiGenerate.generating') }}</div>
-              <pre class="stream-text">{{ streamText || ' ' }}<span class="cursor">▍</span></pre>
-            </div>
-          </div>
-
-          <a-empty v-if="!rounds.length && !generating"
-                   :description="$t('components.aiGenerate.emptyHint', { entity: sceneConfig.entityName })"/>
-        </div>
+        </AiChatPanel>
 
         <!-- 输入区 -->
         <div class="chat-input">
@@ -251,7 +142,8 @@
 import {computed, nextTick, reactive, ref} from 'vue';
 import {Message} from '@arco-design/web-vue';
 import {useI18n} from 'vue-i18n';
-import {renderMarkdown} from '@/utils/markdown';
+import AiChatPanel from '@/views/qa/ai/AiChatPanel.vue';
+import ApiCaseDraftCard from '@/components/ai-generate/ApiCaseDraftCard.vue';
 import {
   adoptAiCases,
   appendCaseStream,
@@ -323,13 +215,52 @@ const sessions = ref<any[]>([]);
 const recordNo = ref('');
 const rounds = ref<any[]>([]);
 const currentExpired = ref(false);
-const streamText = ref('');
-const chatBodyRef = ref<HTMLElement>();
+const isAtBottom = ref(true);
+const chatPanelRef = ref<InstanceType<typeof AiChatPanel>>();
 let abortController: AbortController | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const form = reactive<any>({
     instruction: '',
+});
+
+/**
+ * 轮次模型 → AiChatPanel 消息模型：
+ * 每轮映射为 用户气泡 + AI 气泡（rawText 流式渲染/失败标记/引用标题），
+ * 之后按需追加 uncertainties 提示卡、草稿表格卡、轮次页脚卡（已停止标记 + 最新一轮动作条）。
+ * 最新一轮始终垫一个页脚卡，保证 AI 气泡不是最后一条消息，
+ * 避免 AiChatPanel 内置的 regenerate/retry 按钮在过期会话上误显示。
+ */
+const chatMessages = computed(() => {
+    const msgs: any[] = [];
+    rounds.value.forEach((round: any, idx: number) => {
+        const latest = idx === rounds.value.length - 1;
+        const actionable = latest && !currentExpired.value;
+        const failed = isFailed(round);
+        msgs.push({role: 'user', content: round.instruction || t('components.aiGenerate.noInstruction')});
+        msgs.push({
+            role: 'assistant',
+            content: round.rawText || '',
+            _done: round.status !== 'GENERATING',
+            _error: failed,
+            _errorMsg: round.error,
+            citations: failed ? [] : [...new Set<string>((round.citations || []).map((c: any) => c.title))],
+        });
+        if (round.status !== 'GENERATING' && !failed) {
+            if (round.uncertainties?.length) {
+                msgs.push({role: 'card', cardType: 'uncertainties', data: {items: round.uncertainties, actionable}});
+            }
+            if (round.drafts?.length) {
+                msgs.push({role: 'card', cardType: 'drafts', data: {round, editable: actionable}});
+            }
+        }
+        if (latest && round.status !== 'GENERATING') {
+            msgs.push({role: 'card', cardType: 'round-footer', data: {round, stopped: round.status === 'STOPPED', failed, showActions: actionable}});
+        } else if (round.status === 'STOPPED') {
+            msgs.push({role: 'card', cardType: 'round-footer', data: {round, stopped: true, failed: false, showActions: false}});
+        }
+    });
+    return msgs;
 });
 
 // ==================== 会话管理 ====================
@@ -360,7 +291,6 @@ function startNewSession() {
     recordNo.value = '';
     rounds.value = [];
     currentExpired.value = false;
-    streamText.value = '';
 }
 
 function loadSession(session: any) {
@@ -383,7 +313,6 @@ function renderSession(session: any) {
     const adoptedIds = parseAdoptedDraftIds(session.adoptedDetail);
     rounds.value = parseRounds(session.outputSnapshot).map((r: any) => ({
         ...r,
-        _showRaw: false,
         drafts: (r.drafts || []).map((d: any) => ({
             ...d,
             _checked: !adoptedIds.has(d.draftId),
@@ -568,14 +497,12 @@ function makeCallbacks(instruction: string, targetRound?: any) {
     const ctrl = new AbortController();
     abortController = ctrl;
     generating.value = true;
-    streamText.value = '';
     const stale = () => abortController !== ctrl;
     return {
         signal: ctrl.signal,
         callbacks: {
             onDelta: (chunk: string) => {
                 if (stale()) return;
-                streamText.value += chunk;
                 if (targetRound) {
                     targetRound.rawText = (targetRound.rawText || '') + chunk;
                 }
@@ -585,7 +512,6 @@ function makeCallbacks(instruction: string, targetRound?: any) {
                 if (stale()) return;
                 recordNo.value = no;
                 generating.value = false;
-                streamText.value = '';
                 form.instruction = '';
                 // 以服务端为准刷新整个会话（rawText/draftId 完整）
                 refreshCurrentSession(no);
@@ -595,7 +521,6 @@ function makeCallbacks(instruction: string, targetRound?: any) {
             onError: (msg: string) => {
                 if (stale()) return;
                 generating.value = false;
-                streamText.value = '';
                 if (msg === '__STOPPED__') {
                     if (targetRound) targetRound.status = 'STOPPED';
                     if (recordNo.value) refreshCurrentSession(recordNo.value);
@@ -638,7 +563,6 @@ async function handleStop() {
     const no = recordNo.value;
     abortController?.abort();
     generating.value = false;
-    streamText.value = '';
     if (no) {
         try {
             await api.value.stop(no);
@@ -666,12 +590,6 @@ function handleRetry(round: any) {
     handleSend();
 }
 
-/** 引用文档标题去重拼接：依据《XX》《YY》 */
-function citeTitles(round: any) {
-    const titles = [...new Set<string>((round.citations || []).map((c: any) => c.title))];
-    return titles.map(title => `《${title}》`).join('');
-}
-
 /** uncertainties 引导：回填「补充说明：」前缀并聚焦输入框，用户补完按追加发送 */
 function fillSupplement() {
     form.instruction = t('components.aiGenerate.supplementPrefix');
@@ -683,31 +601,8 @@ function fillSupplement() {
 
 // ==================== 入库 ====================
 
-function isLatest(idx: number) {
-    return idx === rounds.value.length - 1;
-}
-
-function checkedCount(round: any) {
-    return round.drafts.filter((d: any) => d._checked && !d._adopted).length;
-}
-
-function adoptableCount(round: any) {
-    return round.drafts.filter((d: any) => !d._adopted).length;
-}
-
-function allChecked(round: any) {
-    return adoptableCount(round) > 0 && checkedCount(round) === adoptableCount(round);
-}
-
-function toggleAll(round: any) {
-    const target = !allChecked(round);
-    round.drafts.forEach((d: any) => { if (!d._adopted) d._checked = target; });
-}
-
-async function handleAdopt(round: any) {
-    const items = round.drafts
-        .filter((d: any) => d._checked && !d._adopted)
-        .map(({_checked, _adopted, _showRaw, ...rest}: any) => rest);
+/** 草稿卡片勾选态洗净后触发，父级负责调入库接口并按结果回写草稿行 */
+async function handleAdopt(round: any, items: any[]) {
     adopting.value = true;
     try {
         const res: any = await api.value.adopt({recordNo: recordNo.value, items});
@@ -739,10 +634,15 @@ function handleClose() {
     stopPolling();
 }
 
+function onScrollChange(atBottom: boolean) {
+    isAtBottom.value = atBottom;
+}
+
 function scrollToBottom() {
     nextTick(() => {
-        if (chatBodyRef.value) {
-            chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
+        const el = chatPanelRef.value?.getChatBody?.();
+        if (el) {
+            el.scrollTop = el.scrollHeight;
         }
     });
 }
@@ -863,50 +763,6 @@ defineExpose({open});
   min-width: 0;
 }
 
-.chat-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.round {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.msg {
-  display: flex;
-}
-
-.user-msg {
-  justify-content: flex-end;
-}
-
-.user-msg .bubble {
-  background: rgb(var(--primary-6));
-  color: #fff;
-  border-radius: 12px 12px 2px 12px;
-  padding: 8px 12px;
-  max-width: 70%;
-  white-space: pre-wrap;
-}
-
-.ai-msg {
-  justify-content: flex-start;
-}
-
-.ai-bubble {
-  background: var(--color-fill-1);
-  border-radius: 12px 12px 12px 2px;
-  padding: 8px 12px;
-  max-width: 100%;
-  width: 100%;
-}
-
 .round-tag {
   font-size: 12px;
   color: var(--color-text-3);
@@ -917,108 +773,8 @@ defineExpose({open});
   color: rgb(var(--orange-6));
 }
 
-.stream-text {
-  font-size: 13px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  margin: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  line-height: 1.6;
-}
-
-.cursor {
-  animation: blink 1s step-end infinite;
-  color: rgb(var(--primary-6));
-}
-
-/* markdown 渲染内容（问答轮） */
-.md-body {
-  line-height: 1.6;
-}
-
-.md-body :deep(p) {
-  margin: 0 0 4px;
-}
-
-.md-body :deep(p:last-child) {
-  margin-bottom: 0;
-}
-
-.md-body :deep(ul),
-.md-body :deep(ol) {
-  margin: 2px 0 4px;
-  padding-left: 20px;
-}
-
-.md-body :deep(li) {
-  margin: 0;
-}
-
-/* 松散列表（列表项间有空行）会被渲染成 li>p，去掉段落间距避免每行空一行 */
-.md-body :deep(li > p) {
-  margin: 0;
-}
-
-.md-body :deep(h1),
-.md-body :deep(h2),
-.md-body :deep(h3),
-.md-body :deep(h4) {
-  margin: 8px 0 4px;
-  font-size: 14px;
-}
-
-.md-body :deep(code) {
-  background: var(--color-fill-3);
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-size: 12px;
-}
-
-.md-body :deep(pre) {
-  background: var(--color-fill-2);
-  border-radius: 6px;
-  padding: 8px 10px;
-  overflow-x: auto;
-  margin: 6px 0;
-}
-
-.md-body :deep(pre code) {
-  background: none;
-  padding: 0;
-}
-
-.md-body :deep(blockquote) {
-  border-left: 3px solid var(--color-border-3);
-  margin: 6px 0;
-  padding: 2px 10px;
-  color: var(--color-text-3);
-}
-
-.md-body :deep(table) {
-  border-collapse: collapse;
-  margin: 6px 0;
-  font-size: 12px;
-}
-
-.md-body :deep(th),
-.md-body :deep(td) {
-  border: 1px solid var(--color-border-2);
-  padding: 4px 8px;
-}
-
-.md-body :deep(a) {
-  color: rgb(var(--primary-6));
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
-.raw-toggle {
-  font-size: 12px;
-  margin-top: 4px;
-  display: inline-block;
+.round-footer {
+  max-width: 100%;
 }
 
 .round-actions {
@@ -1029,20 +785,7 @@ defineExpose({open});
   align-items: center;
 }
 
-.error-bubble {
-  border: 1px solid rgb(var(--red-3));
-  background: rgb(var(--red-1));
-}
-
-.error-text {
-  color: rgb(var(--red-6));
-  font-size: 13px;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
 .unc-banner {
-  margin-top: 6px;
   padding: 8px 10px;
   border: 1px solid rgb(var(--orange-3));
   background: rgb(var(--orange-1));
@@ -1067,36 +810,6 @@ defineExpose({open});
 
 .unc-banner .arco-btn {
   margin-top: 2px;
-}
-
-.cite-banner {
-  margin-top: 6px;
-  padding: 6px 10px;
-  border: 1px solid rgb(var(--primary-3));
-  background: rgb(var(--primary-1));
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.cite-title {
-  color: rgb(var(--primary-7));
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.cite-list {
-  margin: 6px 0 2px;
-  padding-left: 18px;
-  color: var(--color-text-3);
-  line-height: 1.7;
-}
-
-.cite-doc {
-  color: rgb(var(--primary-6));
-  margin-right: 4px;
 }
 
 .chat-input {

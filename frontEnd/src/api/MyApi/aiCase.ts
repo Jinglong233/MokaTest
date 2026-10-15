@@ -45,66 +45,25 @@ function buildHeaders(): Record<string, string> {
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || '/') + 'api/qa/ai/case';
 
-/**
- * SSE POST 流式请求：解析 event:/data: 协议帧
- */
-async function streamPost(url: string, body: any, callbacks: AiStreamCallbacks, signal?: AbortSignal) {
-    try {
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: buildHeaders(),
-            body: JSON.stringify(body),
-            signal,
-        });
-        if (!resp.ok || !resp.body) {
-            callbacks.onError?.(`请求失败（HTTP ${resp.status}）`);
-            return;
-        }
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let currentEvent = '';
-        for (; ;) {
-            const {done, value} = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, {stream: true});
-            // SSE 帧以空行分隔
-            let idx;
-            while ((idx = buffer.indexOf('\n\n')) >= 0) {
-                const frame = buffer.slice(0, idx);
-                buffer = buffer.slice(idx + 2);
-                // 按 SSE 规范：一帧内多行 data 用 \n 拼接后统一派发
-                let eventName = currentEvent;
-                const dataLines: string[] = [];
-                for (const line of frame.split('\n')) {
-                    if (line.startsWith('event:')) {
-                        eventName = line.slice(6).trim();
-                        currentEvent = eventName;
-                    } else if (line.startsWith('data:')) {
-                        dataLines.push(line.slice(5));
-                    }
-                }
-                if (dataLines.length === 0) continue;
-                const data = dataLines.join('\n');
-                if (eventName === 'delta') {
-                    callbacks.onDelta?.(data);
-                } else if (eventName === 'result') {
-                    try {
-                        const parsed = JSON.parse(data);
-                        callbacks.onResult?.(parsed.recordNo, parsed.drafts || []);
-                    } catch {
-                        callbacks.onError?.('结果解析失败');
-                    }
-                } else if (eventName === 'error') {
-                    callbacks.onError?.(data || '生成失败');
+/** 后端发完 result 即 complete（无 done 事件），需告知公共封装 result 就是终态 */
+const TERMINAL_EVENTS = ['result'];
+
+/** 私有回调形态 → 公共 SSE 回调：result 走 onEvent 兜底，stopped 沿用 __STOPPED__ 约定 */
+function adaptCallbacks(callbacks: AiStreamCallbacks): GenericCallbacks {
+    return {
+        onDelta: (chunk) => callbacks.onDelta?.(chunk),
+        onError: (msg) => callbacks.onError?.(msg),
+        onStopped: () => callbacks.onError?.('__STOPPED__'),
+        onEvent: (event, data) => {
+            if (event === 'result') {
+                if (data && typeof data === 'object' && data.recordNo) {
+                    callbacks.onResult?.(data.recordNo, data.drafts || []);
+                } else {
+                    callbacks.onError?.('结果解析失败');
                 }
             }
-        }
-    } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-            callbacks.onError?.(e?.message || '网络异常');
-        }
-    }
+        },
+    };
 }
 
 /** 新会话：流式生成测试用例 */
@@ -112,7 +71,7 @@ export function generateCaseStream(body: {
     requirementId: number;
     instruction?: string;
 }, callbacks: AiStreamCallbacks, signal?: AbortSignal) {
-    return streamPost(`${BASE}/generate`, body, callbacks, signal);
+    return streamPostGeneric(`${BASE}/generate`, body, adaptCallbacks(callbacks), signal, TERMINAL_EVENTS);
 }
 
 /** 追加生成（同会话继续） */
@@ -120,7 +79,7 @@ export function appendCaseStream(body: {
     recordNo: string;
     instruction?: string;
 }, callbacks: AiStreamCallbacks, signal?: AbortSignal) {
-    return streamPost(`${BASE}/append`, body, callbacks, signal);
+    return streamPostGeneric(`${BASE}/append`, body, adaptCallbacks(callbacks), signal, TERMINAL_EVENTS);
 }
 
 /** 采纳入库 */
@@ -140,7 +99,7 @@ export function stopAiCaseStream(recordNo: string) {
 
 /** 重新生成（删最后一轮，同指令重跑，SSE） */
 export function regenerateAiCaseStream(recordNo: string, callbacks: AiStreamCallbacks, signal?: AbortSignal) {
-    return streamPost(`${BASE}/regenerate?recordNo=${encodeURIComponent(recordNo)}`, {}, callbacks, signal);
+    return streamPostGeneric(`${BASE}/regenerate?recordNo=${encodeURIComponent(recordNo)}`, {}, adaptCallbacks(callbacks), signal, TERMINAL_EVENTS);
 }
 
 /** 重连生成流（SSE，GET）：restore 全量回放 + 后续增量 delta + 接续实时流 */
