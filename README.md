@@ -1,7 +1,7 @@
 <p align="center">
   <img src="docs/images/logo.png" alt="MokaTest" width="200" />
 </p>
-<h3 align="center">一站式自动化测试平台</h3>
+<h3 align="center">AI 驱动的一站式自动化测试平台</h3>
 <p align="center">
   <img src="https://img.shields.io/badge/license-BSL%201.1-blue" alt="License">
   <img src="https://img.shields.io/badge/Spring%20Boot-3-brightgreen" alt="Spring Boot">
@@ -20,13 +20,38 @@
 
 ---
 
-MokaTest 是面向测试团队的一站式自动化测试平台，覆盖从需求到报告的完整测试流程：
+MokaTest 是面向测试团队的 AI 驱动一站式自动化测试平台，覆盖从需求到报告的完整测试流程：
 
+- **AI 能力**：对话式 AI 工作台、AI 生成测试用例（功能用例四阶段流水线 / 接口调试用例）、AI 需求评审、执行失败智能分诊（自动判别数据/环境/产品 BUG）、知识库增强（RAG），AI 贯穿测试全流程
+- **UI 自动化**：场景可视化编排、元素库集中管理、调试支持暂停/断点/执行到指定步骤，定位失败时 AI 自动修复
 - **质量管理**：需求池（Epic/Story 层级）、BUG 池、测试用例、血缘追踪，缺陷全生命周期可追溯
 - **API 测试**：接口调试、断言/提取/脚本、参数级 Mock、数据模板、多环境一键切换
-- **UI 自动化**：场景可视化编排、元素库集中管理、调试支持暂停/断点/执行到指定步骤，定位失败时 AI 自动修复
 - **测试计划**：定时/手动触发、并发执行、Webhook 通知、测试报告
 - **团队协作**：团队/项目/成员三级权限隔离，角色灵活配置，站内信通知
+
+## AI 功能
+
+AI 不是附属插件，而是贯穿测试全流程的核心能力：
+
+| 能力 | 说明 |
+|------|------|
+| **AI 工作台** | 自然语言对话查需求/用例/BUG/知识库，对话式生成并入库用例，支持快捷指令模板 |
+| **AI 生成用例** | 需求 → 拆测试点 → 逐点生成 → 覆盖审计 → 采纳入库，全流程 AI 辅助、自动去重 |
+| **接口用例生成** | 基于接口定义生成带断言/参数变体的调试用例，一键挂到接口下即可执行 |
+| **AI 需求评审** | 从完整性/可测性/边界/安全维度评审需求，识别描述不清之处，评分回显需求列表 |
+| **失败智能分诊** | 场景执行失败自动判别是数据问题、环境问题还是产品 BUG，后者一键生成 BUG 单 |
+| **AI 定位自愈** | UI 元素定位失效时自动推断新定位器并验证重试，是否写回元素库由人工确认 |
+| **知识库（RAG）** | 上传项目文档建立索引，所有 AI 功能自动参考并标注出处，让输出贴合项目实际 |
+
+
+| AI工作台                                                          | SKILL                             |
+|----------------------------------------------------------------|-----------------------------------|
+| ![AI-1.png](docs/images/AI-1.png)                              | ![AI-2.png](docs/images/AI-2.png) |
+| **知识库**                                                        | **AI配置**                          |
+| ![AI-3.png](docs/images/AI-3.png) | ![AI-4.png](docs/images/AI-4.png) |
+| **AI生成接口用例**                                                        |                           |
+| ![AI-5.png](docs/images/AI-5.png) |  |
+
 
 ## 项目状态
 
@@ -48,6 +73,7 @@ MokaTest 是面向测试团队的一站式自动化测试平台，覆盖从需�
 |------|------|
 | 前端 | Vue 3 + Vite + Arco Design Vue + TypeScript |
 | 后端 | Spring Boot 3 + MyBatis-Plus + Sa-Token |
+| AI | LangChain4j（Agent / RAG / 护栏）+ Qdrant（向量检索，可选）|
 | 数据库 | MySQL 8.0 |
 | 其他 | Playwright（UI 自动化）、MinIO（文件存储）|
 
@@ -67,6 +93,8 @@ docker compose up -d --build
 - 默认账号：`admin` / `abc123`（**生产部署请立即修改**）
 
 服务包含：MySQL、后端、前端 Nginx、MinIO 对象存储，全部容器化，无需本机安装任何依赖。
+
+**启用 AI 功能**：登录后进入「AI 中心 → AI 配置」，添加模型配置（填入你的模型服务地址与 API Key）即可使用全部 AI 功能。知识库的语义检索（RAG）需额外部署 [Qdrant](https://qdrant.tech/) 向量库（可选，不部署不影响其他 AI 功能，仅知识库引用失效）。
 
 ## 本地开发
 
@@ -97,8 +125,10 @@ yarn dev
 MokaTest/
 ├── backEnd/                    # 后端服务
 │   ├── platform-starter/       # 启动模块（Spring Boot 入口）
+│   ├── platform-ai/            # AI 能力中枢（Agent / RAG / 模型管理 / 护栏）
 │   ├── platform-automation/    # UI/API 自动化测试核心模块
 │   ├── platform-qa/            # 质量管理模块（需求/BUG/用例）
+│   ├── platform-common/        # 公共模块
 │   └── sql/                    # 数据库脚本
 ├── frontEnd/                   # 前端（Vue 3 + Arco Design）
 ├── docs/images/                # README 截图
