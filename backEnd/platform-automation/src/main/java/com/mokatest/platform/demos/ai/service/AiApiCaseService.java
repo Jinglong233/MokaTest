@@ -426,11 +426,17 @@ public class AiApiCaseService {
             for (ApiRequest c : existing) {
                 if (c.getApiName() != null) existingNames.add(c.getApiName().trim());
             }
-            for (ApiCaseDraftDTO draft : toSave) {
-                if (existingNames.contains(draft.getCaseName().trim())) {
-                    duplicateNames.add(draft.getCaseName().trim());
+            // 与库内同接口用例重名、或批次内互相重名的草稿直接跳过（只报告不入库）
+            java.util.Set<String> batchNames = new java.util.HashSet<>();
+            toSave.removeIf(draft -> {
+                String name = draft.getCaseName().trim();
+                if (existingNames.contains(name) || !batchNames.add(name)) {
+                    duplicateNames.add(name);
+                    return true;
                 }
-            }
+                return false;
+            });
+            skipped += duplicateNames.size();
         }
 
         List<Integer> savedIds = new ArrayList<>();
