@@ -193,6 +193,13 @@ export default {
   'qa.ai.cards.apiCandidatesTitle': 'Found the following APIs — click one to start generating:',
   'qa.ai.cards.noApisFound': 'No matching APIs found, try another keyword',
   'qa.ai.cards.apiCandidateId': 'ID {id}',
+  'qa.ai.cards.caseDraftTitle': 'Test Case Draft',
+  'qa.ai.cards.caseDraftConfirm': 'Confirm & Save',
+  'qa.ai.cards.caseDraftSaved': 'Saved as {code}',
+  'qa.ai.cards.caseDraftRelatedReq': 'Related requirement: {id}',
+  'qa.ai.cards.caseDraftEnumFallback': 'The AI returned an invalid case type/priority; defaults applied',
+  'qa.ai.cards.caseDraftSaveSuccess': 'Case saved ({code})',
+  'qa.ai.cards.caseDraftSaveFailed': 'Failed to save case, please retry',
 
   // ==================== Case types ====================
   'qa.ai.caseType.FUNCTION': 'Functional',

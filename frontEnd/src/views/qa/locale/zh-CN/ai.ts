@@ -193,6 +193,13 @@ export default {
   'qa.ai.cards.apiCandidatesTitle': '找到以下接口，点击一个开始生成用例：',
   'qa.ai.cards.noApisFound': '未找到匹配的接口，可以换个关键词再试',
   'qa.ai.cards.apiCandidateId': 'ID {id}',
+  'qa.ai.cards.caseDraftTitle': '用例草稿',
+  'qa.ai.cards.caseDraftConfirm': '确认入库',
+  'qa.ai.cards.caseDraftSaved': '已入库 {code}',
+  'qa.ai.cards.caseDraftRelatedReq': '关联需求：{id}',
+  'qa.ai.cards.caseDraftEnumFallback': 'AI 返回的类型/优先级不合法，已回退为默认值',
+  'qa.ai.cards.caseDraftSaveSuccess': '用例已入库（{code}）',
+  'qa.ai.cards.caseDraftSaveFailed': '用例入库失败，请重试',
 
   // ==================== 用例类型 ====================
   'qa.ai.caseType.FUNCTION': '功能',

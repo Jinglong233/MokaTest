@@ -231,6 +231,14 @@ function onCardEvent(payload: any) {
   if (payload?.cardType === 'api-candidates' && payload.api?.id) {
     aiCaseApiId.value = payload.api.id;
     nextTick(() => aiCaseModalRef.value?.open());
+    return;
+  }
+  // 用例草稿卡入库成功：就地更新卡片数据并回写持久化（刷新后保持已保存态）
+  if (payload?.cardType === 'case-draft' && payload.action === 'saved') {
+    if (payload.msg) payload.msg.data = payload.data;
+    if (currentSessionId.value) {
+      saveCardMessage(currentSessionId.value, 'case-draft', payload.data, payload.msg?._messageId).catch(() => {});
+    }
   }
 }
 
@@ -287,8 +295,8 @@ async function selectSession(s: any) {
       if (m.role === 'card') {
         try {
           const parsed = JSON.parse(m.content);
-          return { role: 'card', cardType: parsed.cardType, data: parsed.data, _done: true, _uid: ++msgUid };
-        } catch { return { role: 'card', cardType: 'unknown', data: {}, _done: true, _uid: ++msgUid }; }
+          return { role: 'card', cardType: parsed.cardType, data: parsed.data, _done: true, _uid: ++msgUid, _messageId: m.id };
+        } catch { return { role: 'card', cardType: 'unknown', data: {}, _done: true, _uid: ++msgUid, _messageId: m.id }; }
       }
       return {
         role: m.role,
@@ -468,6 +476,28 @@ function startStream(message: string, skillScene?: string, retry = false) {
               forceScrollToBottom();
               aiCaseApiId.value = api.apiId;
               nextTick(() => aiCaseModalRef.value?.open());
+            }
+          } catch { /* ignore */ }
+        }
+        // create_test_case 草稿 → 推可编辑草稿卡片（用户确认后才调 save 入库）
+        if (data.tool === 'create_test_case' && data.result) {
+          try {
+            const draft = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+            if (draft && draft.caseName) {
+              const draftCard = reactive({
+                role: 'card',
+                cardType: 'case-draft',
+                data: draft,
+                _done: true,
+                _messageId: undefined as number | undefined,
+              });
+              pushMsg(draftCard);
+              if (currentSessionId.value) {
+                saveCardMessage(currentSessionId.value, 'case-draft', draftCard.data)
+                  .then((res: any) => { draftCard._messageId = res?.data; })
+                  .catch(() => {});
+              }
+              forceScrollToBottom();
             }
           } catch { /* ignore */ }
         }

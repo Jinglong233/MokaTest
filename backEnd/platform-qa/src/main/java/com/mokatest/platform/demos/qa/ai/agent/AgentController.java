@@ -143,8 +143,21 @@ public class AgentController {
         JSONObject cardContent = new JSONObject(true);
         cardContent.put("cardType", cardType);
         cardContent.put("data", data);
-        saveMessage(id, "card", cardContent.toJSONString(), null, null);
-        return SaResult.ok("已保存");
+        // 卡片状态回写（如草稿卡入库后置为已保存）：带 messageId 且属于本会话的卡片消息原地更新，否则新插
+        Long messageId = body != null && body.get("messageId") != null
+                ? Long.valueOf(body.get("messageId").toString()) : null;
+        if (messageId != null) {
+            AgentMessage exist = messageMapper.selectById(messageId);
+            if (exist != null && exist.getSessionId().equals(id) && "card".equals(exist.getRole())) {
+                AgentMessage upd = new AgentMessage();
+                upd.setId(messageId);
+                upd.setContent(cardContent.toJSONString());
+                messageMapper.updateById(upd);
+                return SaResult.ok("已保存").setData(messageId);
+            }
+        }
+        Long msgId = saveMessage(id, "card", cardContent.toJSONString(), null, null);
+        return SaResult.ok("已保存").setData(msgId);
     }
 
     // ==================== 对话（SSE） ====================
@@ -462,12 +475,14 @@ public class AgentController {
             // SSE 只推状态，不推查询结果内容（避免数据库字段暴露到前端）。
             // 例外：start_case_generation 的结果是不含敏感字段的需求摘要，前端要据此建工作流卡片；
             // ask_case_gen_type / search_apis 的结果是前端卡片数据（类型选择/接口候选列表）；
+            // create_test_case 的结果是用例草稿 JSON，前端据此渲染可编辑草稿卡片；
             // start_api_case_generation 的结果是接口摘要，前端据此推送候选卡片并自动唤起生成弹窗
             JSONObject evt = new JSONObject();
             evt.put("tool", toolName);
             if ("start_case_generation".equals(toolName)
                     || "ask_case_gen_type".equals(toolName)
                     || "search_apis".equals(toolName)
+                    || "create_test_case".equals(toolName)
                     || "start_api_case_generation".equals(toolName)) {
                 evt.put("result", result);
             } else if (isToolError(result)) {

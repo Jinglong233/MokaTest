@@ -28,9 +28,9 @@ export function stopAgentChat(sessionId: number) {
     return axios.post(`${BASE}/chat/stop`, { sessionId });
 }
 
-/** 持久化卡片消息 */
-export function saveCardMessage(sessionId: number, cardType: string, data: any) {
-    return axios.post(`${BASE}/session/${sessionId}/card`, { cardType, data });
+/** 持久化卡片消息（带 messageId 时原地更新原卡片，用于卡片状态回写，如草稿入库后置为已保存） */
+export function saveCardMessage(sessionId: number, cardType: string, data: any, messageId?: number) {
+    return axios.post(`${BASE}/session/${sessionId}/card`, { cardType, data, messageId });
 }
 
 /** Agent 对话（SSE） */

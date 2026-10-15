@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class CreateTestCaseTool implements AgentTool {
 
     @Override public String name() { return "create_test_case"; }
-    @Override public String description() { return "根据需求生成一条测试用例草稿，返回用例名称、类型、优先级、步骤等供用户确认后手动创建"; }
+    @Override public String description() { return "生成一条步骤型测试用例草稿（入用例池，用户确认后入库）。仅用于功能/手工类用例；用户要为某个接口生成接口用例（调试用例，带断言/参数变体、挂在接口下）时禁止使用本工具，应调用 search_apis"; }
     @Override public String paramSchema() { return "{\"caseName\": \"用例名称\", \"caseType\": \"FUNCTION/API/PERFORMANCE/COMPATIBILITY/SMOKE\", \"priority\": \"P0/P1/P2\", \"requirementId\": \"关联需求ID\", \"testSteps\": [{\"step\": \"步骤\", \"expected\": \"预期\"}]}"; }
     @Override public String requiredPermission() { return "qa:testcase:view"; }
 
@@ -36,7 +36,7 @@ public class CreateTestCaseTool implements AgentTool {
             }
             draft.put("testSteps", out);
         }
-        draft.put("notice", "此为草稿，需用户到用例列表手动创建确认后入库");
+        draft.put("notice", "此为草稿，用户可在卡片中编辑后确认入库");
         return draft.toJSONString();
     }
 }

@@ -67,6 +67,10 @@
                   v-else-if="msg.cardType === 'api-candidates'"
                   :data="msg.data" :disabled="msg.done || props.generating"
                   @select="(api) => onCardEvent({ cardType: 'api-candidates', api })" />
+                <CaseDraftConfirmCard
+                  v-else-if="msg.cardType === 'case-draft'"
+                  :data="msg.data" :disabled="msg.done || props.generating"
+                  @saved="(data) => onCardEvent({ cardType: 'case-draft', action: 'saved', data, msg })" />
               </slot>
             </div>
           </template>
@@ -116,6 +120,7 @@ import CasegenEntryCard from './cards/CasegenEntryCard.vue';
 import ReviewEntryCard from './cards/ReviewEntryCard.vue';
 import CaseTypeCard from './CaseTypeCard.vue';
 import ApiCandidateCard from './ApiCandidateCard.vue';
+import CaseDraftConfirmCard from './CaseDraftConfirmCard.vue';
 import ToolStatusNode from './ToolStatusNode.vue';
 
 setCustomComponents('ai-chat', {
