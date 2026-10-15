@@ -74,3 +74,17 @@ storage:
   #   access-key: your-ak
   #   secret-key: your-sk
 #   MinIO 配置示例
+
+mokatest:
+  ai:
+    retry:
+      max: 2
+    connect-timeout: 10000
+    read-timeout: 120000
+  # Qdrant 向量库配置（enabled=false 时知识库索引/语义检索不可用，文档保存会被拒绝）
+  qdrant:
+    enabled: ${QDRANT_ENABLED:true}
+    host: ${QDRANT_HOST:127.0.0.1}  # 不用 localhost：Windows 上优先解析到 ::1，而 Qdrant gRPC 只绑 IPv4
+    port: ${QDRANT_PORT:6334}  # gRPC 端口（QdrantEmbeddingStore 走 gRPC，非 REST 6333）
+    api-key: ${QDRANT_API_KEY:}
+    use-tls: ${QDRANT_USE_TLS:false}  # 本地 Qdrant 默认不开 gRPC TLS；云 Qdrant 才需要 true
