@@ -134,12 +134,22 @@ public class AiCaseController {
     }
 
     /**
-     * 停止生成：取消底层模型调用，保留已生成部分内容
+     * 停止生成：取消底层模型调用，保留已生成部分内容。
+     * 契约：recordNo 必填（query 或 body）；tpId 可选（query 或 body）——
+     * 逐点对话的 buffer key 为 recordNo_tpId，传 tpId 才能精确停止该维度点的生成。
      */
     @SaCheckPermission("qa:testcase:create")
     @PostMapping("/stop")
-    public SaResult stop(@RequestParam String recordNo) {
-        aiCaseService.stop(recordNo);
+    public SaResult stop(@RequestParam(required = false) String recordNo,
+                         @RequestParam(required = false) String tpId,
+                         @RequestBody(required = false) StopRequest body) {
+        if ((recordNo == null || recordNo.isBlank()) && body != null) {
+            recordNo = body.getRecordNo();
+        }
+        if ((tpId == null || tpId.isBlank()) && body != null) {
+            tpId = body.getTpId();
+        }
+        aiCaseService.stop(recordNo, tpId);
         return SaResult.ok("已停止");
     }
 
@@ -336,6 +346,13 @@ public class AiCaseController {
     public static class AdoptRequest {
         private String recordNo;
         private List<CaseDraftDTO> items;
+    }
+
+    @Data
+    public static class StopRequest {
+        private String recordNo;
+        /** 逐点对话精确停止：目标维度点 ID（buffer key = recordNo_tpId） */
+        private String tpId;
     }
 
     // ==================== 需求摘要（Card 1 用） ====================

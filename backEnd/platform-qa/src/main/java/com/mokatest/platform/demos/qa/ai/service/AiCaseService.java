@@ -141,6 +141,10 @@ public class AiCaseService {
             record = createRecord(request, CaseGenPrompts.SCENE_CASE, trimmedNotes);
             request.setRecordNo(record.getRecordNo());
         }
+        // 必须先 create 再 beginRound：create 会取消同 key 旧 buffer，
+        // 其 cancel handle 的 stopRound 作用于"最新 GENERATING 轮次"，
+        // 若先 beginRound，新轮次会被旧流的取消误标 STOPPED
+        final AiStreamBuffer buffer = bufferRegistry.create(record.getRecordNo());
         try {
             recordService.beginRound(record.getRecordNo(), request.getProjectId(), request.getInstruction(), "gen");
         } catch (Exception e) {
@@ -157,7 +161,6 @@ public class AiCaseService {
         }
 
         final AiGenerationRecord finalRecord = record;
-        final AiStreamBuffer buffer = bufferRegistry.create(record.getRecordNo());
         final String recordNo = record.getRecordNo();
         final long[] lastFlush = {System.currentTimeMillis()};
 
@@ -396,6 +399,14 @@ public class AiCaseService {
         log.info("[性能] 阶段2-上下文+消息构建 | 耗时={}ms userMsg字符={} 预估token={}",
                 tContext - tRecord, userMsg.length(), com.mokatest.platform.demos.ai.context.ContextBlocks.estimateTokens(userMsg));
 
+        // #16: 逐点对话时 buffer key 含 tpId，避免不同 TP 的 buffer 串
+        // 注意：必须先 create 再 beginRound——create 会取消同 key 旧 buffer，
+        // 其 cancel handle 的 stopRound 作用于"最新 GENERATING 轮次"，
+        // 若先 beginRound，新轮次会被旧流的取消误标 STOPPED
+        final String bufferKey = (request.getTargetTpId() != null && !request.getTargetTpId().isBlank())
+                ? recordNo + "_" + request.getTargetTpId() : recordNo;
+        final AiStreamBuffer buffer = bufferRegistry.create(bufferKey);
+
         try {
             recordService.beginRound(recordNo, request.getProjectId(), roundInstruction, "gen");
         } catch (Exception e) {
@@ -408,10 +419,6 @@ public class AiCaseService {
 
         final AiGenerationRecord finalRecord = record;
         final String finalRecordNo = recordNo;
-        // #16: 逐点对话时 buffer key 含 tpId，避免不同 TP 的 buffer 串
-        final String bufferKey = (request.getTargetTpId() != null && !request.getTargetTpId().isBlank())
-                ? recordNo + "_" + request.getTargetTpId() : recordNo;
-        final AiStreamBuffer buffer = bufferRegistry.create(bufferKey);
 
         // 测试点驱动模式：不做意图分类，直接走生成
 
@@ -434,6 +441,10 @@ public class AiCaseService {
     private void handleComplete(SseEmitter emitter, SkillRequest request, AiGenerationRecord record,
                                 AiStreamBuffer buffer, String full) {
         String recordNo = record.getRecordNo();
+        // 收尾写入前最后防线：流完成后、finishRound 前收到 stop 时，标 STOPPED 而非 DONE
+        if (handleCancelled(recordNo, request.getProjectId(), buffer, emitter)) {
+            return;
+        }
         try {
             // 阶段通知：结构化解析
             send(emitter, "stage", "{\"stage\":\"parse\"}");
@@ -715,8 +726,13 @@ public class AiCaseService {
             List<CaseDraftDTO> drafts = generateForPoint(tpId, tpTitle, tpCategory, contextText, dedupList, assistant, userSupplement, 5);
             assignDraftIds(drafts);
             int removed = layer2Dedup(drafts, projectId, entityId, recordNo);
-            // BUG#3 修复：用同步方法 addDraftsToPoolSync 替代手动 load-add-save，防并发竞态
-            addDraftsToPoolSync(recordNo, projectId, drafts, allTestPoints);
+            // "cancel 检查 + 写草稿池"按 recordNo 加锁原子化：
+            // stop 的收尾写库与这里的落库互斥，已取消绝不写草稿
+            synchronized (recordLock(recordNo)) {
+                if (buffer.isCancelRequested()) { tp.put("status", "FAILED"); tp.put("failReason", "用户已停止"); return; }
+                // BUG#3 修复：用同步方法 addDraftsToPoolSync 替代手动 load-add-save，防并发竞态
+                addDraftsToPoolSync(recordNo, projectId, drafts, allTestPoints);
+            }
             List<String> draftIds = new java.util.ArrayList<>();
             for (CaseDraftDTO d : drafts) draftIds.add(d.getDraftId());
             tp.put("status", "DONE");
@@ -732,7 +748,11 @@ public class AiCaseService {
                 List<CaseDraftDTO> drafts = generateForPoint(tpId, tpTitle, tpCategory, contextText, dedupList, assistant, userSupplement, 5);
                 assignDraftIds(drafts);
                 layer2Dedup(drafts, projectId, entityId, recordNo);
-                addDraftsToPoolSync(recordNo, projectId, drafts, allTestPoints);
+                // 重试路径同样："cancel 检查 + 写草稿池"加锁原子化
+                synchronized (recordLock(recordNo)) {
+                    if (buffer.isCancelRequested()) { tp.put("status", "FAILED"); tp.put("failReason", "用户已停止"); return; }
+                    addDraftsToPoolSync(recordNo, projectId, drafts, allTestPoints);
+                }
                 List<String> draftIds = new java.util.ArrayList<>();
                 for (CaseDraftDTO d : drafts) draftIds.add(d.getDraftId());
                 tp.put("status", "DONE");
@@ -789,6 +809,10 @@ public class AiCaseService {
         }
 
         // ===== 生成路径 =====
+        // 同步路径全程无流式回调，cancel 检查必须覆盖每个写入点之前
+        if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+            return;
+        }
         boolean isRegenerate = instruction != null && instruction.contains("重新生成");
         int pointDraftCount = getPointDraftCount(recordNo, projectId, tpId);
         String userSupplement = instruction;
@@ -803,10 +827,37 @@ public class AiCaseService {
         java.util.concurrent.ScheduledFuture<?> hb = HEARTBEAT.scheduleAtFixedRate(() -> {
             try { emitter.send(SseEmitter.event().comment("hb")); } catch (Exception ignored) {}
         }, 5, 5, java.util.concurrent.TimeUnit.SECONDS);
+        // 绑定"尽力中断"取消句柄：同步 ChatModel 底层是 okhttp 阻塞式 execute()，
+        // 线程 interrupt 无法断开 socket 读，只能尽力唤醒；服务端生成仍会继续（token 照常计费）。
+        // 真正保证"取消后不写 DONE/草稿"的是下方各写入点前的 isCancelRequested 检查。
+        final Thread workerThread = Thread.currentThread();
+        buffer.bindCancel(() -> {
+            workerThread.interrupt();
+            hb.cancel(false);
+            // 与工作线程的"检查+finishRound"按 recordNo 互斥
+            synchronized (recordLock(recordNo)) {
+                try {
+                    recordService.stopRound(recordNo, projectId, null);
+                    recordService.updateStage(recordNo, projectId, "STOPPED", null);
+                } catch (Exception e) {
+                    log.warn("[停止] 逐点生成取消收尾写库失败 | recordNo={} err={}", recordNo, e.getMessage());
+                }
+            }
+            buffer.markStopped();
+            send(emitter, "stopped", "已停止");
+            safeComplete(emitter);
+        });
         try {
             ProjectContextHolder.setProjectId(projectId);
             int count = CaseGenPrompts.resolveCount(instruction, null, 5);
+            if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+                return;
+            }
             List<CaseDraftDTO> drafts = generateForPoint(tpId, tpTitle, tpCategory, contextText, dedupList, assistant, userSupplement, count);
+            // LLM 同步调用返回后立即检查：已取消则不写草稿池、不 finishRound
+            if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+                return;
+            }
             assignDraftIds(drafts);
             layer2Dedup(drafts, projectId, request.getEntityId(), recordNo);
             com.alibaba.fastjson.JSONArray poolArr = loadPoolArr(recordNo, projectId);
@@ -830,8 +881,15 @@ public class AiCaseService {
                 cleanedPool = poolArr;
             }
             for (CaseDraftDTO d : drafts) cleanedPool.add(JSON.toJSON(d));
-            recordService.finishRound(recordNo, projectId,
-                    JSON.toJSONString(drafts), null, null, null);
+            // "cancel 检查 + finishRound"按 recordNo 加锁原子化，与 stop 收尾互斥：
+            // 已取消的轮次只能标 STOPPED，绝不写 DONE、绝不写草稿
+            synchronized (recordLock(recordNo)) {
+                if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+                    return;
+                }
+                recordService.finishRound(recordNo, projectId,
+                        JSON.toJSONString(drafts), null, null, null);
+            }
             knowledgeService.settleCitations(request.getCitations());
             Map<String, Object> audit = coverageAuditor.auditSinglePoint(recordNo, projectId, request.getEntityId(), tpId);
             List<Map<String, Object>> testPoints = loadTestPointsFromPayload(record);
@@ -873,6 +931,11 @@ public class AiCaseService {
             send(emitter, "result", resultJson);
             safeComplete(emitter);
         } catch (Exception e) {
+            if (buffer.isCancelRequested()) {
+                // 取消期间的异常（中断/连接关闭等）不得把 STOPPED 轮次覆盖为 FAILED
+                handleCancelled(recordNo, projectId, buffer, emitter);
+                return;
+            }
             log.error("[V2] 单维度重生失败: {}", e.getMessage());
             recordService.failRound(recordNo, projectId, e.getMessage(), null);
             buffer.fail(e.getMessage());
@@ -1005,33 +1068,44 @@ public class AiCaseService {
                                      AiGenerationRecord record, List<Map<String, Object>> testPoints) {
         String recordNo = record.getRecordNo();
         Integer projectId = request.getProjectId();
+        // 收尾前检查 cancel：已取消的轮次标 STOPPED，绝不 finishRound(DONE)/finalizeV2
+        if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+            return;
+        }
         com.alibaba.fastjson.JSONArray poolArr = loadPoolArr(recordNo, projectId);
         boolean exhausted = testPoints.stream().anyMatch(t -> "FAILED".equals(String.valueOf(t.get("status"))));
         try {
             // 落库轮次 — BUG#9 修复：只记录本轮新增草稿（DONE 点的 caseDraftIds），不用整个 pool
-            List<CaseDraftDTO> newDrafts = new java.util.ArrayList<>();
-            for (Map<String, Object> tp : testPoints) {
-                if ("DONE".equals(String.valueOf(tp.get("status")))) {
-                    Object cdIds = tp.get("caseDraftIds");
-                    if (cdIds instanceof List) {
-                        for (Object idObj : (List<?>) cdIds) {
-                            String draftId = String.valueOf(idObj);
-                            // 从 pool 中按 draftId 查找
-                            for (int i = 0; i < poolArr.size(); i++) {
-                                com.alibaba.fastjson.JSONObject d = poolArr.getJSONObject(i);
-                                if (d != null && draftId.equals(d.getString("draftId"))) {
-                                    try {
-                                        newDrafts.add(JSON.parseObject(d.toJSONString(), CaseDraftDTO.class));
-                                    } catch (Exception ignored) {}
-                                    break;
+            // "cancel 检查 + finishRound"按 recordNo 加锁原子化，与 stop 收尾互斥：
+            // 已取消的轮次只能标 STOPPED，绝不写 DONE、绝不写草稿
+            synchronized (recordLock(recordNo)) {
+                if (handleCancelled(recordNo, projectId, buffer, emitter)) {
+                    return;
+                }
+                List<CaseDraftDTO> newDrafts = new java.util.ArrayList<>();
+                for (Map<String, Object> tp : testPoints) {
+                    if ("DONE".equals(String.valueOf(tp.get("status")))) {
+                        Object cdIds = tp.get("caseDraftIds");
+                        if (cdIds instanceof List) {
+                            for (Object idObj : (List<?>) cdIds) {
+                                String draftId = String.valueOf(idObj);
+                                // 从 pool 中按 draftId 查找
+                                for (int i = 0; i < poolArr.size(); i++) {
+                                    com.alibaba.fastjson.JSONObject d = poolArr.getJSONObject(i);
+                                    if (d != null && draftId.equals(d.getString("draftId"))) {
+                                        try {
+                                            newDrafts.add(JSON.parseObject(d.toJSONString(), CaseDraftDTO.class));
+                                        } catch (Exception ignored) {}
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                recordService.finishRound(recordNo, projectId,
+                        JSON.toJSONString(newDrafts), null, null, JSON.toJSONString(request.getCitations()));
             }
-            recordService.finishRound(recordNo, projectId,
-                    JSON.toJSONString(newDrafts), null, null, JSON.toJSONString(request.getCitations()));
             knowledgeService.settleCitations(request.getCitations());
             // 自动审查
             send(emitter, "stage", "{\"stage\":\"audit\"}");
@@ -1460,6 +1534,25 @@ public class AiCaseService {
         // 心跳：流式 + extractCases 提取期间保持 SSE 连接活跃
         java.util.concurrent.ScheduledFuture<?> hb = HEARTBEAT.scheduleAtFixedRate(
                 () -> send(emitter, "ping", "{}"), 15, 15, java.util.concurrent.TimeUnit.SECONDS);
+        // 绑定"尽力中断"取消句柄：langchain4j 1.19 的 TokenStream/AiServices 不暴露底层
+        // okhttp Call，框架层拿不到可真正断开 HTTP 的句柄，服务端生成仍会继续（token 照常计费）。
+        // 这里能做的是立即收尾：停心跳、轮次标 STOPPED、通知前端并关闭 SSE，
+        // 用户无需等模型跑完才看到"已停止"；后续 chunk 由 onPartialResponse 的 cancel 检查丢弃。
+        buffer.bindCancel(() -> {
+            hb.cancel(false);
+            // 与工作线程的"检查+写入"按 recordNo 互斥，防止 stopRound 之后又被 finishRound 写 DONE
+            synchronized (recordLock(recordNo)) {
+                try {
+                    recordService.stopRound(recordNo, projectId, buffer.text());
+                    recordService.updateStage(recordNo, projectId, "STOPPED", null);
+                } catch (Exception e) {
+                    log.warn("[停止] 流式取消收尾写库失败 | recordNo={} err={}", recordNo, e.getMessage());
+                }
+            }
+            buffer.markStopped();
+            send(emitter, "stopped", "已停止");
+            safeComplete(emitter);
+        });
         ts.onPartialThinking(thinking -> {
                     if (thinking != null && thinking.text() != null) {
                         thinkingChars[0] += thinking.text().length();
@@ -1535,7 +1628,7 @@ public class AiCaseService {
                                 usage != null ? usage.outputTokenCount() : -1);
                     }
                     if (buffer.isCancelRequested()) {
-                        // 解析半成品中的已闭合用例，存入轮次 drafts（供续跑使用）
+                        // 解析半成品中的已闭合用例，存入轮次 drafts（供续跑使用，幂等）
                         CaseStreamParser partialParser = new CaseStreamParser();
                         partialParser.feed(full);
                         DraftGenResult<CaseDraftDTO> partial = partialParser.finish();
@@ -1543,11 +1636,8 @@ public class AiCaseService {
                             assignDraftIds(partial.getDrafts());
                             recordService.updateRoundDrafts(recordNo, projectId, JSON.toJSONString(partial.getDrafts()));
                         }
-                        recordService.stopRound(recordNo, projectId, full);
-                        recordService.updateStage(recordNo, projectId, "DONE", null);
-                        buffer.markStopped();
-                        send(emitter, "stopped", "已停止");
-                        emitter.complete();
+                        // 统一取消收尾：轮次标 STOPPED（cancel handle 已收尾时幂等跳过），绝不写 DONE
+                        handleCancelled(recordNo, projectId, buffer, emitter);
                     } else {
                         onComplete.accept(full);
                     }
@@ -1558,7 +1648,7 @@ public class AiCaseService {
                     String roundText = allText != null && allText.length() > baseOffset
                             ? allText.substring(baseOffset) : "";
                     if (buffer.isCancelRequested()) {
-                        // 解析半成品中的已闭合用例，存入轮次 drafts（供续跑使用）
+                        // 解析半成品中的已闭合用例，存入轮次 drafts（供续跑使用，幂等）
                         CaseStreamParser partialParser = new CaseStreamParser();
                         partialParser.feed(roundText);
                         DraftGenResult<CaseDraftDTO> partial = partialParser.finish();
@@ -1566,10 +1656,8 @@ public class AiCaseService {
                             assignDraftIds(partial.getDrafts());
                             recordService.updateRoundDrafts(recordNo, projectId, JSON.toJSONString(partial.getDrafts()));
                         }
-                        recordService.stopRound(recordNo, projectId, roundText);
-                        recordService.updateStage(recordNo, projectId, "DONE", null);
-                        buffer.markStopped();
-                        send(emitter, "stopped", "已停止");
+                        // 统一取消收尾（cancel handle 已收尾时幂等跳过），绝不写 DONE
+                        handleCancelled(recordNo, projectId, buffer, emitter);
                     } else {
                         recordService.failRound(recordNo, projectId, error.getMessage(), roundText);
                         recordService.updateStage(recordNo, projectId, "FAILED", null);
@@ -1680,23 +1768,60 @@ public class AiCaseService {
         return sb.length() > 480 ? sb.substring(0, 480) : sb.toString();
     }
 
-    public void stop(String recordNo) {
+    public void stop(String recordNo, String tpId) {
         Integer projectId = ProjectContextHolder.getProjectId();
         AiGenerationRecord record = recordService.requireValid(recordNo, projectId);
-        // #16: 尝试按 recordNo 查找 buffer（批量路径），找不到再试 recordNo_tpId（逐点路径需前端传 tpId）
-        AiStreamBuffer buffer = bufferRegistry.get(record.getRecordNo());
+        // 逐点对话 buffer key 为 recordNo_tpId（见 casesStream bufferKey），tpId 非空时先精确匹配
+        AiStreamBuffer buffer = null;
+        if (tpId != null && !tpId.isBlank()) {
+            buffer = bufferRegistry.get(record.getRecordNo() + "_" + tpId);
+        }
         if (buffer == null) {
-            // 尝试所有以 recordNo_ 开头的 key（逐点路径）
-            for (String key : new String[]{recordNo}) {
-                buffer = bufferRegistry.get(key);
-                if (buffer != null) break;
-            }
+            buffer = bufferRegistry.get(record.getRecordNo());
         }
         if (buffer != null && buffer.getState() == AiStreamBuffer.State.STREAMING) {
             buffer.requestCancel();
         } else {
+            // 兜底：buffer 不存在或已结束，直接把 DB 轮次标 STOPPED（无 GENERATING 轮次时为 no-op）
             recordService.stopRound(record.getRecordNo(), projectId, null);
         }
+    }
+
+    /**
+     * 已取消时的统一收尾：轮次标 STOPPED，绝不写 DONE、绝不写草稿。
+     * cancel handle 已提前收尾（state=STOPPED）时只保证 emitter 关闭，不重复写库。
+     *
+     * @return true 表示已取消，调用方应立即 return，不得再执行任何落库/收尾写入
+     */
+    private boolean handleCancelled(String recordNo, Integer projectId, AiStreamBuffer buffer, SseEmitter emitter) {
+        if (!buffer.isCancelRequested()) {
+            return false;
+        }
+        // 与 cancel handle / 写草稿池共用按 recordNo 的锁：
+        // stop 的收尾写库与工作线程的"检查+finishRound"互斥，杜绝 stopRound 后又冒出 DONE 轮次
+        synchronized (recordLock(recordNo)) {
+            if (buffer.getState() != AiStreamBuffer.State.STOPPED) {
+                try {
+                    recordService.stopRound(recordNo, projectId, null);
+                    // stage 标 STOPPED 而非 DONE：取消的会话不是"完成"，
+                    // 前端入口卡片对未知 stage 按"已结束、可查看进度"处理
+                    recordService.updateStage(recordNo, projectId, "STOPPED", null);
+                } catch (Exception e) {
+                    log.warn("[停止] 取消收尾写库失败 | recordNo={} err={}", recordNo, e.getMessage());
+                }
+                buffer.markStopped();
+                send(emitter, "stopped", "已停止");
+            }
+        }
+        // cancel handle 的尽力中断可能给本线程留了 interrupt 标记，清掉以免污染线程池复用
+        Thread.interrupted();
+        safeComplete(emitter);
+        return true;
+    }
+
+    /** 按 recordNo 的互斥锁（与 POOL_LOCKS 同实例）：串行化 cancel 收尾与草稿池/轮次写入 */
+    private Object recordLock(String recordNo) {
+        return POOL_LOCKS.computeIfAbsent(recordNo, k -> new Object());
     }
 
     public void regenerateStream(SkillRequest baseRequest, SseEmitter emitter) {
