@@ -108,7 +108,7 @@ function navigate(mode: string) {
   if (mode === 'generate') {
     router.push({ name: 'AiCaseGen', query: { reqId: reqId.value, from: 'AiWorkbench' } });
   } else {
-    router.push({ name: 'AiCaseGen', query: { recordNo: recordNo.value, from: 'AiWorkbench' } });
+    router.push({ name: 'AiCaseGen', query: { reqId: reqId.value, recordNo: recordNo.value, from: 'AiWorkbench' } });
   }
 }
 </script>

@@ -1,6 +1,17 @@
 <template>
   <div class="point-chat">
-    <div ref="bodyRef" class="pc-body" @scroll="onScroll">
+    <div v-if="collapsible" class="pc-log-bar" :class="{ collapsed }" @click="$emit('toggle-collapse')">
+      <template v-if="collapsed">
+        <IconLoading v-if="generating" class="pc-ticker-spin" />
+        <span class="pc-ticker-text">{{ ticker || lastSummary }}</span>
+        <span class="pc-ticker-toggle">{{ $t('qa.ai.common.expand') }}</span>
+      </template>
+      <template v-else>
+        <span class="pc-log-label">{{ $t('qa.ai.caseGen.processLog') }}</span>
+        <span class="pc-ticker-toggle">{{ $t('qa.ai.common.collapse') }}</span>
+      </template>
+    </div>
+    <div v-show="!collapsed" ref="bodyRef" class="pc-body" @scroll="onScroll">
       <div class="pc-inner">
         <div v-for="(msg, idx) in messages" :key="msg._uid ?? idx" class="pc-msg" :class="msg.role">
           <template v-if="msg.role === 'user'">
@@ -50,17 +61,25 @@ export default { name: 'PointChat' };
 import { ref, nextTick, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Message } from '@arco-design/web-vue';
+import { IconLoading } from '@arco-design/web-vue/es/icon';
 import MarkdownRender from 'markstream-vue';
 import 'markstream-vue/index.css';
 
 const { t } = useI18n();
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   messages: any[];
   generating: boolean;
   placeholder?: string;
-}>();
-const emit = defineEmits(['send', 'stop']);
+  collapsible?: boolean;
+  collapsed?: boolean;
+  ticker?: string;
+}>(), {
+  collapsible: false,
+  collapsed: false,
+  ticker: '',
+});
+const emit = defineEmits(['send', 'stop', 'toggle-collapse']);
 
 const inputModel = ref('');
 const bodyRef = ref<HTMLElement>();
@@ -69,6 +88,15 @@ const isAtBottom = ref(true);
 const hasActiveAiMsg = computed(() => {
   const last = props.messages[props.messages.length - 1];
   return last && ['assistant'].includes(last.role);
+});
+
+// 折叠态跑马灯无最新事件时，退化为最近一条 assistant 消息摘要
+const lastSummary = computed(() => {
+  for (let i = props.messages.length - 1; i >= 0; i -= 1) {
+    const m = props.messages[i];
+    if (m.role === 'assistant' && m.content) return m.content;
+  }
+  return '';
 });
 
 function onScroll() {
@@ -98,6 +126,12 @@ defineExpose({ scrollToBottom, forceScrollToBottom });
 
 <style scoped>
 .point-chat { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.pc-log-bar { display: flex; align-items: center; gap: 6px; padding: 4px 12px; flex-shrink: 0; cursor: pointer; border-bottom: 1px solid var(--color-border-2); font-size: 12px; color: var(--color-text-3); user-select: none; }
+.pc-log-bar:hover { background: var(--color-fill-1); }
+.pc-ticker-spin { color: rgb(var(--primary-6)); flex-shrink: 0; }
+.pc-ticker-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-log-label { flex: 1; font-weight: 500; }
+.pc-ticker-toggle { flex-shrink: 0; color: rgb(var(--primary-6)); }
 .pc-body { flex: 1; overflow-y: auto; padding: 12px; }
 .pc-inner { max-width: 100%; margin: 0 auto; }
 .pc-msg { margin-bottom: 8px; display: flex; gap: 6px; }

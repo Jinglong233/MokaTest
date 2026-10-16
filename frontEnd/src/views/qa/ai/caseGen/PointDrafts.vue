@@ -5,7 +5,10 @@
       <span class="pd-summary">{{ $t('qa.ai.caseGen.pendingCount', { count: drafts.length }) }}</span>
     </div>
     <div v-if="streamingDrafts.length" class="pd-streaming">
-      <CaseDraftCard v-for="(d, i) in streamingDrafts" :key="'s'+i" :draft="d" mode="streaming" />
+      <div v-for="(d, i) in streamingDrafts" :key="'s'+i" class="stream-item">
+        <div v-if="streamDimTitle(d)" class="stream-dim">{{ $t('qa.ai.caseGen.fromDimension', { title: streamDimTitle(d) }) }}</div>
+        <CaseDraftCard :draft="d" mode="streaming" />
+      </div>
     </div>
     <a-scrollbar outer-style="flex: 1; min-height: 0; overflow: hidden" style="height: 100%; overflow: auto;">
       <div v-if="drafts.length" class="pd-list">
@@ -57,12 +60,21 @@ const props = withDefaults(defineProps<{
   streamingDrafts: any[];
   tpTitle?: string;
   adopting?: boolean;
+  dimensions?: any[];
 }>(), {
   adoptedDrafts: () => [] as any[],
+  dimensions: () => [] as any[],
 });
 defineEmits(['adopt-single', 'delete', 'edited']);
 
 const adoptedCollapsed = ref(true);
+
+// streaming 草稿标注来源维度名（coverPoints[0] → dimensions 查 title）
+function streamDimTitle(draft: any): string {
+  const tpId = (draft.coverPoints || [])[0];
+  if (!tpId) return '';
+  return props.dimensions.find((d: any) => d.id === tpId)?.title || '';
+}
 </script>
 
 <style scoped>
@@ -71,6 +83,9 @@ const adoptedCollapsed = ref(true);
 .pd-title { font-size: 13px; font-weight: 600; }
 .pd-summary { font-size: 11px; color: var(--color-text-3); }
 .pd-streaming { padding: 4px 12px; flex-shrink: 0; max-height: 30%; overflow-y: auto; }
+.stream-item { animation: stream-in 0.35s ease; margin-bottom: 4px; }
+.stream-dim { font-size: 10px; color: rgb(var(--primary-6)); margin: 2px 0; }
+@keyframes stream-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .pd-list { padding: 4px 12px; display: flex; flex-direction: column; gap: 8px; }
 .pd-item { position: relative; }
 .round-badge { position: absolute; top: -2px; right: -2px; z-index: 1; font-size: 10px; font-weight: 600; color: rgb(var(--primary-6)); background: rgb(var(--primary-1)); border: 1px solid rgb(var(--primary-3)); border-radius: 8px; padding: 0 6px; line-height: 16px; }

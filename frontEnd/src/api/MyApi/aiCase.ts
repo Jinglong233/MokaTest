@@ -92,9 +92,9 @@ export function listAiCaseRecords(requirementId: number) {
     return axios.get(`${BASE}/records`, {params: {requirementId}});
 }
 
-/** 停止生成（保留部分内容） */
-export function stopAiCaseStream(recordNo: string) {
-    return axios.post(`${BASE}/stop`, null, {params: {recordNo}});
+/** 停止生成（保留部分内容）；tpId 可选：逐点对话路径后端缓冲 key 为 recordNo_tpId */
+export function stopAiCaseStream(recordNo: string, tpId?: string) {
+    return axios.post(`${BASE}/stop`, null, {params: tpId ? {recordNo, tpId} : {recordNo}});
 }
 
 /** 重新生成（删最后一轮，同指令重跑，SSE） */
@@ -314,6 +314,9 @@ async function streamGet(url: string, callbacks: {
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
         let currentEvent = '';
+        // 终态兜底：连接正常结束但没收到 result/error/stopped/expired 时必须报错，
+        // 否则 emitter 超时静默断流会让页面永远停在"生成中"
+        let terminalReceived = false;
         for (; ;) {
             const {done, value} = await reader.read();
             if (done) break;
@@ -339,12 +342,13 @@ async function streamGet(url: string, callbacks: {
                 } else if (eventName === 'delta') {
                     try { callbacks.onDelta?.(JSON.parse(data)); } catch { callbacks.onDelta?.(data); }
                 } else if (eventName === 'result') {
+                    terminalReceived = true;
                     try {
                         callbacks.onResult?.(JSON.parse(data));
                     } catch { callbacks.onError?.('结果解析失败'); }
-                } else if (eventName === 'error') callbacks.onError?.(data || '生成失败');
-                else if (eventName === 'stopped') callbacks.onError?.('__STOPPED__');
-                else if (eventName === 'expired') callbacks.onExpired?.();
+                } else if (eventName === 'error') { terminalReceived = true; callbacks.onError?.(data || '生成失败'); }
+                else if (eventName === 'stopped') { terminalReceived = true; callbacks.onError?.('__STOPPED__'); }
+                else if (eventName === 'expired') { terminalReceived = true; callbacks.onExpired?.(); }
                 else if (eventName === 'stage') {
                     try { callbacks.onStage?.(JSON.parse(data).stage); } catch { /* ignore */ }
                 } else if (eventName === 'dimensions') {
@@ -361,6 +365,9 @@ async function streamGet(url: string, callbacks: {
                     try { callbacks.onAudit?.(JSON.parse(data)); } catch { /* ignore */ }
                 }
             }
+        }
+        if (!terminalReceived) {
+            callbacks.onError?.('连接已结束但未收到完成事件，可能已超时，请重试');
         }
     } catch (e: any) {
         if (e?.name !== 'AbortError') callbacks.onError?.(e?.message || '网络异常');

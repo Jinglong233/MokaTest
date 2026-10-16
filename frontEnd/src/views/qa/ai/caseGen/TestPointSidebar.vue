@@ -5,12 +5,13 @@
       <span v-if="dimensions.length" class="tp-count">{{ coveredCount }}/{{ dimensions.length }}</span>
     </div>
     <a-scrollbar outer-style="flex: 1; min-height: 0; overflow: hidden" style="height: 100%; overflow: auto;">
-      <div class="tp-list">
+      <div ref="listRef" class="tp-list">
         <div
           v-for="dim in dimensions"
           :key="dim.id"
           class="tp-item"
-          :class="{ active: dim.id === activeTpId }"
+          :class="{ active: dim.id === activeTpId, generating: dim.status === 'GENERATING' }"
+          :data-dim-id="dim.id"
           @click="$emit('select', dim)"
         >
           <span class="tp-icon">
@@ -21,9 +22,19 @@
             <IconMinus v-else style="color: var(--color-text-4)" />
           </span>
           <div class="tp-info">
-            <div class="tp-name">{{ dim.title }}</div>
+            <div class="tp-name">
+              {{ dim.title }}
+              <span v-if="dim.status === 'COVERED' && draftCounts?.[dim.id]" class="tp-dim-count">· {{ $t('qa.ai.common.items', { count: draftCounts[dim.id] }) }}</span>
+            </div>
             <div v-if="dim.category" class="tp-cat">{{ categoryText(dim.category) }}</div>
           </div>
+          <a-button
+            v-if="dim.status === 'FAILED'"
+            type="text"
+            size="mini"
+            class="tp-retry"
+            @click.stop="$emit('retry', dim)"
+          >{{ $t('qa.ai.common.retry') }}</a-button>
         </div>
       </div>
     </a-scrollbar>
@@ -35,19 +46,33 @@ export default { name: 'TestPointSidebar' };
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { IconCheckCircle, IconExclamationCircle, IconCloseCircle, IconLoading, IconMinus, IconPlus } from '@arco-design/web-vue/es/icon';
+import { IconCheckCircle, IconExclamationCircle, IconCloseCircle, IconLoading, IconMinus } from '@arco-design/web-vue/es/icon';
 
 const { t } = useI18n();
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   dimensions: any[];
   activeTpId?: string;
-}>();
-defineEmits(['select']);
+  draftCounts?: Record<string, number>;
+}>(), {
+  draftCounts: () => ({}),
+});
+defineEmits(['select', 'retry']);
 
 const coveredCount = computed(() => props.dimensions.filter((d: any) => d.status === 'COVERED').length);
+
+// 生成中的维度自动滚动跟随
+const listRef = ref<HTMLElement>();
+const generatingId = computed(() => props.dimensions.find((d: any) => d.status === 'GENERATING')?.id || '');
+watch(generatingId, (id) => {
+  if (!id) return;
+  nextTick(() => {
+    const el = listRef.value?.querySelector(`[data-dim-id="${CSS.escape(id)}"]`);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+});
 
 const CATEGORY_KEY_MAP: Record<string, string> = {
   FUNCTION: 'qa.ai.caseGen.category.FUNCTION', BOUNDARY: 'qa.ai.caseGen.category.BOUNDARY', EXCEPTION: 'qa.ai.caseGen.category.EXCEPTION', PERMISSION: 'qa.ai.caseGen.category.PERMISSION', SECURITY: 'qa.ai.caseGen.category.SECURITY',
@@ -64,9 +89,13 @@ function categoryText(c: string) { return CATEGORY_KEY_MAP[c] ? t(CATEGORY_KEY_M
 .tp-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer; margin-bottom: 2px; }
 .tp-item:hover { background: var(--color-fill-2); }
 .tp-item.active { background: rgb(var(--primary-1)); border: 1px solid rgb(var(--primary-3)); }
+.tp-item.generating { background: rgb(var(--primary-1)); animation: tp-pulse 1.6s ease-in-out infinite; }
+@keyframes tp-pulse { 0%, 100% { box-shadow: inset 0 0 0 1px rgb(var(--primary-3)); } 50% { box-shadow: inset 0 0 0 1px rgb(var(--primary-5)); background: rgb(var(--primary-2)); } }
 .tp-icon { flex-shrink: 0; }
 .tp-info { flex: 1; min-width: 0; }
 .tp-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-dim-count { color: rgb(var(--success-6)); font-size: 11px; }
 .tp-cat { font-size: 10px; color: var(--color-text-4); }
+.tp-retry { flex-shrink: 0; font-size: 11px; }
 .tp-add { padding: 8px 12px; border-top: 1px solid var(--color-border-2); flex-shrink: 0; }
 </style>
