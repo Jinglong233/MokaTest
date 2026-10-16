@@ -161,6 +161,12 @@ MokaTest/
 <p align="center">
   <img src="docs/images/official-account-qrcode.png" alt="微信二维码" width="200" />
 </p>
+
+QQ群
+<p align="center">
+  <img src="docs/images/QQ.png" alt="微信二维码" width="200" />
+</p>
+
 ---
 
 ## License
