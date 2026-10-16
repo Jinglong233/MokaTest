@@ -29,7 +29,6 @@ public interface CasePointQaAssistant {
             """;
 
     @SystemMessage(DEFAULT_SYSTEM_PROMPT)
-    @UserMessage("{{message}}")
     TokenStream chat(@MemoryId @V("memoryId") String memoryId,
                      @UserMessage @V("message") String message);
 }
