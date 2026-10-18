@@ -58,6 +58,9 @@ public class ApiStepExecutor {
     @Autowired
     private SqlRequestExecutor sqlRequestExecutor;
 
+    @Autowired
+    private GlobalVarSupport globalVarSupport;
+
     /**
      * 执行单个 API 请求。
      *
@@ -101,6 +104,10 @@ public class ApiStepExecutor {
                 // SQL 步骤此时只能靠步骤级内联 dbConfig，否则报「未找到数据库连接配置」
                 apiRequest.getEnvInfo().setEnvId(null);
             }
+
+            // 1.5 合并全局参数（变量/Header/Cookie/断言）：优先级最低，插到环境与共享变量池之后处理，
+            // 同名 Header/Cookie 按名去重保留环境或步骤级的值
+            globalVarSupport.mergeIntoRequest(apiRequest);
 
             // 2. 注入共享变量 → envInfo.envVariables（执行器内部据此替换 ${var}/{{var}}）
             injectVariables(apiRequest, variables);

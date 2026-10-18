@@ -3,6 +3,7 @@ package com.mokatest.platform.demos.api.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mokatest.platform.demos.api.domain.Environment;
 import com.mokatest.platform.demos.api.domain.GlobalVar;
+import com.mokatest.platform.demos.api.domain.apiEnum.GlobalRequestVarType;
 import com.mokatest.platform.demos.api.domain.requestModel.RequestParameter;
 import com.mokatest.platform.demos.api.mapper.EnvironmentMapper;
 import com.mokatest.platform.demos.api.mapper.GlobalVarMapper;
@@ -79,7 +80,9 @@ public class SceneEnvironmentSupport {
                             .eq("disabled", false)
             );
             for (GlobalVar gv : globalVars) {
-                if (gv.getName() != null) {
+                // 只取 VARIABLE 类型：HEADER/COOKIE/ASSERT 类全局参数由 GlobalVarSupport 合并到请求上，
+                // 灌进变量池只会制造 ${Content-Type} 这类伪变量
+                if (gv.getType() == GlobalRequestVarType.VARIABLE && gv.getName() != null) {
                     variables.put(gv.getName(), gv.getValue());
                 }
             }

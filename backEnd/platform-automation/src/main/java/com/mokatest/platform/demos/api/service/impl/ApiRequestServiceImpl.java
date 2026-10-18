@@ -7,11 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mokatest.platform.demos.api.domain.ApiRequest;
-import com.mokatest.platform.demos.api.domain.GlobalVar;
+import com.mokatest.platform.demos.api.domain.Environment;
 import com.mokatest.platform.demos.api.domain.apiEnum.ApiNodeType;
 import com.mokatest.platform.demos.api.domain.apiEnum.ApiType;
 import com.mokatest.platform.demos.api.domain.apiEnum.BodyMode;
-import com.mokatest.platform.demos.api.domain.apiEnum.GlobalRequestVarType;
 import com.mokatest.platform.demos.api.domain.apiEnum.ParameterType;
 import com.mokatest.platform.demos.api.domain.apiEnum.RequestMethod;
 import com.mokatest.platform.demos.api.domain.apiEnum.RuleSource;
@@ -36,8 +35,9 @@ import com.mokatest.platform.demos.api.http.model.TestHttpResponse;
 import com.mokatest.platform.demos.api.http.validation.SchemaValidator;
 import com.mokatest.platform.demos.result.AssertResult;
 import com.mokatest.platform.demos.api.mapper.ApiRequestMapper;
-import com.mokatest.platform.demos.api.mapper.GlobalVarMapper;
+import com.mokatest.platform.demos.api.mapper.EnvironmentMapper;
 import com.mokatest.platform.demos.api.service.ApiRequestService;
+import com.mokatest.platform.demos.api.service.GlobalVarSupport;
 import com.mokatest.platform.demos.listener.projectListener.Enum.UpdateDataType;
 import com.mokatest.platform.demos.listener.projectListener.ProjectUpdateEvent;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -143,7 +143,10 @@ public class ApiRequestServiceImpl extends ServiceImpl<ApiRequestMapper, ApiRequ
     private ApiRequestMapper apiRequestMapper;
 
     @Resource
-    private GlobalVarMapper globalVarMapper;
+    private GlobalVarSupport globalVarSupport;
+
+    @Resource
+    private EnvironmentMapper environmentMapper;
 
     @Resource
     private ApplicationEventPublisher eventPublisher;
@@ -368,8 +371,11 @@ public class ApiRequestServiceImpl extends ServiceImpl<ApiRequestMapper, ApiRequ
         ApiRequest apiRequest = apiRequestMapper.selectById(id);
         if (apiRequest == null) return SaResult.error("接口不存在");
 
-        // 合并全局变量到请求中
-        mergeGlobalVars(apiRequest);
+        // 先合并环境（变量 + Header/Cookie），再合并全局参数：
+        // 全局优先级最低，环境变量同名时覆盖全局
+        mergeEnvironmentConfig(apiRequest);
+        // 合并全局参数（变量 / Header / Cookie / 断言）到请求中
+        globalVarSupport.mergeIntoRequest(apiRequest);
 
         // 根据 apiType 选择执行器：SQL 走 SqlRequestExecutor，其他走 HTTP 工厂
         RequestExecutor executor;
@@ -517,8 +523,10 @@ public class ApiRequestServiceImpl extends ServiceImpl<ApiRequestMapper, ApiRequ
             return SaResult.error("缺少API配置参数");
         }
 
-        // 合并全局变量到请求中
-        mergeGlobalVars(apiRequest);
+        // 合并环境配置（变量 + Header/Cookie，须先于全局参数，保证环境变量优先）
+        mergeEnvironmentConfig(apiRequest);
+        // 合并全局参数（变量 / Header / Cookie / 断言）到请求中
+        globalVarSupport.mergeIntoRequest(apiRequest);
 
         // 根据 apiType 选择执行器：SQL 走 SqlRequestExecutor，其他走 HTTP 工厂
         RequestExecutor executor;
@@ -650,130 +658,69 @@ public class ApiRequestServiceImpl extends ServiceImpl<ApiRequestMapper, ApiRequ
     }
 
     /**
-     * 合并全局变量到请求中
+     * 合并环境配置到请求中
      *
-     * 功能说明：在请求执行前，读取当前团队下所有启用的全局变量，
-     * 按类型合并到 ApiRequest 的 envInfo 中，供后续变量替换和请求发送使用
+     * 功能说明：单接口调试（debug / debugByConfig）链路只携带 envInfo.envId，
+     * 环境的变量与 Header/Cookie 此前从未在这条链路上解析，导致：
+     *   - ${环境变量} / {{环境变量}} 在 URL、Header、Cookie、Query、Body 及前后置脚本里都取不到，
+     *     而全局参数由 {@link GlobalVarSupport} 按 teamId 直接查库兜底，表现成「只有全局参数能用」；
+     *   - 场景步骤单步调试时环境 Header/Cookie 也不生效，与真实跑场景的行为不一致。
+     * 本方法按 envId 查出环境，把它的变量、Header、Cookie 写入 envInfo，
+     * 与场景执行链路 {@link ApiSceneDebugService} 的口径对齐。
      *
-     * 优先级规则（从低到高）：
-     *   全局参数（global_var） < 环境参数（environment） < 接口参数（api_request）
+     * 优先级（从低到高）：全局参数 &lt; 环境变量 &lt; 请求级已有变量。变量取并集，已有 envVariables
+     * 最后合并故不被覆盖；Header/Cookie 直接以环境当前配置为准 —— 前端 envInfo 里存的是选择环境时的
+     * 快照，环境改动后快照会过期。因此本方法必须在 {@link GlobalVarSupport#mergeIntoRequest} 之前调用。
      *
-     * 合并策略：
-     *   - VARIABLE 类型：合并到 envVariables Map 中，环境变量可覆盖同名全局变量
-     *   - HEADER 类型：转换为 RequestParameter 列表，追加到 envHeaders 列表前面
-     *   - COOKIE 类型：转换为 RequestParameter 列表，追加到 envCookies 列表前面
-     *
-     * 注意：此方法仅修改内存中的 ApiRequest 对象，不会写入数据库
+     * 注意：每次执行实时查库，环境改动立即生效，不依赖保存请求时的快照。仅修改内存对象，不写数据库。
      *
      * @param apiRequest 接口请求配置对象
      */
-    private void mergeGlobalVars(ApiRequest apiRequest) {
-        if (apiRequest.getTeamId() == null || globalVarMapper == null) {
-            return;
-        }
-
-        QueryWrapper<GlobalVar> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("team_id", apiRequest.getTeamId())
-                .eq("disabled", false);
-        List<GlobalVar> globalVars = globalVarMapper.selectList(queryWrapper);
-
-        if (globalVars == null || globalVars.isEmpty()) {
-            return;
-        }
-
-        // 确保 envInfo 不为 null
-        if (apiRequest.getEnvInfo() == null) {
-            apiRequest.setEnvInfo(new RequestExecuteInfo());
-        }
+    private void mergeEnvironmentConfig(ApiRequest apiRequest) {
         RequestExecuteInfo envInfo = apiRequest.getEnvInfo();
-
-        // 1. 合并 VARIABLE 类型的全局变量到 envVariables
-        // 优先级：全局变量 < 环境变量，所以全局变量先 put，环境变量后 put（覆盖）
-        Map<String, String> mergedVariables = new HashMap<>();
-        for (GlobalVar globalVar : globalVars) {
-            if (globalVar.getType() == GlobalRequestVarType.VARIABLE
-                    && globalVar.getName() != null) {
-                mergedVariables.put(globalVar.getName(), globalVar.getValue());
-            }
-        }
-        // 再将原有的环境变量合并进去（环境变量优先级更高，覆盖同名全局变量）
-        if (envInfo.getEnvVariables() != null) {
-            mergedVariables.putAll(envInfo.getEnvVariables());
-        }
-        if (!mergedVariables.isEmpty()) {
-            envInfo.setEnvVariables(mergedVariables);
+        // envId 为空或 0 表示未选环境（前端新建请求的默认值为 0）
+        if (envInfo == null || envInfo.getEnvId() == null || envInfo.getEnvId() <= 0) {
+            return;
         }
 
-        // 2. 合并 HEADER 类型的全局变量到 envHeaders
-        // 优先级：全局 Header < 环境 Header < 接口 Header
-        // 在列表中的顺序：全局 Header 在前（先被 addHeader），环境 Header 在后
-        List<RequestParameter> mergedHeaders = new ArrayList<>();
-        for (GlobalVar globalVar : globalVars) {
-            if (globalVar.getType() == GlobalRequestVarType.HEADER
-                    && globalVar.getName() != null) {
-                RequestParameter header = new RequestParameter();
-                header.setName(globalVar.getName());
-                header.setValue(globalVar.getValue());
-                header.setDisabled(false);
-                mergedHeaders.add(header);
-            }
-        }
-        // 将原有的环境 Header 追加到后面（环境 Header 优先级更高）
-        if (envInfo.getEnvHeaders() != null) {
-            mergedHeaders.addAll(envInfo.getEnvHeaders());
-        }
-        if (!mergedHeaders.isEmpty()) {
-            envInfo.setEnvHeaders(mergedHeaders);
+        Environment env = environmentMapper.selectById(envInfo.getEnvId());
+        if (env == null) {
+            log.warn("[环境合并] 环境配置不存在，按无环境执行: envId={}", envInfo.getEnvId());
+            return;
         }
 
-        // 3. 合并 COOKIE 类型的全局变量到 envCookies
-        // 优先级：全局 Cookie < 环境 Cookie < 接口 Cookie
-        List<RequestParameter> mergedCookies = new ArrayList<>();
-        for (GlobalVar globalVar : globalVars) {
-            if (globalVar.getType() == GlobalRequestVarType.COOKIE
-                    && globalVar.getName() != null) {
-                RequestParameter cookie = new RequestParameter();
-                cookie.setName(globalVar.getName());
-                cookie.setValue(globalVar.getValue());
-                cookie.setDisabled(false);
-                mergedCookies.add(cookie);
+        // 1. 环境变量：环境定义先入，请求级已有变量后入（同名以请求级为准）
+        if (env.getEnvVar() != null && !env.getEnvVar().isEmpty()) {
+            Map<String, String> mergedVars = new HashMap<>();
+            for (RequestParameter varParam : filterEnabledParameters(env.getEnvVar())) {
+                mergedVars.put(varParam.getName(), varParam.getValue());
             }
-        }
-        // 将原有的环境 Cookie 追加到后面（环境 Cookie 优先级更高）
-        if (envInfo.getEnvCookies() != null) {
-            mergedCookies.addAll(envInfo.getEnvCookies());
-        }
-        if (!mergedCookies.isEmpty()) {
-            envInfo.setEnvCookies(mergedCookies);
+            if (envInfo.getEnvVariables() != null) {
+                mergedVars.putAll(envInfo.getEnvVariables());
+            }
+            envInfo.setEnvVariables(mergedVars);
         }
 
-        // 4. 合并 ASSERT 类型的全局断言到 apiResultAssert
-        // 优先级：全局断言 < 接口断言（接口断言后执行，可覆盖全局断言结果）
-        List<AssertParameter> mergedAssertions = new ArrayList<>();
-        for (GlobalVar globalVar : globalVars) {
-            if (globalVar.getType() == GlobalRequestVarType.ASSERT
-                    && globalVar.getGlobalAssert() != null) {
-                // globalAssert 是 List<AssertParameter>，将其中的断言规则添加到合并列表
-                for (AssertParameter assertParam : globalVar.getGlobalAssert()) {
-                    if (assertParam != null) {
-                        assertParam.setSource(RuleSource.GLOBAL);
-                        mergedAssertions.add(assertParam);
-                    }
-                }
-            }
+        // 2. 环境 Header / Cookie：以环境当前配置替换过期快照
+        envInfo.setEnvHeaders(filterEnabledParameters(env.getHeaders()));
+        envInfo.setEnvCookies(filterEnabledParameters(env.getCookies()));
+
+        log.debug("[环境合并] 完成, envId={}, envName={}, varCount={}, headerCount={}, cookieCount={}",
+                env.getId(), env.getEnvName(),
+                envInfo.getEnvVariables() != null ? envInfo.getEnvVariables().size() : 0,
+                envInfo.getEnvHeaders().size(), envInfo.getEnvCookies().size());
+    }
+
+    /**
+     * 过滤掉未命名与已禁用的参数项
+     */
+    private List<RequestParameter> filterEnabledParameters(List<RequestParameter> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return new ArrayList<>();
         }
-        // 将接口自身的断言追加到后面（接口断言优先级更高）
-        if (apiRequest.getApiResultAssert() != null) {
-            for (AssertParameter assertParam : apiRequest.getApiResultAssert()) {
-                if (assertParam != null) {
-                    assertParam.setSource(RuleSource.API);
-                    mergedAssertions.add(assertParam);
-                }
-            }
-        }
-        if (!mergedAssertions.isEmpty()) {
-            apiRequest.setApiResultAssert(mergedAssertions);
-        }
+        return parameters.stream()
+                .filter(p -> p != null && !p.isDisabled() && p.getName() != null)
+                .collect(Collectors.toList());
     }
 
     // ==================== Swagger / OpenAPI 导入 ====================

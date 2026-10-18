@@ -1,11 +1,11 @@
 package com.mokatest.platform.demos.api.service;
 
 import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mokatest.platform.demos.api.domain.ApiRequest;
 import com.mokatest.platform.demos.api.domain.Environment;
 import com.mokatest.platform.demos.api.domain.GlobalVar;
 import com.mokatest.platform.demos.api.domain.apiEnum.ApiType;
+import com.mokatest.platform.demos.api.domain.apiEnum.GlobalRequestVarType;
 import com.mokatest.platform.demos.api.domain.apiEnum.RuleSource;
 import com.mokatest.platform.demos.api.domain.requestModel.ApiSceneConfig;
 import com.mokatest.platform.demos.api.domain.requestModel.AssertParameter;
@@ -23,7 +23,6 @@ import com.mokatest.platform.demos.api.http.extraction.ExtractionExecutor;
 import com.mokatest.platform.demos.api.http.model.TestHttpResponse;
 import com.mokatest.platform.demos.api.mapper.ApiRequestMapper;
 import com.mokatest.platform.demos.api.mapper.EnvironmentMapper;
-import com.mokatest.platform.demos.api.mapper.GlobalVarMapper;
 import com.mokatest.platform.demos.domain.ui.Scene;
 import com.mokatest.platform.demos.domain.ui.SceneSetting;
 import com.mokatest.platform.demos.domain.ui.TestStep;
@@ -94,7 +93,7 @@ public class ApiSceneDebugService {
     private ApiAssertExecutor apiAssertExecutor;
 
     @Autowired
-    private GlobalVarMapper globalVarMapper;
+    private GlobalVarSupport globalVarSupport;
 
     @Autowired
     private SceneService sceneService;
@@ -133,43 +132,20 @@ public class ApiSceneDebugService {
         // 2. 获取场景配置
         ApiSceneConfig apiSceneConfig = resolveSceneConfig(sceneId);
 
-        // 3. 获取全局变量（按团队ID）
-        Integer teamId = resolveTeamId(allSteps);
-        List<GlobalVar> globalVars = new ArrayList<>();
-        if (teamId != null) {
-            globalVars = globalVarMapper.selectList(
-                    new QueryWrapper<GlobalVar>()
-                            .eq("team_id", teamId)
-                            .eq("disabled", false)
-            );
-        }
+        // 3. 加载全局参数，初始化步骤间共享的变量上下文（全局变量 + 环境变量 + 场景变量）
+        List<GlobalVar> globalVars = globalVarSupport.loadEnabled(resolveTeamId(allSteps));
+        Map<String, Object> variables = buildSharedVariables(globalVars, apiSceneConfig);
 
-        // 4. 初始化步骤间共享的变量上下文
-        // 优先级：全局变量 < 场景变量（同名覆盖）
-        Map<String, Object> variables = new HashMap<>();
-        for (GlobalVar gv : globalVars) {
-            if (gv.getName() != null) {
-                variables.put(gv.getName(), gv.getValue());
-            }
-        }
-        if (apiSceneConfig != null && apiSceneConfig.getSceneVariables() != null) {
-            for (RequestParameter rp : apiSceneConfig.getSceneVariables()) {
-                if (rp.getName() != null && !rp.isDisabled()) {
-                    variables.put(rp.getName(), rp.getValue());
-                }
-            }
-        }
-
-        // 5. 构建步骤树（parentId 分组）
+        // 4. 构建步骤树（parentId 分组）
         Map<Integer, List<TestStep>> stepTree = buildStepTree(allSteps);
 
-        // 6. 获取顶级步骤（parentId 为 null 或 0）
+        // 5. 获取顶级步骤（parentId 为 null 或 0）
         List<TestStep> topSteps = allSteps.stream()
                 .filter(step -> step.getParentId() == null || step.getParentId() == 0)
                 .sorted(Comparator.comparing(TestStep::getOrderIndex))
                 .toList();
 
-        // 7. 遍历执行顶级步骤（递归处理控制流）
+        // 6. 遍历执行顶级步骤（递归处理控制流）
         List<ApiStepResult> stepResults = new ArrayList<>();
         boolean stopOnFailure = true;
         long deadline = sceneStartTime + MAX_SCENE_EXECUTION_TIME_MS;
@@ -193,7 +169,7 @@ public class ApiSceneDebugService {
             }
 
             log.info("[API场景调试] 开始执行步骤, stepId={}, stepName={}, stepType={}", step.getId(), step.getStepName(), step.getStepType());
-            ApiStepResult result = executeStep(step, stepTree, variables, apiSceneConfig);
+            ApiStepResult result = executeStep(step, stepTree, variables, apiSceneConfig, globalVars);
             log.info("[API场景调试] 步骤执行结束, stepId={}, success={}, timeMs={}", step.getId(), result.isSuccess(), result.getTimeConsuming());
             stepResults.add(result);
 
@@ -257,42 +233,20 @@ public class ApiSceneDebugService {
         // 2. 获取场景配置
         ApiSceneConfig apiSceneConfig = resolveSceneConfig(sceneId);
 
-        // 3. 获取全局变量（按团队ID）
-        Integer teamId = resolveTeamId(allSteps);
-        List<GlobalVar> globalVars = new ArrayList<>();
-        if (teamId != null) {
-            globalVars = globalVarMapper.selectList(
-                    new QueryWrapper<GlobalVar>()
-                            .eq("team_id", teamId)
-                            .eq("disabled", false)
-            );
-        }
+        // 3. 加载全局参数，初始化步骤间共享的变量上下文（全局变量 + 环境变量 + 场景变量）
+        List<GlobalVar> globalVars = globalVarSupport.loadEnabled(resolveTeamId(allSteps));
+        Map<String, Object> variables = buildSharedVariables(globalVars, apiSceneConfig);
 
-        // 4. 初始化步骤间共享的变量上下文
-        Map<String, Object> variables = new HashMap<>();
-        for (GlobalVar gv : globalVars) {
-            if (gv.getName() != null) {
-                variables.put(gv.getName(), gv.getValue());
-            }
-        }
-        if (apiSceneConfig != null && apiSceneConfig.getSceneVariables() != null) {
-            for (RequestParameter rp : apiSceneConfig.getSceneVariables()) {
-                if (rp.getName() != null && !rp.isDisabled()) {
-                    variables.put(rp.getName(), rp.getValue());
-                }
-            }
-        }
-
-        // 5. 构建步骤树
+        // 4. 构建步骤树
         Map<Integer, List<TestStep>> stepTree = buildStepTree(allSteps);
 
-        // 6. 获取顶级步骤
+        // 5. 获取顶级步骤
         List<TestStep> topSteps = allSteps.stream()
                 .filter(step -> step.getParentId() == null || step.getParentId() == 0)
                 .sorted(Comparator.comparing(TestStep::getOrderIndex))
                 .toList();
 
-        // 6.1 单步 / 从某步开始：将传入的 stepId 归一为其顶级祖先，再裁剪 topSteps
+        // 5.1 单步 / 从某步开始：将传入的 stepId 归一为其顶级祖先，再裁剪 topSteps
         Integer onlyTopId = resolveTopAncestorId(onlyStepId, allSteps);
         Integer fromTopId = resolveTopAncestorId(fromStepId, allSteps);
         if (onlyTopId != null) {
@@ -313,7 +267,7 @@ public class ApiSceneDebugService {
             }
         }
 
-        // 7. 遍历执行顶级步骤，每完成一个立即推送
+        // 6. 遍历执行顶级步骤，每完成一个立即推送
         boolean stopOnFailure = true;
         long deadline = sceneStartTime + MAX_SCENE_EXECUTION_TIME_MS;
 
@@ -342,7 +296,7 @@ public class ApiSceneDebugService {
 
             log.info("[API场景调试-实时] 开始执行步骤, stepId={}, stepName={}, stepType={}",
                     step.getId(), step.getStepName(), step.getStepType());
-            ApiStepResult result = executeStep(step, stepTree, variables, apiSceneConfig);
+            ApiStepResult result = executeStep(step, stepTree, variables, apiSceneConfig, globalVars);
             log.info("[API场景调试-实时] 步骤执行结束, stepId={}, success={}, timeMs={}",
                     step.getId(), result.isSuccess(), result.getTimeConsuming());
 
@@ -442,24 +396,25 @@ public class ApiSceneDebugService {
      * 递归执行单个步骤（支持控制流）
      */
     private ApiStepResult executeStep(TestStep step, Map<Integer, List<TestStep>> stepTree,
-                                       Map<String, Object> variables, ApiSceneConfig apiSceneConfig) {
+                                       Map<String, Object> variables, ApiSceneConfig apiSceneConfig,
+                                       List<GlobalVar> globalVars) {
         String stepType = step.getStepType();
         try {
             switch (stepType) {
                 case "API_REQUEST":
-                    return executeApiRequestStep(step, variables, apiSceneConfig);
+                    return executeApiRequestStep(step, variables, apiSceneConfig, globalVars);
                 case "SQL":
-                    return executeSqlStep(step, variables, apiSceneConfig);
+                    return executeSqlStep(step, variables, apiSceneConfig, globalVars);
                 case "WAIT":
                     return executeWaitStep(step);
                 case "SCRIPT":
                     return executeScriptStep(step, variables);
                 case "IF":
-                    return executeIfStep(step, stepTree, variables, apiSceneConfig);
+                    return executeIfStep(step, stepTree, variables, apiSceneConfig, globalVars);
                 case "FOR":
-                    return executeForStep(step, stepTree, variables, apiSceneConfig);
+                    return executeForStep(step, stepTree, variables, apiSceneConfig, globalVars);
                 case "WHILE":
-                    return executeWhileStep(step, stepTree, variables, apiSceneConfig);
+                    return executeWhileStep(step, stepTree, variables, apiSceneConfig, globalVars);
                 default:
                     return createSkipResult(step, "不支持的步骤类型: " + stepType);
             }
@@ -572,7 +527,8 @@ public class ApiSceneDebugService {
     // ==================== IF 步骤 ====================
 
     private ApiStepResult executeIfStep(TestStep step, Map<Integer, List<TestStep>> stepTree,
-                                         Map<String, Object> variables, ApiSceneConfig apiSceneConfig) {
+                                         Map<String, Object> variables, ApiSceneConfig apiSceneConfig,
+                                         List<GlobalVar> globalVars) {
         ApiStepResult result = createBaseResult(step);
         List<ApiStepResult> childResults = new ArrayList<>();
 
@@ -584,7 +540,7 @@ public class ApiSceneDebugService {
                 List<TestStep> children = getChildren(step, stepTree);
                 for (TestStep child : children) {
                     if (child.getIsDisable() != null && child.getIsDisable() == 1) continue;
-                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig);
+                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig, globalVars);
                     childResults.add(childResult);
                     notifyStepProgress(step, childResults);
                     if (!childResult.isSuccess()) break;
@@ -611,7 +567,8 @@ public class ApiSceneDebugService {
     // ==================== FOR 步骤 ====================
 
     private ApiStepResult executeForStep(TestStep step, Map<Integer, List<TestStep>> stepTree,
-                                          Map<String, Object> variables, ApiSceneConfig apiSceneConfig) {
+                                          Map<String, Object> variables, ApiSceneConfig apiSceneConfig,
+                                          List<GlobalVar> globalVars) {
         ApiStepResult result = createBaseResult(step);
         List<ApiStepResult> loopResults = new ArrayList<>();
 
@@ -628,7 +585,7 @@ public class ApiSceneDebugService {
             for (int i = 0; i < times; i++) {
                 for (TestStep child : children) {
                     if (child.getIsDisable() != null && child.getIsDisable() == 1) continue;
-                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig);
+                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig, globalVars);
                     loopResults.add(childResult);
                     notifyStepProgress(step, loopResults);
                     if (!childResult.isSuccess()) break;
@@ -656,7 +613,8 @@ public class ApiSceneDebugService {
     // ==================== WHILE 步骤 ====================
 
     private ApiStepResult executeWhileStep(TestStep step, Map<Integer, List<TestStep>> stepTree,
-                                            Map<String, Object> variables, ApiSceneConfig apiSceneConfig) {
+                                            Map<String, Object> variables, ApiSceneConfig apiSceneConfig,
+                                            List<GlobalVar> globalVars) {
         ApiStepResult result = createBaseResult(step);
         List<ApiStepResult> loopResults = new ArrayList<>();
 
@@ -677,7 +635,7 @@ public class ApiSceneDebugService {
 
                 for (TestStep child : children) {
                     if (child.getIsDisable() != null && child.getIsDisable() == 1) continue;
-                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig);
+                    ApiStepResult childResult = executeStep(child, stepTree, variables, apiSceneConfig, globalVars);
                     loopResults.add(childResult);
                     notifyStepProgress(step, loopResults);
                     if (!childResult.isSuccess()) break;
@@ -785,7 +743,7 @@ public class ApiSceneDebugService {
     // ==================== API 请求步骤（原有逻辑）====================
 
     private ApiStepResult executeApiRequestStep(TestStep step, Map<String, Object> variables,
-                                                 ApiSceneConfig apiSceneConfig) {
+                                                 ApiSceneConfig apiSceneConfig, List<GlobalVar> globalVars) {
         ApiStepResult result = createBaseResult(step);
         List<AssertResult> allAssertionResults = new ArrayList<>();
         Map<String, Object> extractedVariables = new HashMap<>();
@@ -836,6 +794,9 @@ public class ApiSceneDebugService {
 
             mergeSceneConfig(apiRequest, apiSceneConfig);
             mergeEnvironmentConfig(apiRequest, apiSceneConfig);
+            // 全局参数最低优先级，最后合并：全局 Header/Cookie 插到列表最前并整体按名去重，
+            // 同名时保留环境/场景/接口值；全局断言并入 apiResultAssert 并标记 GLOBAL 来源
+            globalVarSupport.mergeInto(apiRequest, globalVars);
 
             // 场景没有环境配置：运行时强制忽略步骤自己的 baseUrl 和服务地址
             // 注意：场景模式下手动选择的服务地址不会设置 envId，因此不能通过 envId 判断，直接强制清空
@@ -877,7 +838,10 @@ public class ApiSceneDebugService {
 
             if (apiRequest.getApiResultAssert() != null && !apiRequest.getApiResultAssert().isEmpty()) {
                 for (AssertParameter ap : apiRequest.getApiResultAssert()) {
-                    if (ap != null) ap.setSource(RuleSource.API);
+                    // 保留 GLOBAL 来源标记，报表里才能区分全局断言与接口断言
+                    if (ap != null && ap.getSource() != RuleSource.GLOBAL) {
+                        ap.setSource(RuleSource.API);
+                    }
                 }
                 List<AssertResult> interfaceAsserts = apiAssertExecutor.execute(apiRequest.getApiResultAssert(), response);
                 allAssertionResults.addAll(interfaceAsserts);
@@ -942,7 +906,7 @@ public class ApiSceneDebugService {
      * 支持内联 SqlConfig 或引用 DB 中的 SQL 类型 ApiRequest
      */
     private ApiStepResult executeSqlStep(TestStep step, Map<String, Object> variables,
-                                          ApiSceneConfig apiSceneConfig) {
+                                          ApiSceneConfig apiSceneConfig, List<GlobalVar> globalVars) {
         ApiStepResult result = createBaseResult(step);
         List<AssertResult> allAssertionResults = new ArrayList<>();
         Map<String, Object> extractedVariables = new HashMap<>();
@@ -1014,6 +978,9 @@ public class ApiSceneDebugService {
                 envInfo.setEnvId(apiSceneConfig.getEnvironmentId());
                 apiRequest.setEnvInfo(envInfo);
             }
+
+            // 全局参数合并：变量最低（随后被步骤变量覆盖）、断言并入 apiResultAssert
+            globalVarSupport.mergeInto(apiRequest, globalVars);
 
             // 注入步骤变量
             injectStepVariables(apiRequest, variables);
@@ -1344,10 +1311,68 @@ public class ApiSceneDebugService {
     }
 
     /**
+     * 初始化步骤间共享的变量池
+     *
+     * 优先级（从低到高）：全局变量 &lt; 环境变量 &lt; 场景变量；
+     * 执行期各步骤的提取变量与脚本变量最后写回池中，因此优先级最高。
+     *
+     * 环境变量必须在池内就压过同名全局变量：变量注入请求的方式是「整个池覆盖 envInfo.envVariables」
+     * （见 {@link #injectStepVariables}），若池里只装全局变量，就会把 {@link #mergeEnvironmentConfig}
+     * 刚写入的环境变量反向覆盖掉，表现为「同名时环境变量读不到、全局值生效」。
+     *
+     * 只取 VARIABLE 类型的全局参数：HEADER/COOKIE/ASSERT 三类各有去处（Header、Cookie、断言），
+     * 早期实现未按类型过滤，把 Content-Type 这类全局 Header 也灌成了变量，制造出伪变量。
+     *
+     * @param globalVars     已加载的启用全局参数（全局 Header/Cookie/断言也在其中，由调用方复用）
+     * @param apiSceneConfig 场景配置（含 environmentId 与 sceneVariables），可为 null
+     * @return 按低→高顺序合并完成的共享变量池
+     */
+    private Map<String, Object> buildSharedVariables(List<GlobalVar> globalVars, ApiSceneConfig apiSceneConfig) {
+        Map<String, Object> variables = new HashMap<>();
+
+        // 1. 全局变量（优先级最低，仅 VARIABLE 类型）
+        for (GlobalVar globalVar : globalVars) {
+            if (globalVar.getType() == GlobalRequestVarType.VARIABLE && globalVar.getName() != null) {
+                variables.put(globalVar.getName(), globalVar.getValue());
+            }
+        }
+
+        // 2. 环境变量（覆盖同名全局变量）
+        Environment env = resolveEnvironment(apiSceneConfig);
+        if (env != null && env.getEnvVar() != null) {
+            for (RequestParameter rp : env.getEnvVar()) {
+                if (rp != null && !rp.isDisabled() && rp.getName() != null) {
+                    variables.put(rp.getName(), rp.getValue());
+                }
+            }
+        }
+
+        // 3. 场景变量（覆盖同名环境变量）
+        if (apiSceneConfig != null && apiSceneConfig.getSceneVariables() != null) {
+            for (RequestParameter rp : apiSceneConfig.getSceneVariables()) {
+                if (rp.getName() != null && !rp.isDisabled()) {
+                    variables.put(rp.getName(), rp.getValue());
+                }
+            }
+        }
+        return variables;
+    }
+
+    /**
+     * 按场景配置解析环境；未配置环境时返回 null（按无环境执行，不阻塞）。
+     */
+    private Environment resolveEnvironment(ApiSceneConfig apiSceneConfig) {
+        if (apiSceneConfig == null || apiSceneConfig.getEnvironmentId() == null) {
+            return null;
+        }
+        return environmentMapper.selectById(apiSceneConfig.getEnvironmentId());
+    }
+
+    /**
      * 将环境配置合并到 API 请求中
      *
      * 合并策略（优先级从低到高）：
-     *   环境配置 < 场景配置（已在 mergeSceneConfig 中处理）< 接口配置
+     *   全局变量 < 环境配置 < 场景配置（已在 mergeSceneConfig 中处理）< 接口配置
      *
      * 合并内容：
      *   - baseUrl：如果接口没有设置 baseUrl，使用环境 serve 中的第一个服务地址
@@ -1363,7 +1388,7 @@ public class ApiSceneDebugService {
             return;
         }
 
-        Environment env = environmentMapper.selectById(apiSceneConfig.getEnvironmentId());
+        Environment env = resolveEnvironment(apiSceneConfig);
         if (env == null) {
             log.warn("[API场景调试] 环境配置不存在, environmentId={}", apiSceneConfig.getEnvironmentId());
             return;

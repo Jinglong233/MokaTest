@@ -953,16 +953,20 @@ onMounted(async () => {
     initData(props.modelValue);
   }
 
-  // 场景模式：如果场景有环境，设置 currentEnv 供服务地址选择使用
-  // 注意：不在 onMounted 里修改 localFormData 触发 update:modelValue，避免挂载期强制重渲染
-  if (props.mode === 'scene' && props.sceneEnvironmentId && envList.value.length > 0) {
-    const sceneEnv = envList.value.find((e: any) => e.id === props.sceneEnvironmentId);
-    if (sceneEnv) {
-      currentEnv.value = JSON.parse(JSON.stringify(sceneEnv));
-      // SQL 模式：注入场景环境 ID。后端按 envInfo.envId + dbConnectionName 解析环境级数据库连接，
-      // 场景模式没有环境工具栏（不会走 onEnvChange 写 envId），必须在这里注入，
-      // 否则调试时报「未找到数据库连接配置」
-      if (isSqlMode.value) {
+  // 场景模式：注入场景环境与团队归属
+  // 场景模式没有环境工具栏（不会走 onEnvChange 写 envId），必须在这里注入：
+  //   - SQL 步骤：后端按 envInfo.envId + dbConnectionName 解析环境级数据库连接，缺失会报「未找到数据库连接配置」
+  //   - HTTP 步骤：后端单步调试时按 envInfo.envId 合并环境变量与环境 Header/Cookie，缺失则 ${环境变量} 解析不到
+  // teamId 仅在步骤配置从来源接口复制而来时才有值，新建步骤为空会让后端跳过全局变量合并
+  // 注意：不触发 onDataChange，避免挂载期强制重渲染
+  if (props.mode === 'scene') {
+    if (!localFormData.value.teamId) {
+      localFormData.value.teamId = teamStore.getTeamId ?? undefined;
+    }
+    if (props.sceneEnvironmentId && envList.value.length > 0) {
+      const sceneEnv = envList.value.find((e: any) => e.id === props.sceneEnvironmentId);
+      if (sceneEnv) {
+        currentEnv.value = JSON.parse(JSON.stringify(sceneEnv));
         if (!localFormData.value.envInfo) {
           localFormData.value.envInfo = {} as any;
         }
