@@ -5,6 +5,7 @@ import com.mokatest.platform.demos.domain.ui.uiEnum.extract.ElementExtractValueT
 import com.mokatest.platform.demos.domain.ui.uiEnum.extract.ExtractType;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
 import com.mokatest.platform.demos.domain.ui.Element;
+import com.mokatest.platform.demos.domain.ui.LocatorCandidate;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
 import com.mokatest.platform.demos.domain.ui.dto.step.ExtractStepDTO;
 import com.mokatest.platform.demos.element.ElementLocatorProcessor;
@@ -42,9 +43,17 @@ public class ElementExtract implements AssociationExtraction {
         Element element1 = elementProcessor.getElementLocator(element);
 
         Frame currentFrame = context.getCurrentFrame();
-        Locator elementLocator = ElementLocatorProcessor.process(currentFrame,
-                ElementLocatorType.valueOf(element1.getLocatorType().toString().toUpperCase()),
-                element1.getLocatorValue());
+        Locator elementLocator;
+        if (ElementExtractValueType.COUNT.equals(elementExtractValueType)) {
+            // COUNT 统计全部匹配，保留主定位（链第一项）多匹配语义，不走唯一性 fallback 探测
+            LocatorCandidate primary = ElementProcessor.resolveChain(element1).get(0);
+            elementLocator = ElementLocatorProcessor.process(currentFrame,
+                    ElementLocatorType.valueOf(primary.getType().toUpperCase()),
+                    primary.getValue());
+        } else {
+            // 链式 fallback：主定位未命中时按序探测候选
+            elementLocator = elementProcessor.resolveLocator(currentFrame, element);
+        }
 
 
         extractValue = "";

@@ -650,7 +650,7 @@
         <template v-if="importSceneForm.mode === 'platform'">
           <a-row :gutter="16" class="import-config-row">
             <a-col :span="12">
-              <a-form-item field="parentId" :label="$t('scene.modal.belongFolder')" required>
+              <a-form-item v-if="recordSaveMode === 'new'" field="parentId" :label="$t('scene.modal.belongFolder')" required>
                 <a-tree-select
                     :data="folderList"
                     v-model="importSceneForm.parentId"
@@ -661,6 +661,14 @@
                     <icon-folder/>
                   </template>
                 </a-tree-select>
+              </a-form-item>
+              <a-form-item v-else :label="$t('scene.import.targetScene')" required hide-asterisk>
+                <a-tree-select
+                    :data="appendSceneTreeData"
+                    v-model="recordAppendSceneId"
+                    :placeholder="$t('scene.import.selectScenePlaceholder')"
+                    :fieldNames="{key: 'id', title: 'name'}"
+                />
               </a-form-item>
             </a-col>
             <a-col :span="12">
@@ -692,7 +700,13 @@
                   />
                 </div>
               </a-form-item>
-              <a-form-item field="name" :label="$t('scene.modal.sceneName')" required>
+              <a-form-item :label="$t('scene.import.saveMode')" hide-asterisk>
+                <a-radio-group v-model="recordSaveMode" type="button">
+                  <a-radio value="new">{{ $t('scene.import.saveModeNew') }}</a-radio>
+                  <a-radio value="append">{{ $t('scene.import.saveModeAppend') }}</a-radio>
+                </a-radio-group>
+              </a-form-item>
+              <a-form-item v-if="recordSaveMode === 'new'" field="name" :label="$t('scene.modal.sceneName')" required>
                 <a-input v-model="importSceneForm.name" :placeholder="$t('scene.import.sceneNamePlaceholder')"/>
               </a-form-item>
               <a-form-item field="description" :label="$t('scene.modal.sceneDesc')">
@@ -707,6 +721,23 @@
             </a-col>
           </a-row>
         </template>
+
+        <!-- 三种模式共用：同步导入元素至元素库 -->
+        <a-divider style="margin: 4px 0 12px;"/>
+        <a-form-item hide-label>
+          <a-checkbox v-model="syncElementsToLibrary">{{ $t('scene.import.syncElements') }}</a-checkbox>
+        </a-form-item>
+        <a-form-item v-if="syncElementsToLibrary" :label="$t('scene.import.elementTargetFolder')" hide-asterisk>
+          <a-tree-select
+              :data="elementFolderOptions"
+              v-model="importElementParentId"
+              :fieldNames="{key: 'id', title: 'elementName'}"
+          >
+            <template #tree-slot-icon>
+              <icon-folder/>
+            </template>
+          </a-tree-select>
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -973,6 +1004,8 @@ import {
   updateSort
 } from "@/api/MyApi/scene";
 import {SceneVO} from "@/types/vo/SceneVO";
+import {getFolderList as getElementFolderList} from "@/api/MyApi/element";
+import {ElementVO} from "@/types/vo/ElementVO";
 import {
   addAdjacentTestStep,
   addStep,
@@ -1048,6 +1081,7 @@ import RecorderGuideModal from "@/components/recorder-guide/RecorderGuideModal.v
 import RecordStepList from "@/views/scene/component/RecordStepList.vue";
 import SceneWorkflowCanvas from "@/views/scene/component/SceneWorkflowCanvas.vue";
 import {useDebugStepLock} from "@/views/scene/component/useDebugStepLock";
+import {useResizableSidebar} from "@/hooks/useResizableSidebar";
 import { saveRecord, RecordStepDraft } from "@/api/MyApi/record";
 import {debugApiScene} from "@/api/MyApi/apiScene";
 import {getEnvList} from "@/api/MyApi/environment";
@@ -1070,71 +1104,8 @@ const { t } = useI18n();
 
 const isApiScene = computed(() => props.sceneCategory === 'API');
 
-// ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏 =====
-const SIDEBAR_DEFAULT_WIDTH = 240;
-const SIDEBAR_MIN_WIDTH = 200;
-const SIDEBAR_MAX_WIDTH = 480;
-const SIDEBAR_COLLAPSE_THRESHOLD = 20;
-
-const sidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
-const isSidebarCollapsed = ref(false);
-const lastSidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
-
-const sideColStyle = computed(() => ({
-  width: isSidebarCollapsed.value ? '0px' : `${sidebarWidth.value}px`,
-  overflow: 'hidden',
-}));
-
-const collapseSidebar = () => {
-  if (!isSidebarCollapsed.value) {
-    lastSidebarWidth.value = Math.max(sidebarWidth.value, SIDEBAR_MIN_WIDTH);
-  }
-  isSidebarCollapsed.value = true;
-  sidebarWidth.value = 0;
-};
-
-const expandSidebar = () => {
-  isSidebarCollapsed.value = false;
-  const expandedWidth = Math.round((lastSidebarWidth.value || SIDEBAR_DEFAULT_WIDTH) * 1.25);
-  sidebarWidth.value = Math.min(expandedWidth, SIDEBAR_MAX_WIDTH);
-};
-
-const startResizeSidebar = (e: MouseEvent) => {
-  const startX = e.clientX;
-  const wasCollapsed = isSidebarCollapsed.value;
-  const startWidth = wasCollapsed ? 0 : sidebarWidth.value;
-  let moved = false;
-
-  const onMove = (ev: MouseEvent) => {
-    if (Math.abs(ev.clientX - startX) > 3) moved = true;
-    if (wasCollapsed) {
-      isSidebarCollapsed.value = false;
-    }
-    const newWidth = startWidth + ev.clientX - startX;
-    sidebarWidth.value = Math.min(Math.max(newWidth, 0), SIDEBAR_MAX_WIDTH);
-  };
-
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.body.style.userSelect = '';
-
-    if (!moved && wasCollapsed) {
-      expandSidebar();
-      return;
-    }
-
-    if (sidebarWidth.value <= SIDEBAR_COLLAPSE_THRESHOLD) {
-      collapseSidebar();
-    } else if (sidebarWidth.value < SIDEBAR_MIN_WIDTH) {
-      sidebarWidth.value = SIDEBAR_MIN_WIDTH;
-    }
-  };
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  document.body.style.userSelect = 'none';
-};
+// ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏（与元素库共用 composable）=====
+const {sidebarWidth, isSidebarCollapsed, sideColStyle, startResizeSidebar} = useResizableSidebar();
 
 const projectStore = useProjectStore();
 const teamStore = useTeamStore();
@@ -1471,6 +1442,40 @@ const recordImportPanelRef = ref<InstanceType<typeof RecordImportInline> | null>
 // MokatestRecord 模式下的录制步骤与解析警告
 const recordSteps = ref<RecordStepDraft[]>([]);
 const recordWarnings = ref<string[]>([]);
+
+// 录制导入保存方式：new=新建场景，append=追加到已有场景（继续录制）
+const recordSaveMode = ref<'new' | 'append'>('new');
+const recordAppendSceneId = ref<number | null>(null);
+
+// 导入弹窗：同步导入元素至元素库（默认勾选），元素目标目录默认「与场景同目录」(-1)
+const syncElementsToLibrary = ref(true);
+const importElementParentId = ref<number>(-1);
+const elementFolderTree = ref<ElementVO[]>([]);
+// 幂等键：每次打开导入弹窗生成一次，同一次表单提交期间不变
+const importBatchId = ref('');
+
+// 元素目标目录选项：首项为「与场景同目录」（不传 elementParentId）
+const elementFolderOptions = computed(() => [
+  {id: -1, elementName: t('scene.import.sameAsSceneFolder'), children: elementFolderTree.value}
+]);
+
+// 追加录制：可选场景树（仅场景节点可选，目录仅作层级展示）
+const appendSceneTreeData = computed(() => {
+  const loop = (nodes: any[]): any[] => (nodes || [])
+      .map((n) => ({
+        ...n,
+        disabled: n.sceneType === 'FOLDER',
+        children: n.children ? loop(n.children) : undefined,
+      }))
+      .filter((n) => n.sceneType === 'SCENE' || (n.children && n.children.length > 0));
+  return loop(sceneTree.value);
+});
+
+// 勾选同步时生效的目标目录（-1 = 与场景同目录，不传后端）
+const effectiveElementParentId = computed(() =>
+    (syncElementsToLibrary.value && importElementParentId.value !== -1)
+        ? importElementParentId.value
+        : undefined);
 
 
 // 场景树列表
@@ -1981,13 +1986,16 @@ const addSceneFormRules = computed(() => ({
 
 // 导入场景表单校验
 const importSceneFormRules = computed(() => ({
-  parentId: [
-    {
-      required: true,
-      message: t('scene.rules.parentFolder'),
-    },
-  ],
-  name: importSceneForm.value.mode === 'mokatest-json'
+  parentId: (importSceneForm.value.mode === 'platform' && recordSaveMode.value === 'append')
+      ? []
+      : [
+        {
+          required: true,
+          message: t('scene.rules.parentFolder'),
+        },
+      ],
+  name: (importSceneForm.value.mode === 'mokatest-json'
+      || (importSceneForm.value.mode === 'platform' && recordSaveMode.value === 'append'))
       ? []
       : [
         {
@@ -2013,7 +2021,8 @@ const importJsonSceneCount = computed(() => {
 
 // 导入按钮是否可用
 const canSubmitImport = computed(() => {
-  if (importSceneForm.value.parentId == null) return false;
+  const isRecordAppend = importSceneForm.value.mode === 'platform' && recordSaveMode.value === 'append';
+  if (!isRecordAppend && importSceneForm.value.parentId == null) return false;
   if (importSceneForm.value.mode === 'mokatest-json') {
     return importJsonSceneCount.value > 0;
   }
@@ -2021,7 +2030,8 @@ const canSubmitImport = computed(() => {
     return !!importSceneForm.value.CrxData?.trim();
   }
   if (importSceneForm.value.mode === 'platform') {
-    return recordSteps.value.length > 0;
+    if (recordSteps.value.length === 0) return false;
+    return !isRecordAppend || recordAppendSceneId.value != null;
   }
   return false;
 });
@@ -3245,6 +3255,15 @@ const importScene = () => {
   importJsonSceneData.value = null;
   recordSteps.value = [];
   recordWarnings.value = [];
+  recordSaveMode.value = 'new';
+  recordAppendSceneId.value = null;
+  syncElementsToLibrary.value = true;
+  importElementParentId.value = -1;
+  importBatchId.value = crypto.randomUUID();
+  // 加载元素库目录（元素目标目录选择器数据源）
+  getElementFolderList(String(projectStore.getProjectId ?? '')).then((res) => {
+    elementFolderTree.value = res.data;
+  });
   nextTick(() => {
     importSceneFormRef.value?.resetFields();
     recordImportPanelRef.value?.reset();
@@ -3252,9 +3271,12 @@ const importScene = () => {
 }
 
 // MokatestRecord 上传文件后步骤变化
-const onRecordStepsChange = (steps: RecordStepDraft[]) => {
+const onRecordStepsChange = (steps: RecordStepDraft[], warnings?: string[], skipped?: Record<string, number>) => {
   recordSteps.value = steps;
-  recordWarnings.value = [];
+  // 后端解析警告 + 跳过统计一起展示到步骤列表顶部
+  const skippedItems = Object.entries(skipped || {})
+      .map(([action, count]) => t('scene.record.skippedItem', {action, count}));
+  recordWarnings.value = [...(warnings || []), ...skippedItems];
 }
 
 const handleImportSceneCancel = () => {
@@ -3269,6 +3291,8 @@ const handleImportSceneCancel = () => {
   importJsonSceneData.value = null;
   recordSteps.value = [];
   recordWarnings.value = [];
+  recordSaveMode.value = 'new';
+  recordAppendSceneId.value = null;
 }
 
 // Mokatest JSON 文件变更
@@ -3372,6 +3396,11 @@ const handleImportSceneBeforeOk = async () => {
       stepList.push(testStep);
     })
     importSceneForm.value.projectId = projectStore.getProjectId;
+    importSceneForm.value.syncElementsToLibrary = syncElementsToLibrary.value;
+    importSceneForm.value.importBatchId = importBatchId.value;
+    if (effectiveElementParentId.value !== undefined) {
+      importSceneForm.value.elementParentId = effectiveElementParentId.value;
+    }
     let result = await importSceneInfo({
       scene: importSceneForm.value,
       stepList: stepList
@@ -3407,7 +3436,10 @@ const handleImportSceneBeforeOk = async () => {
         parentId: importSceneForm.value.parentId,
         projectId: String(projectStore.getProjectId),
         sceneCategory: props.sceneCategory,
-        sceneDataList: scenes
+        sceneDataList: scenes,
+        syncElementsToLibrary: syncElementsToLibrary.value,
+        elementParentId: effectiveElementParentId.value,
+        importBatchId: importBatchId.value
       });
       if (result.data === true) {
         Message.success({content: t('scene.import.importedCount', { count: scenes.length }), duration: 1000});
@@ -3434,12 +3466,17 @@ const handleImportSceneBeforeOk = async () => {
   }
 
   try {
+    const isAppend = recordSaveMode.value === 'append';
     const result = await saveRecord({
       projectId: projectStore.getProjectId,
-      name: importSceneForm.value.name,
-      parentId: importSceneForm.value.parentId,
+      name: isAppend ? undefined : importSceneForm.value.name,
+      parentId: isAppend ? undefined : importSceneForm.value.parentId,
       description: importSceneForm.value.description,
-      steps: recordSteps.value
+      steps: recordSteps.value,
+      sceneId: isAppend ? recordAppendSceneId.value ?? undefined : undefined,
+      batchId: importBatchId.value,
+      syncElementsToLibrary: syncElementsToLibrary.value,
+      elementParentId: effectiveElementParentId.value
     });
     const sceneId = result.data;
     Message.success({
@@ -4769,6 +4806,11 @@ watch(
 .record-import-uploader :deep(.arco-upload-wrapper),
 .record-import-uploader :deep(.arco-upload-drag) {
   width: 100%;
+}
+
+.import-scene-form {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .import-scene-form :deep(.arco-form-item) {

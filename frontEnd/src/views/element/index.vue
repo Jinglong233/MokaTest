@@ -119,15 +119,7 @@
                 </a-form-item>
                 <a-form-item field="locatorType">
                   <a-select v-model="searchElementForm.locatorType" placeholder="输入定位类型" allow-clear>
-                    <a-option value="XPATH">xpath</a-option>
-                    <a-option value="TEXT">text</a-option>
-                    <a-option value="PLACEHOLDER">placeholder</a-option>
-                    <a-option value="ROLE">role</a-option>
-                    <a-option value="TEST_ID">test_id</a-option>
-                    <a-option value="LABEL">label</a-option>
-                    <a-option value="TITLE">title</a-option>
-                    <a-option value="ALT">alt</a-option>
-                    <a-option value="CSS">css</a-option>
+                    <a-option v-for="opt in locatorTypeOptions" :key="opt.value" :value="opt.value">{{ $t(opt.labelKey) }}</a-option>
                   </a-select>
                 </a-form-item>
                 <a-form-item>
@@ -240,21 +232,42 @@
         <a-form-item field="elementName" label="元素名称" required>
           <a-input v-model="addOrUpdateElementForm.elementName"/>
         </a-form-item>
-        <a-form-item field="locatorType" label="定位方式" required>
-          <a-select v-model="addOrUpdateElementForm.locatorType">
-            <a-option value="XPATH">xpath</a-option>
-            <a-option value="TEXT">text</a-option>
-            <a-option value="PLACEHOLDER">placeholder</a-option>
-            <a-option value="ROLE">role</a-option>
-            <a-option value="TEST_ID">test_id</a-option>
-            <a-option value="LABEL">label</a-option>
-            <a-option value="TITLE">title</a-option>
-            <a-option value="ALT">alt</a-option>
-            <a-option value="CSS">css</a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item field="locatorValue" label="定位值" required>
-          <a-input v-model="addOrUpdateElementForm.locatorValue"/>
+        <a-form-item :label="$t('element.form.locatorChain')">
+          <div class="locator-chain-editor">
+            <div class="locator-chain-tip">{{ $t('element.form.chainTip') }}</div>
+            <div v-for="(item, idx) in locatorChainDraft" :key="idx" class="locator-chain-item">
+              <span class="locator-chain-index">{{ idx + 1 }}</span>
+              <a-select v-model="item.type" class="locator-chain-type"
+                        :placeholder="$t('element.form.locatorTypePlaceholder')">
+                <a-option v-for="opt in locatorTypeOptions" :key="opt.value" :value="opt.value">{{ $t(opt.labelKey) }}</a-option>
+              </a-select>
+              <a-input v-model="item.value" class="locator-chain-value"
+                       :placeholder="item.type === 'ROLE' ? $t('element.form.roleValuePlaceholder') : $t('element.form.locatorValuePlaceholder')"/>
+              <a-button type="text" size="mini" :disabled="idx === 0" @click="moveChainItem(idx, -1)">
+                <template #icon>
+                  <icon-up/>
+                </template>
+              </a-button>
+              <a-button type="text" size="mini" :disabled="idx === locatorChainDraft.length - 1"
+                        @click="moveChainItem(idx, 1)">
+                <template #icon>
+                  <icon-down/>
+                </template>
+              </a-button>
+              <a-button type="text" size="mini" status="danger" :disabled="locatorChainDraft.length <= 1"
+                        @click="removeChainItem(idx)">
+                <template #icon>
+                  <icon-delete/>
+                </template>
+              </a-button>
+            </div>
+            <a-button long type="dashed" @click="addChainItem">
+              <template #icon>
+                <icon-plus/>
+              </template>
+              {{ $t('element.form.addCandidate') }}
+            </a-button>
+          </div>
         </a-form-item>
         <a-form-item field="description" label="元素描述">
           <a-textarea v-model="addOrUpdateElementForm.description" allow-clear :max-length="50" show-word-limit
@@ -273,10 +286,12 @@
 <script lang="ts" setup>
 import {IconFolder, IconRight} from '@arco-design/web-vue/es/icon';
 import {computed, onMounted, ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message, Modal, TreeNodeData} from "@arco-design/web-vue";
 import Breadcrumb from '@/components/breadcrumb/index.vue';
 import {ElementVO} from "@/types/vo/ElementVO";
-import {Element} from "@/types/domain/Element";
+import {Element, LocatorChainItem} from "@/types/domain/Element";
+import {LOCATOR_TYPE_OPTIONS} from "@/types/enum/element/ElementLocatorType";
 import {
   add,
   deleteElementBatch,
@@ -289,6 +304,7 @@ import {ElementQueryDTO} from "@/types/dto/queryDTO/ElementQueryDTO";
 import {BasePageQueryDTO} from "@/types/dto/queryDTO/BasePageQueryDTO";
 import {Pagination} from "@/types/global";
 import {useProjectStore} from "@/store";
+import {useResizableSidebar} from "@/hooks/useResizableSidebar";
 import {updateSort} from "@/api/MyApi/scene";
 
 // 当前是否全部展开
@@ -330,70 +346,47 @@ const folderTree = ref<ElementVO[]>([]);
 
 const projectStore = useProjectStore();
 
-// ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏 =====
-const SIDEBAR_DEFAULT_WIDTH = 240;
-const SIDEBAR_MIN_WIDTH = 200;
-const SIDEBAR_MAX_WIDTH = 480;
-const SIDEBAR_COLLAPSE_THRESHOLD = 20;
+// ===== 左侧目录树：可拖拽伸缩 + 拖拽隐藏（与场景库共用 composable）=====
+const {sidebarWidth, isSidebarCollapsed, sideColStyle, startResizeSidebar} = useResizableSidebar();
 
-const sidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
-const isSidebarCollapsed = ref(false);
-const lastSidebarWidth = ref(SIDEBAR_DEFAULT_WIDTH);
+const {t} = useI18n();
 
-const sideColStyle = computed(() => ({
-  width: isSidebarCollapsed.value ? '0px' : `${sidebarWidth.value}px`,
-  overflow: 'hidden',
-}));
+// 定位类型下拉选项（含 TEXT_CONTAINS）
+const locatorTypeOptions = LOCATOR_TYPE_OPTIONS;
 
-const collapseSidebar = () => {
-  if (!isSidebarCollapsed.value) {
-    lastSidebarWidth.value = Math.max(sidebarWidth.value, SIDEBAR_MIN_WIDTH);
+// 定位链编辑草稿（元素表单）
+const locatorChainDraft = ref<LocatorChainItem[]>([]);
+
+// 打开元素表单时初始化定位链草稿：优先用已有链，空链由主定位合成
+const initLocatorChainDraft = () => {
+  const chain = addOrUpdateElementForm.value.locatorChain;
+  if (chain && chain.length > 0) {
+    locatorChainDraft.value = chain.map((c) => ({...c}));
+  } else if (addOrUpdateElementForm.value.locatorType || addOrUpdateElementForm.value.locatorValue) {
+    locatorChainDraft.value = [{
+      type: (addOrUpdateElementForm.value.locatorType || '').toUpperCase(),
+      value: addOrUpdateElementForm.value.locatorValue || '',
+    }];
+  } else {
+    locatorChainDraft.value = [{type: '', value: ''}];
   }
-  isSidebarCollapsed.value = true;
-  sidebarWidth.value = 0;
 };
 
-const expandSidebar = () => {
-  isSidebarCollapsed.value = false;
-  const expandedWidth = Math.round((lastSidebarWidth.value || SIDEBAR_DEFAULT_WIDTH) * 1.25);
-  sidebarWidth.value = Math.min(expandedWidth, SIDEBAR_MAX_WIDTH);
+const addChainItem = () => {
+  locatorChainDraft.value.push({type: '', value: ''});
 };
 
-const startResizeSidebar = (e: MouseEvent) => {
-  const startX = e.clientX;
-  const wasCollapsed = isSidebarCollapsed.value;
-  const startWidth = wasCollapsed ? 0 : sidebarWidth.value;
-  let moved = false;
+const removeChainItem = (idx: number) => {
+  locatorChainDraft.value.splice(idx, 1);
+};
 
-  const onMove = (ev: MouseEvent) => {
-    if (Math.abs(ev.clientX - startX) > 3) moved = true;
-    if (wasCollapsed) {
-      isSidebarCollapsed.value = false;
-    }
-    const newWidth = startWidth + ev.clientX - startX;
-    sidebarWidth.value = Math.min(Math.max(newWidth, 0), SIDEBAR_MAX_WIDTH);
-  };
-
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.body.style.userSelect = '';
-
-    if (!moved && wasCollapsed) {
-      expandSidebar();
-      return;
-    }
-
-    if (sidebarWidth.value <= SIDEBAR_COLLAPSE_THRESHOLD) {
-      collapseSidebar();
-    } else if (sidebarWidth.value < SIDEBAR_MIN_WIDTH) {
-      sidebarWidth.value = SIDEBAR_MIN_WIDTH;
-    }
-  };
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  document.body.style.userSelect = 'none';
+const moveChainItem = (idx: number, offset: number) => {
+  const target = idx + offset;
+  if (target < 0 || target >= locatorChainDraft.value.length) return;
+  const list = locatorChainDraft.value;
+  const tmp = list[idx];
+  list[idx] = list[target];
+  list[target] = tmp;
 };
 
 // 加载目录列表
@@ -591,8 +584,9 @@ const userAddSubFolder = (parentId: string) => {
 // 在目录下添加元素
 const userAddSubElement = (parentId: string) => {
   addOrUpdateElementVisible.value = true;
-  addOrUpdateElementForm.value.elementType = 'ELEMENT';
-  addOrUpdateElementForm.value.parentId = parentId;
+  // 重建表单，避免残留上次编辑的 id 导致误走更新分支
+  addOrUpdateElementForm.value = {...new Element(), elementType: 'ELEMENT', parentId};
+  initLocatorChainDraft();
 }
 
 
@@ -645,6 +639,7 @@ const handleElementCancel = () => {
   // 清除校验状态
   addElementFormRef.value.clearValidate();
   addOrUpdateElementForm.value = {};
+  locatorChainDraft.value = [];
 
 }
 
@@ -659,9 +654,10 @@ const userAddOrUpdateElement = (mode: string, element: Element | undefined) => {
     addOrUpdateElementForm.value = {...new Element(), elementType: 'ELEMENT'}
   }
   addOrUpdateElementForm.value.parentId = selectedFolder.value ? selectedFolder.value : 0;
+  initLocatorChainDraft();
 }
 
-// 添加元素表单校验
+// 添加元素表单校验（定位链在提交时单独校验）
 const addElementFormRules = {
   parentId: [
     {
@@ -675,18 +671,6 @@ const addElementFormRules = {
       message: '请输入元素名称',
     },
   ],
-  locatorType: [
-    {
-      required: true,
-      message: '请选择定位方式',
-    },
-  ],
-  locatorValue: [
-    {
-      required: true,
-      message: '请输入定位值',
-    },
-  ]
 }
 
 // 确认添加元素
@@ -695,6 +679,22 @@ const handleElementBeforeOk = async () => {
   if (error) {
     return false;
   }
+
+  // 过滤空候选，要求至少保留一个完整的定位（类型 + 值）
+  const validChain = locatorChainDraft.value
+      .map((c) => ({...c, type: (c.type || '').trim(), value: (c.value || '').trim()}))
+      .filter((c) => c.type && c.value);
+  if (validChain.length === 0) {
+    Message.error({
+      content: t('element.form.chainRequired'),
+      duration: 2000
+    });
+    return false;
+  }
+  // 链第一项同步为主定位字段（后端也有兜底）
+  addOrUpdateElementForm.value.locatorChain = validChain;
+  addOrUpdateElementForm.value.locatorType = validChain[0].type;
+  addOrUpdateElementForm.value.locatorValue = validChain[0].value;
 
   let result;
   if (addOrUpdateElementForm.value.id != null) {
@@ -709,10 +709,8 @@ const handleElementBeforeOk = async () => {
       content: `${modalMode.value}成功`,
       duration: 1000
     })
-    // 判断当前是否选择了目录，如果有就加载当前目录下的元素，没有就加载根目录
-    if (selectedFolder.value != null) {
-      await reloadElementList(selectedFolder.value);
-    }
+    // 保存成功后刷新列表（「全部元素」视图下 selectedFolder 为 null 也要刷新）
+    await reloadElementList();
   } else {
     Message.error({
       content: result.msg,
@@ -1186,5 +1184,41 @@ watch(
   margin-top: 12px;
   display: flex;
   justify-content: center;
+}
+
+/* 定位链编辑器 */
+.locator-chain-editor {
+  width: 100%;
+}
+
+.locator-chain-tip {
+  font-size: 12px;
+  color: var(--color-text-3);
+  margin-bottom: 8px;
+}
+
+.locator-chain-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.locator-chain-index {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.locator-chain-type {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.locator-chain-value {
+  flex: 1;
+  min-width: 0;
 }
 </style>

@@ -198,8 +198,9 @@ create table element
     parent_id      int                                                                                                     not null comment '父id',
     element_name   varchar(255)                                                                                            not null comment '元素名称',
     element_type   enum ('ELEMENT', 'FOLDER')                                                                              not null comment '类型',
-    locator_type   enum ('id', 'class', 'xpath', 'css', 'text', 'placeholder', 'role', 'test_id', 'label', 'title', 'alt') null comment '定位类型',
+    locator_type   enum ('id', 'class', 'xpath', 'css', 'text', 'text_contains', 'placeholder', 'role', 'test_id', 'label', 'title', 'alt') null comment '定位类型',
     locator_value  text                                                                                                    null comment '定位值',
+    locator_chain  json                                                                                                    null comment '定位候选链（有序：[{type,value,score?}]，第一项为主定位）',
     sort           int                                                                                                     null comment '排序',
     description    text                                                                                                    null comment '元素描述',
     project_id     varchar(36)                                                                                             not null comment '所属项目ID',
@@ -214,6 +215,18 @@ create table element
 
 create index idx_element_is_deleted
     on element (is_deleted);
+
+create table import_batch_record
+(
+    id         int auto_increment comment '记录ID'
+        primary key,
+    batch_id   varchar(64)                        not null comment '幂等批次ID（客户端生成）',
+    project_id varchar(36)                        not null comment '所属项目ID',
+    entry_type varchar(32)                        not null comment '入口类型：SCENE_IMPORT=场景JSON导入，RECORD_SAVE=录制保存',
+    result     varchar(255)                       null comment '首次导入结果（场景ID或true）',
+    created_at datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    constraint uk_import_batch_id unique (batch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;
 
 create table environment
 (

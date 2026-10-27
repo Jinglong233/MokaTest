@@ -1,6 +1,7 @@
 package com.mokatest.platform.demos.domain.ui.record;
 
 import com.mokatest.platform.demos.domain.ui.Element;
+import com.mokatest.platform.demos.domain.ui.LocatorCandidate;
 import com.mokatest.platform.demos.domain.ui.Setting;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
 import com.mokatest.platform.demos.domain.ui.dto.record.RecordCandidateDTO;
@@ -18,6 +19,7 @@ import com.mokatest.platform.demos.domain.ui.uiEnum.click.ClickType;
 import com.mokatest.platform.demos.domain.ui.uiEnum.iframe.SwitchIframeType;
 import com.mokatest.platform.demos.domain.ui.uiEnum.keyboard.KeyboardInputType;
 import com.mokatest.platform.demos.domain.ui.uiEnum.keyboard.KeyboardKey;
+import com.mokatest.platform.demos.element.ElementProcessor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
@@ -48,6 +50,7 @@ public class RecordEventConverter {
         List<String> warnings = new ArrayList<>();
         Map<String, Integer> skipped = new HashMap<>();
         skipped.put("iframeEvents", 0);
+        skipped.put("navigateEvents", 0);
 
         List<RecordEventDTO> events = new ArrayList<>(file.getEvents());
         // 按 seq 排序，seq 为空则保持原顺序
@@ -101,7 +104,9 @@ public class RecordEventConverter {
                 handleKeyPress(event, steps);
                 break;
             case "NAVIGATE":
-                handleNavigate(steps);
+                // 整页跳转不再生成等待步骤：Playwright 动作自带自动等待，
+                // 如需等待可在场景/步骤设置中配置执行后等待时间；此处仅计数，避免静默丢弃
+                skipped.merge("navigateEvents", 1, Integer::sum);
                 break;
             case "IFRAME_ENTER":
                 handleIframeEnter(event, projectId, steps, warnings, index);
@@ -189,11 +194,6 @@ public class RecordEventConverter {
         dto.setSetting(createDefaultSetting());
         steps.add(buildDraft(stepName, "KEYBOARD",
                 toStepDetailMap(dto, null), false));
-    }
-
-    private void handleNavigate(List<RecordStepDraftVO> steps) {
-        // 整页跳转不再生成等待步骤：Playwright 动作自带自动等待，
-        // 如需等待可在场景/步骤设置中配置执行后等待时间
     }
 
     private void handleIframeEnter(RecordEventDTO event, Integer projectId,
@@ -316,27 +316,66 @@ public class RecordEventConverter {
             locator.setElementName(matched.getElementName());
             locator.setLocatorType(matched.getLocatorType());
             locator.setLocatorValue(matched.getLocatorValue());
+            // 库选快照带上整条定位链与项目ID，执行期链式 fallback 与多租户校验可用
+            locator.setLocatorChain(ElementProcessor.resolveChain(matched));
+            locator.setProjectId(String.valueOf(projectId));
             dto.setLocator(locator);
             // 同时给 customLocator 一个空对象，避免前端 ElementDTO 解析后缺字段
             dto.setCustomLocator(new Element());
+            dto.setLocatorSource("LIBRARY");
         } else {
+            // 候选链写入步骤快照的链字段，执行引擎按链 fallback 消费；主定位取链首项（最高分）
+            List<LocatorCandidate> chain = toLocatorChain(element.getCandidates());
+            LocatorCandidate primary = chain.get(0);
             Element custom = new Element();
             custom.setElementName(element.getElementName());
-            custom.setLocatorType(firstValid.getLocatorType());
-            custom.setLocatorValue(firstValid.getLocatorValue());
+            custom.setLocatorType(primary.getType());
+            custom.setLocatorValue(primary.getValue());
+            custom.setLocatorChain(chain);
             dto.setCustomLocator(custom);
             // 同时给 locator 一个空对象
             dto.setLocator(new Element());
+            dto.setLocatorSource("CUSTOM");
         }
         return dto;
+    }
+
+    /**
+     * 录制候选转定位链：过滤无效候选，按 score 从高到低排序（无 score 的保持原顺序排后）
+     */
+    private List<LocatorCandidate> toLocatorChain(List<RecordCandidateDTO> candidates) {
+        List<LocatorCandidate> chain = new ArrayList<>();
+        if (candidates == null) {
+            return chain;
+        }
+        List<RecordCandidateDTO> valid = new ArrayList<>();
+        for (RecordCandidateDTO candidate : candidates) {
+            if (candidate != null && StringUtils.hasText(candidate.getLocatorType())
+                    && StringUtils.hasText(candidate.getLocatorValue())) {
+                valid.add(candidate);
+            }
+        }
+        valid.sort((a, b) -> {
+            int scoreA = a.getScore() == null ? Integer.MIN_VALUE : a.getScore();
+            int scoreB = b.getScore() == null ? Integer.MIN_VALUE : b.getScore();
+            return Integer.compare(scoreB, scoreA);
+        });
+        for (RecordCandidateDTO candidate : valid) {
+            LocatorCandidate item = new LocatorCandidate();
+            item.setType(candidate.getLocatorType());
+            item.setValue(candidate.getLocatorValue());
+            if (candidate.getScore() != null) {
+                item.setScore(candidate.getScore().doubleValue());
+            }
+            chain.add(item);
+        }
+        return chain;
     }
 
     private Map<String, Object> toStepDetailMap(Object dto, List<RecordCandidateDTO> candidates) {
         Map<String, Object> map = objectMapper.convertValue(dto, new TypeReference<Map<String, Object>>() {
         });
-        if (candidates != null && !candidates.isEmpty()) {
-            map.put("locatorCandidates", candidates);
-        }
+        // 候选链已写入步骤快照的 locatorChain（见 buildElementDTO），不再冗余存储 locatorCandidates
         map.put("recorded", true);
         return map;
     }

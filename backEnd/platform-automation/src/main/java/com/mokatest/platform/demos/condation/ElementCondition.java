@@ -6,6 +6,7 @@ import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementLocatorType;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
 import com.mokatest.platform.demos.domain.ui.Element;
 import com.mokatest.platform.demos.element.ElementLocatorProcessor;
+import com.mokatest.platform.demos.element.ElementProcessor;
 import com.mokatest.platform.demos.result.AssertResult;
 import com.mokatest.platform.demos.util.VariableReplacer;
 import com.microsoft.playwright.Locator;
@@ -49,8 +50,7 @@ public class ElementCondition implements TestCondition, Serializable {
                 case ELEMENT_EXIST -> {
                     String locatorType = element.getLocatorType().toString().toUpperCase();
                     String locatorValue = element.getLocatorValue();
-                    boolean visible = getElementLocator(context, ElementLocatorType.valueOf(locatorType),
-                            locatorValue).count() > 0;
+                    boolean visible = resolveChainLocator(context).count() > 0;
                     assertTip = String.format("定位类型：%s ，定位值：%s ，断言结果：%s", locatorType, locatorValue, visible ?
                             "元素存在" : "元素不存在");
                     assertResult.setSuccess(visible);
@@ -59,8 +59,7 @@ public class ElementCondition implements TestCondition, Serializable {
                 case ELEMENT_NOT_EXIST -> {
                     String locatorType = element.getLocatorType().toString().toUpperCase();
                     String locatorValue = element.getLocatorValue();
-                    boolean visible = getElementLocator(context, ElementLocatorType.valueOf(locatorType),
-                            locatorValue).count() > 0;
+                    boolean visible = resolveChainLocator(context).count() > 0;
                     assertTip = String.format("定位类型：%s ，定位值：%s ，断言结果：%s", locatorType, locatorValue, visible ?
                             "元素存在" : "元素不存在");
                     assertResult.setSuccess(!visible);
@@ -70,9 +69,7 @@ public class ElementCondition implements TestCondition, Serializable {
                     // 判断元素属性是否是 TEXT，如果是TEXT就说明要获取元素内的文本
                     String attribute = "";
                     if ("TEXT".equals(attributeName)) {
-                        attribute = getElementLocator(context,
-                                ElementLocatorType.valueOf(element.getLocatorType().toString()),
-                                element.getLocatorValue()).innerText();
+                        attribute = resolveChainLocator(context).innerText();
                     } else {
                         attribute = context.getCurrentFrame().getAttribute(element.getLocatorValue(),
                                 attributeName);
@@ -172,6 +169,19 @@ public class ElementCondition implements TestCondition, Serializable {
 
 
     /**
+     * 优先走定位链 fallback 解析；链解析失败时回退旧单定位构建（保留 TEXT 精确 / TEXT_CONTAINS 分支兜底）
+     */
+    private Locator resolveChainLocator(TestExecutionContext context) {
+        try {
+            return ElementProcessor.resolveLocator(context.getCurrentFrame(), element);
+        } catch (Exception e) {
+            return getElementLocator(context,
+                    ElementLocatorType.valueOf(element.getLocatorType().toString().toUpperCase()),
+                    element.getLocatorValue());
+        }
+    }
+
+    /**
      * 根据定位类型返回对应的定位器
      *
      * @param locatorType
@@ -184,6 +194,10 @@ public class ElementCondition implements TestCondition, Serializable {
                 return context.getCurrentFrame().locator(String.format("xpath=%s", value.replaceFirst("^xpath=", "")));
             }
             case TEXT -> {
+                return context.getCurrentFrame().getByText(value,
+                        new com.microsoft.playwright.Frame.GetByTextOptions().setExact(true));
+            }
+            case TEXT_CONTAINS -> {
                 return context.getCurrentFrame().getByText(value);
             }
             case PLACEHOLDER -> {

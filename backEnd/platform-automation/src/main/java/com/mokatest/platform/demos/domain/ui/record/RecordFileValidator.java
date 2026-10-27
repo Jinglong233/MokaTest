@@ -29,6 +29,11 @@ public class RecordFileValidator {
 
     private static final Set<String> ALLOWED_LOCATOR_TYPES = new HashSet<>();
 
+    /**
+     * 支持的录制文件版本：1.0 原始协议，1.1 携带完整 locatorCandidates（含 TEXT_CONTAINS 与 score）
+     */
+    private static final Set<String> SUPPORTED_VERSIONS = new HashSet<>(Arrays.asList("1.0", "1.1"));
+
     static {
         for (ElementLocatorType type : ElementLocatorType.values()) {
             ALLOWED_LOCATOR_TYPES.add(type.name());
@@ -64,7 +69,8 @@ public class RecordFileValidator {
         if (fileDTO == null) {
             throw new BusinessException("录制文件内容为空");
         }
-        if (!"1.0".equals(fileDTO.getVersion())) {
+        // 1.0：原始协议；1.1：事件携带完整 locatorCandidates（含 TEXT_CONTAINS 类型与 score）
+        if (!SUPPORTED_VERSIONS.contains(fileDTO.getVersion())) {
             throw new BusinessException("不支持的录制文件版本：" + fileDTO.getVersion() + "，请升级插件");
         }
         if (CollectionUtils.isEmpty(fileDTO.getEvents())) {

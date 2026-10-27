@@ -1,11 +1,9 @@
 package com.mokatest.platform.demos.step.stepImpl;
 
 import com.mokatest.platform.demos.domain.ui.uiEnum.StepExecutionType;
-import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementLocatorType;
 import com.mokatest.platform.demos.domain.ui.uiEnum.iframe.SwitchIframeType;
 import com.mokatest.platform.demos.config.ApplicationContextHolder;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
-import com.mokatest.platform.demos.domain.ui.Element;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
 import com.mokatest.platform.demos.element.ElementProcessor;
 import com.mokatest.platform.demos.result.StepResult;
@@ -75,10 +73,8 @@ public class IframeStep extends AbstractTestStep {
             }
             case ELEMENT -> {
                 ElementProcessor bean = ApplicationContextHolder.getBean(ElementProcessor.class);
-                Element elementLocator = bean.getElementLocator(element);
-                Locator locator = getLocator(context.getCurrentFrame(),
-                        ElementLocatorType.valueOf(elementLocator.getLocatorType().toString().toUpperCase()),
-                        elementLocator.getLocatorValue());
+                // 定位链 fallback：按链逐个短超时只读探测，全部失败返回主定位
+                Locator locator = bean.resolveLocator(context.getCurrentFrame(), element);
                 Frame frame = locator.elementHandle().contentFrame();
                 context.setCurrentFrame(frame);
             }

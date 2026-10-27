@@ -1,10 +1,18 @@
+// 定位候选项：有序数组，第一项为主定位（与 locatorType/locatorValue 同步）
+export interface LocatorChainItem {
+    type: string;
+    value: string;
+    score?: number;
+}
+
 export class Element {
     id?: number;      // 元素ID
     parentId?: number;      // 父id
     elementName?: string = '';      // 元素名称
     elementType?: string = '';      // 类型
-    locatorType?: string = undefined;      // 定位类型
-    locatorValue?: string = '';      // 定位值
+    locatorType?: string = undefined;      // 定位类型（主定位 = 定位链第一项）
+    locatorValue?: string = '';      // 定位值（主定位 = 定位链第一项）
+    locatorChain?: LocatorChainItem[];      // 定位候选链（有序），为空时由主定位合成
     sort?: number = 0;      // 排序
     description?: string = '';      // 元素描述
     projectId?: string = '';      // 所属项目ID

@@ -7,5 +7,5 @@ package com.mokatest.platform.demos.domain.ui.uiEnum.element;
  **/
 public enum ElementLocatorType {
 
-    XPATH, TEXT, PLACEHOLDER, ROLE, TEST_ID, LABEL, TITLE, ALT,CSS
+    XPATH, TEXT, TEXT_CONTAINS, PLACEHOLDER, ROLE, TEST_ID, LABEL, TITLE, ALT,CSS
 }

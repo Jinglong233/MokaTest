@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mokatest.platform.demos.domain.ui.uiEnum.scene.SceneType;
 import com.mokatest.platform.demos.domain.ui.Element;
+import com.mokatest.platform.demos.domain.ui.ImportBatchRecord;
 import com.mokatest.platform.demos.domain.ui.Scene;
 import com.mokatest.platform.demos.domain.ui.SceneSetting;
 import com.mokatest.platform.demos.domain.ui.TestStep;
@@ -14,20 +15,26 @@ import com.mokatest.platform.demos.domain.ui.dto.scene.SceneExportDTO;
 import com.mokatest.platform.demos.domain.ui.dto.scene.SceneExportMeta;
 import com.mokatest.platform.demos.domain.ui.dto.scene.StepExportDTO;
 import com.mokatest.platform.demos.domain.ui.vo.SceneVO;
+import com.mokatest.platform.demos.element.ElementLibrarySyncService;
+import com.mokatest.platform.demos.element.ElementProcessor;
 import com.mokatest.platform.demos.exception.ParamIsEmptyException;
 import com.mokatest.platform.demos.listener.projectListener.ProjectUpdateEvent;
 import com.mokatest.platform.demos.mapper.ElementMapper;
+import com.mokatest.platform.demos.mapper.ImportBatchRecordMapper;
 import com.mokatest.platform.demos.mapper.SceneMapper;
 import com.mokatest.platform.demos.mapper.TestStepMapper;
 import com.mokatest.platform.demos.service.SceneService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.executor.BatchResult;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
@@ -44,6 +51,7 @@ import static com.mokatest.platform.demos.listener.projectListener.Enum.UpdateDa
  * @createDate 2025-07-31 19:19:18
  */
 @Service
+@Slf4j
 public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements SceneService {
 
     @Resource
@@ -54,6 +62,12 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
 
     @Resource
     private ElementMapper elementMapper;
+
+    @Resource
+    private ImportBatchRecordMapper importBatchRecordMapper;
+
+    @Resource
+    private ElementLibrarySyncService elementLibrarySyncService;
 
     @Resource
     private ApplicationEventPublisher eventPublisher;
@@ -261,13 +275,20 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean importScene(Map<String, Object> sceneData) {
         if (sceneData == null) {
             throw new ParamIsEmptyException("缺少场景信息");
         }
         List<TestStep> stepList = convertWithGson((List<LinkedHashMap<String, Object>>) sceneData.get("stepList"));
         Map sceneMap = (Map) sceneData.get("scene");
+
+        // 幂等：重复提交直接返回首次导入结果
+        String importBatchId = sceneMap.get("importBatchId") == null ? null : sceneMap.get("importBatchId").toString();
+        if (StringUtils.hasText(importBatchId) && findImportBatchResult(importBatchId, "CRX_IMPORT") != null) {
+            return true;
+        }
+
         Scene scene = new Scene();
         scene.setSceneType(SCENE);
         scene.setSceneCategory("UI");
@@ -301,15 +322,36 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
 
 
         Integer sceneId = scene.getId();
-        if (stepList == null || stepList.isEmpty()) return true;
+        if (stepList == null || stepList.isEmpty()) {
+            eventPublisher.publishEvent(new ProjectUpdateEvent(this, 1, scene.getProjectId(), UI));
+            return true;
+        }
+        // 同步元素至元素库：与批量 JSON 导入同链路（缺省 = 与场景所属目录同名的元素库目录）
+        Integer elementFolderId = null;
+        if (Boolean.TRUE.equals(sceneMap.get("syncElementsToLibrary"))) {
+            elementFolderId = elementLibrarySyncService.resolveTargetFolderId(
+                    scene.getProjectId(), parseInteger(sceneMap.get("elementParentId")), scene.getParentId());
+        }
+        String userId = StpUtil.getLoginIdAsString();
         for (TestStep testStep : stepList) {
-            // todo 创建者id
-            testStep.setCreateUserId("11");
-            testStep.setUpdateUserId("11");
+            // 导入数据的步骤 id 必须置空，否则 insertOrUpdate 会按 id 更新、篡改他场景步骤归属
+            testStep.setId(null);
+            testStep.setCreateUserId(userId);
+            testStep.setUpdateUserId(userId);
             testStep.setScenarioId(sceneId.toString());
+            // 查重复用或新建库元素并重映射引用；CRX/playwright 快照无 elementName，用步骤名做命名兜底
+            if (elementFolderId != null && testStep.getStepDetail() instanceof Map) {
+                elementLibrarySyncService.syncStepDetailElements(
+                        (Map<String, Object>) testStep.getStepDetail(), scene.getProjectId(), elementFolderId,
+                        testStep.getStepName());
+            }
         }
         // 批量添加步骤
         testStepMapper.insertOrUpdate(stepList);
+        if (StringUtils.hasText(importBatchId)) {
+            saveImportBatchRecord(importBatchId, scene.getProjectId(), "CRX_IMPORT", "true");
+        }
+        eventPublisher.publishEvent(new ProjectUpdateEvent(this, 1, scene.getProjectId(), UI));
         return true;
     }
 
@@ -529,9 +571,22 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
             throw new ParamIsEmptyException("缺少项目ID");
         }
 
+        // 幂等：重复提交直接返回首次导入结果
+        if (StringUtils.hasText(dto.getImportBatchId())
+                && findImportBatchResult(dto.getImportBatchId(), "SCENE_IMPORT") != null) {
+            return true;
+        }
+
         Integer parentId = dto.getParentId();
         if (parentId == null) {
             parentId = 0;
+        }
+
+        // 同步元素至元素库：解析目标目录（缺省 = 与场景所属目录同名的元素库目录）
+        Integer elementFolderId = null;
+        if (Boolean.TRUE.equals(dto.getSyncElementsToLibrary())) {
+            elementFolderId = elementLibrarySyncService.resolveTargetFolderId(
+                    dto.getProjectId(), dto.getElementParentId(), parentId);
         }
 
         QueryWrapper<Scene> queryWrapper = new QueryWrapper<>();
@@ -541,17 +596,52 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
 
         int index = 1;
         for (SceneExportDTO sceneData : dto.getSceneDataList()) {
-            importSingleScene(sceneData, parentId, dto.getProjectId(), baseSort + index++, dto.getSceneCategory());
+            importSingleScene(sceneData, parentId, dto.getProjectId(), baseSort + index++, dto.getSceneCategory(),
+                    elementFolderId);
         }
 
+        if (StringUtils.hasText(dto.getImportBatchId())) {
+            saveImportBatchRecord(dto.getImportBatchId(), dto.getProjectId(), "SCENE_IMPORT", "true");
+        }
         eventPublisher.publishEvent(new ProjectUpdateEvent(this, 1, dto.getProjectId(), UI));
         return true;
     }
 
     /**
-     * 导入单个场景（批量导入内部复用）
+     * 按幂等批次ID + 入口类型查询首次导入结果，未导入过返回 null；
+     * entry_type 条件避免不同入口共用 batchId 时读到他类型的结果
      */
-    private void importSingleScene(SceneExportDTO exportData, Integer parentId, String projectId, int sort, String targetCategory) {
+    private String findImportBatchResult(String batchId, String entryType) {
+        QueryWrapper<ImportBatchRecord> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("batch_id", batchId);
+        queryWrapper.eq("entry_type", entryType);
+        ImportBatchRecord record = importBatchRecordMapper.selectOne(queryWrapper);
+        return record == null ? null : record.getResult();
+    }
+
+    /**
+     * 写入幂等批次记录；并发下撞唯一键说明另一请求已完成导入，按首次结果处理
+     */
+    private void saveImportBatchRecord(String batchId, String projectId, String entryType, String result) {
+        ImportBatchRecord record = new ImportBatchRecord();
+        record.setBatchId(batchId);
+        record.setProjectId(projectId);
+        record.setEntryType(entryType);
+        record.setResult(result);
+        try {
+            importBatchRecordMapper.insert(record);
+        } catch (DuplicateKeyException e) {
+            log.warn("[Import] batchId={} 已被并发请求写入，按首次导入结果处理", batchId);
+        }
+    }
+
+    /**
+     * 导入单个场景（批量导入内部复用）
+     *
+     * @param elementFolderId 元素库目标目录；非空时把步骤内元素同步到元素库并重映射引用
+     */
+    private void importSingleScene(SceneExportDTO exportData, Integer parentId, String projectId, int sort,
+                                   String targetCategory, Integer elementFolderId) {
         SceneExportMeta meta = exportData.getMeta();
         if (meta == null) {
             throw new ParamIsEmptyException("缺少场景元数据");
@@ -599,6 +689,11 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
             testStep.setCreatedAt(new Date());
             testStep.setUpdatedAt(new Date());
             testStep.setStepDetail(sanitizeStepDetailForImport(stepExport.getStepDetail()));
+            // 同步元素至元素库：查重复用或新建，并把 locator 重映射为真实库元素 id
+            if (elementFolderId != null && testStep.getStepDetail() instanceof Map) {
+                elementLibrarySyncService.syncStepDetailElements(
+                        (Map<String, Object>) testStep.getStepDetail(), projectId, elementFolderId);
+            }
             testStepMapper.insert(testStep);
             if (oldId != null) {
                 idMapping.put(oldId, testStep.getId());
@@ -640,7 +735,7 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
     }
 
     /**
-     * 导出时清洗步骤详情：元素库引用转自定义、API 环境剥离、fileIds 清空
+     * 导出时清洗步骤详情：元素库引用导出为元素摘要、API 环境剥离、fileIds 清空
      */
     private Object sanitizeStepDetailForExport(Object stepDetail, String stepType) {
         if (stepDetail == null) {
@@ -735,37 +830,56 @@ public class SceneServiceImpl extends ServiceImpl<SceneMapper, Scene> implements
     }
 
     /**
-     * 导出时处理元素引用：元素库定位转自定义，locator 置空对象
+     * 导出时处理元素引用：库引用导出为元素摘要（名称 + 描述 + 主定位 + 完整定位链），
+     * locator.id 仅作参考信息，不再降级为 customLocator 快照
      */
     private void sanitizeElementForExport(Map<String, Object> elementMap) {
         Object locator = elementMap.get("locator");
+        Integer elementId = null;
         if (locator instanceof Map) {
-            Map<String, Object> locatorMap = (Map<String, Object>) locator;
-            Object idObj = locatorMap.get("id");
-            Integer elementId = parseInteger(idObj);
-            if (elementId != null) {
-                Element el = elementMapper.selectById(elementId);
-                if (el != null) {
-                    Map<String, Object> customLocator = new LinkedHashMap<>();
-                    customLocator.put("locatorType", el.getLocatorType());
-                    customLocator.put("locatorValue", el.getLocatorValue());
-                    elementMap.put("customLocator", customLocator);
+            elementId = parseInteger(((Map<String, Object>) locator).get("id"));
+        }
+        if (elementId != null) {
+            Element el = elementMapper.selectById(elementId);
+            if (el != null) {
+                Map<String, Object> summary = new LinkedHashMap<>();
+                summary.put("id", el.getId());
+                summary.put("elementName", el.getElementName());
+                summary.put("description", el.getDescription());
+                summary.put("locatorType", el.getLocatorType());
+                summary.put("locatorValue", el.getLocatorValue());
+                summary.put("locatorChain", ElementProcessor.resolveChain(el));
+                elementMap.put("locator", summary);
+                if (!(elementMap.get("customLocator") instanceof Map)) {
+                    elementMap.put("customLocator", new LinkedHashMap<>());
                 }
+                return;
             }
         }
-        // 前端 ElementSelect 期望 locator 是对象而不是 null，置为空对象
-        elementMap.put("locator", new LinkedHashMap<>());
-        if (!elementMap.containsKey("customLocator") || elementMap.get("customLocator") == null) {
+        // 无有效库引用（自定义定位或库元素已删除）：保留原快照结构，仅兜底字段齐全
+        if (!(locator instanceof Map)) {
+            elementMap.put("locator", new LinkedHashMap<>());
+        }
+        if (!(elementMap.get("customLocator") instanceof Map)) {
             elementMap.put("customLocator", new LinkedHashMap<>());
         }
     }
 
     /**
-     * 导入时兜底处理元素引用：确保 locator/customLocator 是对象
+     * 导入时兜底处理元素引用：保留 locator 摘要/快照（执行期可作快照兜底），
+     * 但剔除指向来源环境的 id/projectId（可能撞上本环境同 id 元素）；
+     * 勾选「同步导入元素至元素库」时由联动逻辑重映射为真实库 id
      */
     private void sanitizeElementForImport(Map<String, Object> elementMap) {
-        elementMap.put("locator", new LinkedHashMap<>());
-        if (!elementMap.containsKey("customLocator") || elementMap.get("customLocator") == null) {
+        Object locator = elementMap.get("locator");
+        if (locator instanceof Map) {
+            Map<String, Object> locatorMap = (Map<String, Object>) locator;
+            locatorMap.remove("id");
+            locatorMap.remove("projectId");
+        } else {
+            elementMap.put("locator", new LinkedHashMap<>());
+        }
+        if (!(elementMap.get("customLocator") instanceof Map)) {
             elementMap.put("customLocator", new LinkedHashMap<>());
         }
     }

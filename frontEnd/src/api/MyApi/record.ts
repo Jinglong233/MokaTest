@@ -20,11 +20,15 @@ export interface RecordImportResult {
 }
 
 export interface RecordSaveDTO {
-    projectId: string;
-    name: string;
-    parentId: number;
+    projectId: number | string;
+    name?: string;           // 追加到已有场景（sceneId）时不必填
+    parentId?: number;
     description?: string;
     steps: RecordStepDraft[];
+    sceneId?: number;        // 追加到已有场景 = 继续录制
+    batchId?: string;        // 幂等键，重复提交不产生重复步骤
+    syncElementsToLibrary?: boolean;
+    elementParentId?: number;
 }
 
 /**

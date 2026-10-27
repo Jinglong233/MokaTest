@@ -75,15 +75,7 @@
           <a-form-item field="customLocator.locatorType" label="定位方式">
             <a-select v-model="localElement.customLocator.locatorType" @change="updateParent"
                       :disabled="disabled">
-              <a-option value="XPATH">xpath</a-option>
-              <a-option value="TEXT">text</a-option>
-              <a-option value="PLACEHOLDER">placeholder</a-option>
-              <a-option value="ROLE">role</a-option>
-              <a-option value="TEST_ID">test_id</a-option>
-              <a-option value="LABEL">label</a-option>
-              <a-option value="TITLE">title</a-option>
-              <a-option value="ALT">alt</a-option>
-              <a-option value="CSS">css</a-option>
+              <a-option v-for="opt in locatorTypeOptions" :key="opt.value" :value="opt.value">{{ $t(opt.labelKey) }}</a-option>
             </a-select>
           </a-form-item>
           <a-form-item field="customLocator.locatorValue" label="定位值">
@@ -98,17 +90,23 @@
         </a-button>
     </div>
 
-    <!--  当前生效定位条：仅库选元素时显示所选元素的定位方式/定位值  -->
-    <div v-if="localElement.locatorSource === 'LIBRARY' && localElement.locator?.locatorValue"
-         class="effective-locator">
-      <span class="effective-label">当前生效</span>
-      <a-tag size="small">{{ localElement.locator.locatorType }}</a-tag>
-      <span class="effective-value" :title="localElement.locator.locatorValue">{{ localElement.locator.locatorValue }}</span>
-      <a-tooltip content="复制定位值">
-        <a-button type="text" size="mini" class="effective-copy" @click="copyEffectiveValue">
-          <icon-copy/>
-        </a-button>
-      </a-tooltip>
+    <!--  当前生效定位链：仅库选元素时显示所选元素的只读定位链（有序）  -->
+    <div v-if="localElement.locatorSource === 'LIBRARY' && effectiveLocatorChain.length > 0"
+         class="effective-locator-chain">
+      <div class="effective-chain-header">
+        <span class="effective-label">{{ $t('scene.elementSelect.effectiveChain') }}</span>
+        <span class="effective-chain-tip">{{ $t('scene.elementSelect.chainReadonlyTip') }}</span>
+      </div>
+      <div v-for="(item, idx) in effectiveLocatorChain" :key="idx" class="effective-chain-item">
+        <span class="effective-chain-index">{{ idx + 1 }}</span>
+        <a-tag size="small">{{ locatorTypeLabel(item.type) }}</a-tag>
+        <span class="effective-value" :title="item.value">{{ item.value }}</span>
+        <a-tooltip :content="$t('scene.elementSelect.copyValue')">
+          <a-button type="text" size="mini" class="effective-copy" @click="copyChainValue(item.value)">
+            <icon-copy/>
+          </a-button>
+        </a-tooltip>
+      </div>
     </div>
 
     <!--添加元素对话框-->
@@ -135,15 +133,7 @@
         </a-form-item>
         <a-form-item field="locatorType" label="定位方式" required>
           <a-select v-model="addOrUpdateElementForm.locatorType">
-            <a-option value="XPATH">xpath</a-option>
-            <a-option value="TEXT">text</a-option>
-            <a-option value="PLACEHOLDER">placeholder</a-option>
-            <a-option value="ROLE">role</a-option>
-            <a-option value="TEST_ID">test_id</a-option>
-            <a-option value="LABEL">label</a-option>
-            <a-option value="TITLE">title</a-option>
-            <a-option value="ALT">alt</a-option>
-            <a-option value="CSS">css</a-option>
+            <a-option v-for="opt in locatorTypeOptions" :key="opt.value" :value="opt.value">{{ $t(opt.labelKey) }}</a-option>
           </a-select>
         </a-form-item>
         <a-form-item field="locatorValue" label="定位值" required>
@@ -161,10 +151,12 @@
 
 <script setup lang="ts">
 import {IconFolder} from '@arco-design/web-vue/es/icon';
-import {onMounted, ref, watch} from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
+import {useI18n} from 'vue-i18n';
 import {Message} from "@arco-design/web-vue";
 import {ElementVO} from "@/types/vo/ElementVO";
-import {Element} from "@/types/domain/Element";
+import {Element, LocatorChainItem} from "@/types/domain/Element";
+import {LOCATOR_TYPE_OPTIONS} from "@/types/enum/element/ElementLocatorType";
 import {
   add,
   getAllElementByProjectId,
@@ -199,12 +191,23 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
+const {t} = useI18n();
+
+// 定位类型下拉选项（含 TEXT_CONTAINS）
+const locatorTypeOptions = LOCATOR_TYPE_OPTIONS;
+
+// 定位类型展示文案
+const locatorTypeLabel = (type?: string) => {
+  const option = locatorTypeOptions.find((o) => o.value === type);
+  return option ? t(option.labelKey) : (type || '');
+};
+
 
 // 创建本地副本，使用深度克隆避免引用问题
 const localElement = ref<ElementDTO>(new ElementDTO())
 
-// 监听 props 变化，更新本地数据
-watch(() => props.modelValue, async (newVal) => {
+// 监听 props 变化，更新本地数据（仅做数据同步，不触发接口请求）
+watch(() => props.modelValue, (newVal) => {
   localElement.value = JSON.parse(JSON.stringify(newVal || new ElementDTO()))
   if (!localElement.value.locator) {
     localElement.value.locator = new Element();
@@ -217,22 +220,36 @@ watch(() => props.modelValue, async (newVal) => {
     const locator = localElement.value.locator;
     localElement.value.locatorSource = (locator?.locatorType && locator?.locatorValue) ? 'LIBRARY' : 'CUSTOM';
   }
-  // 这里判断一次local元素是否被从元素库中删除
-  if (localElement.value.locator && localElement.value.locator.id) {
-    const result = await getElementById(localElement.value.locator.id)
-    if (result.data === null) {
-      localElement.value.customLocator.locatorValue = localElement.value.locator.locatorValue;
-      localElement.value.customLocator.locatorType = localElement.value.locator.locatorType;
-      // 将此定位变为自定义
-      localElement.value.locator = new Element();
-      localElement.value.locatorSource = 'CUSTOM';
-      Message.warning({
-        content: '原元素库中的元素已被删除，已转为自定义定位',
-        duration: 2500
-      });
-    }
-  }
 }, {deep: true, immediate: true})
+
+// 仅在库选元素 id 变化时请求元素详情：校验元素是否已被从元素库删除，并刷新定位链展示
+watch(() => props.modelValue?.locator?.id, async (elementId) => {
+  if (!elementId) {
+    return;
+  }
+  const result = await getElementById(elementId)
+  // 等待期间用户可能已改选/取消，回包与当前选择不一致时不处理
+  if (localElement.value.locator?.id !== elementId) {
+    return;
+  }
+  if (result.data === null) {
+    // 库元素已删除：降级为自定义定位（保留定位链快照，并回写父组件避免已删除的 id 落库）
+    localElement.value.customLocator.locatorValue = localElement.value.locator.locatorValue;
+    localElement.value.customLocator.locatorType = localElement.value.locator.locatorType;
+    localElement.value.customLocator.locatorChain = localElement.value.locator.locatorChain;
+    // 将此定位变为自定义
+    localElement.value.locator = new Element();
+    localElement.value.locatorSource = 'CUSTOM';
+    Message.warning({
+      content: t('scene.elementSelect.deletedFallback'),
+      duration: 2500
+    });
+    updateParent();
+  } else if (result.data?.locatorChain?.length) {
+    // 刷新定位链快照用于只读展示（不回写父组件，不改变保存语义）
+    localElement.value.locator.locatorChain = result.data.locatorChain;
+  }
+}, {immediate: true})
 
 // 更新父组件数据
 const updateParent = () => {
@@ -240,17 +257,29 @@ const updateParent = () => {
   emit('change', JSON.parse(JSON.stringify(localElement.value)))
 }
 
-// ==================== 当前生效定位 ====================
+// ==================== 当前生效定位链 ====================
 
-// 复制生效定位值（仅库选元素时生效条可见）
-const copyEffectiveValue = async () => {
-  const value = localElement.value?.locator?.locatorValue;
+// 当前生效定位链：优先取库元素的 locatorChain，为空时按主定位合成单元素链
+const effectiveLocatorChain = computed<LocatorChainItem[]>(() => {
+  const locator = localElement.value?.locator;
+  if (!locator) return [];
+  if (locator.locatorChain && locator.locatorChain.length > 0) {
+    return locator.locatorChain;
+  }
+  if (locator.locatorType && locator.locatorValue) {
+    return [{type: locator.locatorType.toUpperCase(), value: locator.locatorValue}];
+  }
+  return [];
+});
+
+// 复制链上某项的定位值
+const copyChainValue = async (value?: string) => {
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
-    Message.success({content: '已复制定位值', duration: 1000});
+    Message.success({content: t('scene.elementSelect.copySuccess'), duration: 1000});
   } catch (e) {
-    Message.warning({content: '复制失败，请手动复制', duration: 1500});
+    Message.warning({content: t('scene.elementSelect.copyFailed'), duration: 1500});
   }
 };
 
@@ -629,11 +658,8 @@ const debounceSearch = () => {
   box-shadow: none;
 }
 
-/* 当前生效定位条 */
-.effective-locator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* 当前生效定位链（只读） */
+.effective-locator-chain {
   padding: 6px 8px;
   border: 1px dashed var(--color-neutral-3);
   border-radius: 4px;
@@ -641,10 +667,33 @@ const debounceSearch = () => {
   min-width: 0;
 }
 
-.effective-locator.is-empty {
-  color: var(--color-text-3);
+.effective-chain-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.effective-chain-tip {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
-  justify-content: center;
+  color: var(--color-text-3);
+}
+
+.effective-chain-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.effective-chain-index {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-3);
 }
 
 .effective-label {

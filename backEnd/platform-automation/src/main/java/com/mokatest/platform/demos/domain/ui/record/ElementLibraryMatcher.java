@@ -35,9 +35,12 @@ public class ElementLibraryMatcher {
         }
         QueryWrapper<Element> wrapper = new QueryWrapper<>();
         wrapper.eq("project_id", projectId);
+        wrapper.eq("element_type", "ELEMENT");
         wrapper.eq("locator_type", candidate.getLocatorType());
         wrapper.eq("locator_value", candidate.getLocatorValue());
         wrapper.eq("is_deleted", 0);
+        // 确定性排序，避免同值多命中时结果不稳定
+        wrapper.orderByAsc("sort").orderByAsc("id");
         wrapper.last("LIMIT 1");
         List<Element> list = elementMapper.selectList(wrapper);
         if (list == null || list.isEmpty()) {

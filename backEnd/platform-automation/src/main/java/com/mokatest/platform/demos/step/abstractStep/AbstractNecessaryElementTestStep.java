@@ -38,11 +38,13 @@ public abstract class AbstractNecessaryElementTestStep extends AbstractTestStep 
     protected Locator getLocator(TestExecutionContext context) {
         ElementProcessor bean = ApplicationContextHolder.getBean(ElementProcessor.class);
         // 自愈重试期间优先使用 AI 验证过的新定位器
-        Element elementLocator = healedLocator != null ? healedLocator : bean.getElementLocator(element);
-        Locator locator = getLocator(context.getCurrentFrame(),
-                ElementLocatorType.valueOf(elementLocator.getLocatorType().toString().toUpperCase()),
-                elementLocator.getLocatorValue());
-        return locator;
+        if (healedLocator != null) {
+            return getLocator(context.getCurrentFrame(),
+                    ElementLocatorType.valueOf(healedLocator.getLocatorType().toString().toUpperCase()),
+                    healedLocator.getLocatorValue());
+        }
+        // 定位链 fallback：按链逐个短超时只读探测，命中即用；全部失败返回主定位，由 AI 自愈兜底
+        return bean.resolveLocator(context.getCurrentFrame(), element);
     }
 
     /**

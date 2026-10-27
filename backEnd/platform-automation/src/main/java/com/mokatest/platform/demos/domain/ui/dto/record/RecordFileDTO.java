@@ -14,7 +14,7 @@ import java.util.Map;
 public class RecordFileDTO {
 
     /**
-     * 文件格式版本，当前为 1.0
+     * 文件格式版本：1.0 原始协议；1.1 事件携带完整 locatorCandidates（含 TEXT_CONTAINS 类型与 score）
      */
     private String version;
 

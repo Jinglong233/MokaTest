@@ -27,6 +27,10 @@ public class ElementLocatorProcessor {
                 result = frame.locator(String.format("xpath=%s", locatorValue));
             }
             case TEXT -> {
+                // 精确匹配（历史「包含」语义由 TEXT_CONTAINS 承接）
+                result = frame.getByText(locatorValue, new Frame.GetByTextOptions().setExact(true));
+            }
+            case TEXT_CONTAINS -> {
                 result = frame.getByText(locatorValue);
             }
             case PLACEHOLDER -> {

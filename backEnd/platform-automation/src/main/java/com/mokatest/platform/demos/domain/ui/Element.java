@@ -1,26 +1,29 @@
 package com.mokatest.platform.demos.domain.ui;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.mokatest.platform.demos.config.LocatorChainTypeHandler;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 元素定位表
  *
  * @TableName element
  */
-@TableName(value = "element")
+@TableName(value = "element", autoResultMap = true)
 public class Element implements Serializable {
     /**
      * 元素ID
      */
-    @TableId
+    @TableId(type = IdType.AUTO)
     private Integer id;
 
     /**
@@ -47,6 +50,12 @@ public class Element implements Serializable {
      * 定位值
      */
     private String locatorValue;
+
+    /**
+     * 定位候选链（有序：[{type,value,score?}]，第一项为主定位，与 locatorType/locatorValue 保持一致）
+     */
+    @TableField(typeHandler = LocatorChainTypeHandler.class)
+    private List<LocatorCandidate> locatorChain;
 
     /**
      * 排序
@@ -190,6 +199,20 @@ public class Element implements Serializable {
      */
     public void setLocatorValue(String locatorValue) {
         this.locatorValue = locatorValue;
+    }
+
+    /**
+     * 定位候选链（有序：[{type,value,score?}]，第一项为主定位）
+     */
+    public List<LocatorCandidate> getLocatorChain() {
+        return locatorChain;
+    }
+
+    /**
+     * 定位候选链（有序：[{type,value,score?}]，第一项为主定位）
+     */
+    public void setLocatorChain(List<LocatorCandidate> locatorChain) {
+        this.locatorChain = locatorChain;
     }
 
     /**
@@ -355,6 +378,8 @@ public class Element implements Serializable {
                 this.getLocatorType().equals(other.getLocatorType()))
                 && (this.getLocatorValue() == null ? other.getLocatorValue() == null :
                 this.getLocatorValue().equals(other.getLocatorValue()))
+                && (this.getLocatorChain() == null ? other.getLocatorChain() == null :
+                this.getLocatorChain().equals(other.getLocatorChain()))
                 && (this.getSort() == null ? other.getSort() == null : this.getSort().equals(other.getSort()))
                 && (this.getDescription() == null ? other.getDescription() == null :
                 this.getDescription().equals(other.getDescription()))
@@ -386,6 +411,7 @@ public class Element implements Serializable {
         result = prime * result + ((getElementType() == null) ? 0 : getElementType().hashCode());
         result = prime * result + ((getLocatorType() == null) ? 0 : getLocatorType().hashCode());
         result = prime * result + ((getLocatorValue() == null) ? 0 : getLocatorValue().hashCode());
+        result = prime * result + ((getLocatorChain() == null) ? 0 : getLocatorChain().hashCode());
         result = prime * result + ((getSort() == null) ? 0 : getSort().hashCode());
         result = prime * result + ((getDescription() == null) ? 0 : getDescription().hashCode());
         result = prime * result + ((getProjectId() == null) ? 0 : getProjectId().hashCode());
@@ -411,6 +437,7 @@ public class Element implements Serializable {
         sb.append(", elementType=").append(elementType);
         sb.append(", locatorType=").append(locatorType);
         sb.append(", locatorValue=").append(locatorValue);
+        sb.append(", locatorChain=").append(locatorChain);
         sb.append(", sort=").append(sort);
         sb.append(", description=").append(description);
         sb.append(", projectId=").append(projectId);

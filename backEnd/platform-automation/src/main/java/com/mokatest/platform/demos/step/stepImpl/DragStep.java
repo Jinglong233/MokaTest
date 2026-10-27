@@ -1,10 +1,8 @@
 package com.mokatest.platform.demos.step.stepImpl;
 
 import com.mokatest.platform.demos.domain.ui.uiEnum.StepExecutionType;
-import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementLocatorType;
 import com.mokatest.platform.demos.config.ApplicationContextHolder;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
-import com.mokatest.platform.demos.domain.ui.Element;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
 import com.mokatest.platform.demos.element.ElementProcessor;
 import com.mokatest.platform.demos.result.StepResult;
@@ -41,10 +39,7 @@ public class DragStep extends AbstractTestStep {
 
     private Locator getLocator(TestExecutionContext context,ElementDTO element) {
         ElementProcessor bean = ApplicationContextHolder.getBean(ElementProcessor.class);
-        Element elementLocator = bean.getElementLocator(element);
-        Locator locator = getLocator(context.getCurrentFrame(),
-                ElementLocatorType.valueOf(elementLocator.getLocatorType().toString().toUpperCase()),
-                elementLocator.getLocatorValue());
-        return locator;
+        // 定位链 fallback：按链逐个短超时只读探测，全部失败返回主定位
+        return bean.resolveLocator(context.getCurrentFrame(), element);
     }
 }

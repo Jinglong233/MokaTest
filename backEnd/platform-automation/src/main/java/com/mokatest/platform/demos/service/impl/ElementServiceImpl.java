@@ -11,6 +11,7 @@ import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementType;
 import com.mokatest.platform.demos.domain.ui.Element;
 import com.mokatest.platform.demos.domain.ui.dto.queryDto.ElementQueryDTO;
 import com.mokatest.platform.demos.domain.ui.vo.ElementVO;
+import com.mokatest.platform.demos.element.ElementProcessor;
 import com.mokatest.platform.demos.exception.ParamIsEmptyException;
 import com.mokatest.platform.demos.mapper.ElementMapper;
 import com.mokatest.platform.demos.service.ElementService;
@@ -121,6 +122,8 @@ public class ElementServiceImpl extends ServiceImpl<ElementMapper, Element> impl
         String loginId = StpUtil.getLoginIdAsString();
         element.setCreateUserId(loginId);
         element.setUpdateUserId(loginId);
+        // 定位链读写兼容：链非空同步主定位，链为空由单定位合成单元素链
+        ElementProcessor.syncLocatorChain(element);
         int insert = elementMapper.insert(element);
         return insert > 0;
     }
@@ -131,6 +134,8 @@ public class ElementServiceImpl extends ServiceImpl<ElementMapper, Element> impl
             throw new ParamIsEmptyException("缺少参数");
         }
         element.setUpdateUserId(StpUtil.getLoginIdAsString());
+        // 定位链读写兼容：链非空同步主定位，链为空由单定位合成单元素链
+        ElementProcessor.syncLocatorChain(element);
         int update = elementMapper.updateById(element);
         return update > 0;
     }
@@ -326,7 +331,12 @@ public class ElementServiceImpl extends ServiceImpl<ElementMapper, Element> impl
         if (elementId == null) {
             throw new ParamIsEmptyException("缺少参数");
         }
-        return elementMapper.selectById(elementId);
+        Element element = elementMapper.selectById(elementId);
+        if (element != null && (element.getLocatorChain() == null || element.getLocatorChain().isEmpty())) {
+            // 存量数据无链：由单定位合成单元素链返回，前端始终能拿到链结构
+            element.setLocatorChain(ElementProcessor.resolveChain(element));
+        }
+        return element;
     }
 
     @Override

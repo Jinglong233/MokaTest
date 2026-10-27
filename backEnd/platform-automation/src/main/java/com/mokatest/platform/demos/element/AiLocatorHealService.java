@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import com.mokatest.platform.demos.debug.TestExecutionContext;
 import com.mokatest.platform.demos.domain.ui.Element;
+import com.mokatest.platform.demos.domain.ui.LocatorCandidate;
 import com.mokatest.platform.demos.domain.ui.dto.ElementDTO;
 import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementLocatorRoleType;
 import com.mokatest.platform.demos.domain.ui.uiEnum.element.ElementLocatorType;
@@ -146,13 +147,25 @@ public class AiLocatorHealService {
         if (errorMsg.length() > ERROR_MAX_CHARS) {
             errorMsg = errorMsg.substring(0, ERROR_MAX_CHARS);
         }
+        // 定位链全部候选均已探测失败，带进 prompt 让 AI 避免重复推荐
+        List<LocatorCandidate> chain = ElementProcessor.resolveChain(old);
+        StringBuilder chainSection = new StringBuilder();
+        if (chain.size() > 1) {
+            chainSection.append("已尝试失败的定位候选链（均已在当前页面验证未命中，请勿重复推荐）：\n");
+            for (LocatorCandidate candidate : chain) {
+                chainSection.append("- ").append(candidate.getType()).append(" = ")
+                        .append(candidate.getValue()).append("\n");
+            }
+        }
         return "目标元素名称：" + (StringUtils.hasText(elementName) ? elementName : "（未知，参考步骤名推断）") + "\n"
                 + "所属步骤：" + stepName + "\n"
                 + "旧定位器（已失效）：" + old.getLocatorType() + " = " + old.getLocatorValue() + "\n"
+                + chainSection
                 + "失败信息：" + errorMsg + "\n\n"
                 + "当前页面无障碍树快照：\n" + snapshot + "\n\n"
                 + "可选定位类型（type 取值必须来自此列表）：\n"
-                + "- TEXT：可见文本，value 为文本内容\n"
+                + "- TEXT_CONTAINS：可见文本包含匹配，value 为文本内容\n"
+                + "- TEXT：可见文本精确匹配（仅确需严格相等时使用）\n"
                 + "- ROLE：角色定位，value 格式 \"button::登录\"（角色::名称），角色仅限 button/textbox/link/checkbox/radio/heading/combobox/menuitem/option/img/listitem\n"
                 + "- PLACEHOLDER / LABEL / TITLE / ALT / TEST_ID：value 为对应属性值\n"
                 + "- CSS / XPATH：value 为选择器表达式\n"

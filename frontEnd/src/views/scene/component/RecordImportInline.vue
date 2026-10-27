@@ -35,11 +35,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'stepsChange', steps: RecordStepDraft[]): void;
+  (
+    e: 'stepsChange',
+    steps: RecordStepDraft[],
+    warnings: string[],
+    skipped: Record<string, number>
+  ): void;
 }>();
 
 function reset() {
-  emit('stepsChange', []);
+  emit('stepsChange', [], [], {});
 }
 
 async function handleFileChange(fileList: any[]) {
@@ -57,7 +62,8 @@ async function handleFileChange(fileList: any[]) {
   try {
     const result = await importRecord(rawFile, props.projectId);
     const data: RecordImportResult = result.data;
-    emit('stepsChange', data.steps || []);
+    // warnings / skipped 一并上抛，供步骤列表顶部 alert 展示
+    emit('stepsChange', data.steps || [], data.warnings || [], data.skipped || {});
   } catch (err: any) {
     Message.error(err?.response?.data?.msg || err?.message || t('scene.record.parseFailed'));
   }
