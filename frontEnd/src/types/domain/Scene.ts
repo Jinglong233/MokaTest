@@ -10,6 +10,7 @@ export interface Scene {
     sceneType?: string,       // 场景类型
     sceneCategory?: string,   // 场景分类：UI/API
     sceneSetting?: SceneConfig,   // 场景配置
+    deriveFrom?: number,       // AI 派生来源场景id（NULL=非派生，scene 表 derive_from 列）
     createAt?: number,       // 创建时间
     createUserId?: string,       // 创建人id
     updateUserId?: string,       // 更新人id

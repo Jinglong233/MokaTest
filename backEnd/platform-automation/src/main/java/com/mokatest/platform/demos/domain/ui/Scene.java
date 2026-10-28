@@ -67,6 +67,11 @@ public class Scene implements Serializable {
     private String sceneCategory;
 
     /**
+     * AI派生来源场景id（null=非AI派生）
+     */
+    private Integer deriveFrom;
+
+    /**
      * 创建时间
      */
     private Date createAt;

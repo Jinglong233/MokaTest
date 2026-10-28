@@ -595,6 +595,7 @@ create table scene
     create_user_id varchar(32)              not null comment '创建人id',
     update_user_id varchar(32)              not null comment '更新人id',
     scene_category varchar(20) default 'UI' null comment '场景分类：UI/API/MIXED',
+    derive_from    int                      null comment 'AI派生来源场景id（null=非AI派生）',
     is_deleted     tinyint     default 0    not null comment '是否已删除：0-未删除，1-已删除',
     deleted_at     datetime                 null comment '删除时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;

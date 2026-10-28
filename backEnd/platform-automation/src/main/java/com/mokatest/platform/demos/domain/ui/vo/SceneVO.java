@@ -59,5 +59,10 @@ public class SceneVO {
      */
     private String sceneCategory;
 
+    /**
+     * AI派生来源场景id（null=非AI派生）
+     */
+    private Integer deriveFrom;
+
     private List<SceneVO> children;
 }

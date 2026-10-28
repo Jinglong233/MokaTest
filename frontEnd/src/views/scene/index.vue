@@ -5,6 +5,16 @@
       <!--    左侧目录树-->
       <div class="scene-col scene-side-col" :style="sideColStyle">
         <a-card class="scene-card scene-folder-card">
+          <a-tabs
+              v-if="!isApiScene"
+              v-model:active-key="sceneGroupTab"
+              class="scene-group-tabs"
+              hide-content
+              @change="onSceneGroupTabChange"
+          >
+            <a-tab-pane key="FORMAL" :title="$t('scene.group.formal')"/>
+            <a-tab-pane key="AI_DERIVED" :title="$t('scene.group.aiDerived')"/>
+          </a-tabs>
           <div class="scene-tree-search-wrap">
             <a-input-search
                 :placeholder="$t('scene.tree.searchPlaceholder')"
@@ -91,6 +101,12 @@
                   >
                     <span class="scene-node-title">{{ node.name }}</span>
                   </a-tooltip>
+                  <a-tag
+                      v-if="node.sceneType === 'SCENE' && isAiDerivedScene(node)"
+                      size="small"
+                      color="purple"
+                      class="scene-node-derived-tag"
+                  >{{ $t('scene.derive.derivedTag') }}</a-tag>
                 </div>
               </template>
               <template #extra="node">
@@ -119,6 +135,9 @@
                       </a-doption>
                       <a-doption v-permission="'auto:scene:create'" v-if="node.id != null && node.id != 0"
                                   @click="handleSceneCopy(node.id)">{{ $t('scene.tree.copyScene') }}
+                      </a-doption>
+                      <a-doption v-permission="'auto:scene:create'" v-if="node.id != null && node.id != 0 && !isApiScene"
+                                  @click="openDeriveModal(node)">{{ $t('scene.derive.action') }}
                       </a-doption>
                     </template>
                   </a-dropdown>
@@ -744,6 +763,14 @@
     <!-- 录制插件获取引导弹窗 -->
     <RecorderGuideModal v-model:visible="recorderGuideVisible"/>
 
+    <!-- AI 派生场景弹窗 -->
+    <AiSceneDeriveModal
+        v-model:visible="deriveModalVisible"
+        :source-scene="deriveSourceScene"
+        :source-folder-name="deriveSourceFolderName"
+        @saved="onDerivedSaved"
+    />
+
     <!--导出场景弹窗：树形勾选-->
     <a-modal v-model:visible="exportSceneVisible" :title="$t('scene.scene.export')"
              :width="520"
@@ -1079,6 +1106,8 @@ import ImportSceneStep from "@/views/scene/component/ImportSceneStep.vue";
 import RecordImportInline from "@/views/scene/component/RecordImportInline.vue";
 import RecorderGuideModal from "@/components/recorder-guide/RecorderGuideModal.vue";
 import RecordStepList from "@/views/scene/component/RecordStepList.vue";
+import AiSceneDeriveModal from "@/views/scene/component/AiSceneDeriveModal.vue";
+import {isAiDerivedScene} from "@/api/MyApi/aiSceneDerive";
 import SceneWorkflowCanvas from "@/views/scene/component/SceneWorkflowCanvas.vue";
 import {useDebugStepLock} from "@/views/scene/component/useDebugStepLock";
 import {useResizableSidebar} from "@/hooks/useResizableSidebar";
@@ -1779,12 +1808,87 @@ const isAllowDropRelease = (dropNode: TreeNodeData) => {
 const sceneStepList = ref<StepVO[]>([])
 
 
-// 搜索场景/目录的结果树
+// 搜索场景/目录的结果树（叠加「正式场景 / AI派生场景」分组过滤）
 const treeData = computed(() => {
   let data = sceneTree.value;
-  if (!searchKey.value) return data;
-  return searchData(searchKey.value, data);
+  if (searchKey.value) {
+    data = searchData(searchKey.value, data);
+  }
+  if (isApiScene.value) return data;
+  return filterSceneGroup(data);
 })
+
+// 场景分组 tab：FORMAL=正式场景，AI_DERIVED=AI派生场景
+const sceneGroupTab = ref<'FORMAL' | 'AI_DERIVED'>('FORMAL');
+
+// 当前节点是否归属当前分组 tab
+const matchesSceneGroup = (node: any) => {
+  const derived = isAiDerivedScene(node);
+  return sceneGroupTab.value === 'AI_DERIVED' ? derived : !derived;
+}
+
+// 按分组过滤场景树：目录仅在有匹配后代时保留（根节点始终保留，保证空态树可渲染）
+const filterSceneGroup = (nodes: any[]): any[] => {
+  const loop = (list: any[]): any[] => {
+    const result: any[] = [];
+    (list || []).forEach((item: any) => {
+      if (item.sceneType === 'FOLDER') {
+        const children = loop(item.children || []);
+        if (children.length > 0 || item.id === 0 || item.id === '0') {
+          result.push({...item, children});
+        }
+      } else if (item.sceneType === 'SCENE') {
+        if (matchesSceneGroup(item)) result.push({...item});
+      } else {
+        result.push({...item});
+      }
+    });
+    return result;
+  };
+  return loop(nodes);
+}
+
+// 切换分组时，若当前选中场景不属于新分组则清空选中态
+const onSceneGroupTabChange = () => {
+  const current = currentEditScene.value;
+  if (current?.id != null && current?.sceneType === 'SCENE' && !matchesSceneGroup(current)) {
+    clearAllSelectSceneInfo();
+  }
+}
+
+// ==================== AI 派生场景 ====================
+const deriveModalVisible = ref(false);
+const deriveSourceScene = ref<Scene | null>(null);
+const deriveSourceFolderName = ref('');
+
+// 在场景树中按 id 查找节点名称（取源场景所属目录名，用于默认勾选元素库同名目录）
+const findSceneNodeName = (id: any): string => {
+  if (id == null) return '';
+  const loop = (nodes: any[]): string => {
+    for (const item of nodes || []) {
+      if (String(item.id) === String(id)) return item.name || '';
+      if (item.children?.length) {
+        const found = loop(item.children);
+        if (found) return found;
+      }
+    }
+    return '';
+  };
+  return loop(sceneTree.value);
+}
+
+const openDeriveModal = (node: any) => {
+  deriveSourceScene.value = node;
+  deriveSourceFolderName.value = findSceneNodeName(node.parentId);
+  deriveModalVisible.value = true;
+}
+
+// 派生场景保存成功：切到「AI派生场景」tab 并刷新树
+const onDerivedSaved = async () => {
+  sceneGroupTab.value = 'AI_DERIVED';
+  await reloadSceneTree();
+  await reloadFolderLIst();
+}
 
 // 搜索的目录
 const searchData = (keyword: any, sourceData?: any[]) => {
@@ -4283,6 +4387,20 @@ watch(
 .scene-tree-search-wrap {
   padding: 0 12px;
   margin-bottom: 8px;
+}
+
+/* 「正式场景 / AI派生场景」分组 tab */
+.scene-group-tabs {
+  padding: 0 12px;
+}
+
+.scene-group-tabs :deep(.arco-tabs-nav) {
+  width: 100%;
+}
+
+.scene-node-derived-tag {
+  flex: 0 0 auto;
+  margin-left: 4px;
 }
 
 .scene-tree-search {
