@@ -23,3 +23,5 @@ backEnd/**/target/
 backEnd/**/*.jar
 /recorder-extension/
 /mokatest-recorder-extension.zip
+/mokatest-recorder-extension/
+/mokatest-recorder-extension-*.zip
